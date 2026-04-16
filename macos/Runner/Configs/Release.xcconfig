@@ -1,7 +1,2 @@
-#include? "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.release.xcconfig"
 #include "../../Flutter/Flutter-Release.xcconfig"
 #include "Warnings.xcconfig"
-
-// See Debug.xcconfig for the explicit-modules rationale.
-SWIFT_ENABLE_EXPLICIT_MODULES = NO
-CLANG_ENABLE_EXPLICIT_MODULES = NO

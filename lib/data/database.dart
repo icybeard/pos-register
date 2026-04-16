@@ -5,7 +5,6 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
 import '../services/auth/database_key_store.dart';
 import 'tables/categories_table.dart';
@@ -98,12 +97,10 @@ class AppDatabase extends _$AppDatabase {
 
 LazyDatabase _openConnection(DatabaseKeyStore keyStore) {
   return LazyDatabase(() async {
-    // sqlcipher_flutter_libs ships an SQLCipher-compatible SQLite build.
-    // applyWorkaroundToOpenSqlite3OnOldAndroidVersions is required for
-    // KitKat (4.4) — POS hardware in Kazakhstan often runs older Android.
-    if (Platform.isAndroid) {
-      await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
-    }
+    // sqlite3 3.x handles the old-Android SQLite-open workaround internally;
+    // the explicit applyWorkaroundToOpenSqlCipherOnOldAndroidVersions call
+    // that older sqlcipher_flutter_libs exposed is no longer needed (and is
+    // not part of the 0.7.0+eol placeholder package).
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'pos.drift.sqlite'));
 
@@ -115,8 +112,15 @@ LazyDatabase _openConnection(DatabaseKeyStore keyStore) {
     // Tunes for the cashier register workload: many small reads, occasional bursts of
     // writes during a sale. WAL gives concurrent reads + one writer; mmap reduces
     // syscall overhead on hot reads.
-    final cachebase = (await getTemporaryDirectory()).path;
-    sqlite3.tempDirectory = cachebase;
+    // Only set tempDirectory once per process — sqlite3 3.x is stricter about
+    // repeated assignments (see the 3.3.1 release notes fix for "avoid memory
+    // leaks when tempDirectory is set multiple times"). Repeated assignments
+    // during a test-suite run (where each test opens/closes the DB) surfaced
+    // as a mid-suite test failure.
+    if (sqlite3.tempDirectory == null || sqlite3.tempDirectory!.isEmpty) {
+      final cachebase = (await getTemporaryDirectory()).path;
+      sqlite3.tempDirectory = cachebase;
+    }
 
     return NativeDatabase.createInBackground(
       file,

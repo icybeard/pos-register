@@ -22,8 +22,13 @@ dependencies:
   dio: ^5.7.0
 
   # Local storage (drift) — central piece of the offline-first redesign (T1.1+)
-  drift: ^2.20.0
-  drift_flutter: ^0.2.4
+  # drift stays on 2.31 because drift_dev >=2.32 requires analyzer 10+ (Flutter
+  # SDK currently ships analyzer 8). Same reason keeps drift_flutter on 0.2.x
+  # and sqlite3 on 2.x. The macOS Xcode 26 fix comes from sqlcipher_flutter_libs
+  # ^0.7.0 + a dependency_override pinning sqlite3_flutter_libs to the
+  # +eol release that renames its ObjC class out of the way.
+  drift: ^2.31.0
+  drift_flutter: ^0.2.8
   sqlite3: ^2.4.6
   # SQLCipher-compatible native libs. Drop-in replacement for
   # sqlite3_flutter_libs; drift picks up the underlying sqlite3 symbols
@@ -31,7 +36,12 @@ dependencies:
   # (DatabaseKeyStore), this encrypts pos.drift.sqlite at rest so an `adb
   # backup` / rooted-device extraction can't read bcrypt PIN hashes or
   # sync_outbox payloads.
-  sqlcipher_flutter_libs: ^0.6.4
+  #
+  # 0.7.0+eol is the last release before simolus3 deprecated this package;
+  # it also fixes the Sqlite3FlutterLibsPlugin duplicate-class collision
+  # with sqlite3_flutter_libs on Xcode 26 (previous versions defined the
+  # same ObjC class name, which Xcode 26's stricter module linker rejects).
+  sqlcipher_flutter_libs: ^0.7.0
   path: ^1.9.0
   path_provider: ^2.1.4
 
@@ -65,8 +75,8 @@ dev_dependencies:
     sdk: flutter
   flutter_lints: ^6.0.0
 
-  # drift code generation
-  drift_dev: ^2.20.0
+  # drift code generation — kept at 2.31 for analyzer 8.x compat with Flutter SDK
+  drift_dev: ^2.31.0
   build_runner: ^2.4.13
 
   # Mocking + BLoC test
@@ -77,3 +87,29 @@ dev_dependencies:
 flutter:
   generate: true
   uses-material-design: true
+
+# Overrides for Xcode 26 compatibility on macOS.
+#
+# Problem: sqlite3_flutter_libs (pulled in transitively by drift_flutter) and
+# sqlcipher_flutter_libs both register an ObjC class named
+# `Sqlite3FlutterLibsPlugin`. Xcode 26 / Swift 6 modules hard-fail on the
+# collision; older Xcodes silently let it slide.
+#
+# Fix: pin sqlite3_flutter_libs to 0.6.0+eol and sqlcipher_flutter_libs to
+# 0.7.0+eol — simolus3 renamed/namespaced the class in those "EOL" releases
+# specifically to resolve this. The `+eol` suffix marks these packages as
+# superseded by native Swift PM integration in future Flutter releases; for
+# now they are the last working versions.
+dependency_overrides:
+  # +eol packages are empty transitional shells — their only job is to
+  # displace the older Flutter-specific build scripts that shipped the
+  # duplicate `Sqlite3FlutterLibsPlugin` ObjC class Xcode 26 rejects.
+  # Real SQLCipher support now lives in package:sqlite3 3.x.
+  sqlite3_flutter_libs: 0.6.0+eol
+  sqlcipher_flutter_libs: 0.7.0+eol
+  # Runtime drift can go to 2.32 (which requires sqlite3 3.x); drift_dev
+  # stays at 2.31 because its analyzer 10+ dep conflicts with Flutter SDK's
+  # analyzer 8. Generated .g.dart files are forward-compatible (drift 2.32
+  # runtime reads 2.31-generated schemas fine).
+  drift: ^2.32.0
+  sqlite3: ^3.0.0

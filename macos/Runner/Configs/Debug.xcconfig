@@ -1,12 +1,2 @@
-#include? "../../Pods/Target Support Files/Pods-Runner/Pods-Runner.debug.xcconfig"
 #include "../../Flutter/Flutter-Debug.xcconfig"
 #include "Warnings.xcconfig"
-
-// Xcode 26 / Swift 6 explicit-modules mode catches a duplicate
-// `Sqlite3FlutterLibsPlugin` symbol — it's vendored by both
-// sqlite3_flutter_libs and sqlcipher_flutter_libs (the latter pulls the
-// former in transitively). Older Xcodes ignored the collision; Xcode 26
-// hard-fails. Disable explicit modules to restore the permissive behavior
-// without forking either plugin.
-SWIFT_ENABLE_EXPLICIT_MODULES = NO
-CLANG_ENABLE_EXPLICIT_MODULES = NO
