@@ -4,7 +4,7 @@ import 'package:http/http.dart' as http;
 import '../core/constants/app_constants.dart';
 
 /// HTTP клиент для .NET central. Адрес читается из
-/// [AppConstants.defaultApiHost] (по умолчанию `http://localhost:5000`).
+/// [AppConstants.defaultApiHost] (по умолчанию `http://localhost:5080`).
 ///
 /// Авторизация:
 ///   - При первом запуске касса не имеет токена — `Authorization` не

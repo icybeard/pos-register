@@ -2,9 +2,14 @@
 class AppConstants {
   AppConstants._();
 
-  // API. Default points at the .NET central on localhost:5000 (the value
-  // `dotnet run` picks for ASPNETCORE_URLS). Override at build time with:
+  // API. Default points at the .NET central on localhost:5080 — matches
+  // pos-server's deploy/docker-compose.local.yml host-port mapping. 5080
+  // (not 5000) so we don't collide with macOS AirPlay Receiver, which
+  // squats on :5000 by default and returns 403 for any HTTP request.
+  //
+  // Override at build time with:
   //   flutter run --dart-define=POS_API_HOST=https://api.example.kz
+  //
   // The `String.fromEnvironment` lookup is compile-time, so each build
   // bakes in one host — no runtime reconfiguration.
   //
@@ -13,7 +18,7 @@ class AppConstants {
   // at the Android layer (network_security_config.xml).
   static const String defaultApiHost = String.fromEnvironment(
     'POS_API_HOST',
-    defaultValue: 'http://localhost:5000',
+    defaultValue: 'http://localhost:5080',
   );
   static const String apiPrefix = '/api';
 
