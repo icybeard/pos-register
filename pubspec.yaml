@@ -1,0 +1,76 @@
+name: pos_system
+description: "POS System Kazakhstan — кассовое ПО для розничной торговли"
+publish_to: 'none'
+version: 0.1.0+1
+
+environment:
+  sdk: ^3.10.7
+
+dependencies:
+  flutter:
+    sdk: flutter
+  flutter_localizations:
+    sdk: flutter
+  intl: any
+  cupertino_icons: ^1.0.8
+
+  # State management
+  flutter_bloc: ^9.1.0
+
+  # HTTP — kept (http) for legacy ApiClient + dio for the new client with interceptors.
+  http: ^1.3.0
+  dio: ^5.7.0
+
+  # Local storage (drift) — central piece of the offline-first redesign (T1.1+)
+  drift: ^2.20.0
+  drift_flutter: ^0.2.4
+  sqlite3: ^2.4.6
+  sqlite3_flutter_libs: ^0.5.24
+  path: ^1.9.0
+  path_provider: ^2.1.4
+
+  # One-shot read-only access to the legacy Go server's pos.db during migration (T1.4)
+  sqflite: ^2.3.3
+
+  # Auth / sync infra
+  flutter_secure_storage: ^9.2.2
+  uuid: ^4.5.0
+  pointycastle: ^3.9.1
+  crypto: ^3.0.5
+  # Pure-Dart bcrypt (pointycastle-backed internally), verifies hashes minted
+  # by BCrypt.Net-Next on the .NET side. Locked decision #12.
+  bcrypt: ^1.1.3
+  collection: ^1.18.0
+
+  # Background work (sync drainer, fiscal queue) — used in P5+
+  workmanager: ^0.5.2
+
+  # gRPC for sync (used in P2+)
+  grpc: ^4.0.1
+  protobuf: ^3.1.0
+
+  # UI bits
+  google_fonts: ^8.0.2
+  window_manager: ^0.5.1
+
+  # Receipt + Z-report PDF
+  printing: ^5.14.0
+  pdf: ^3.11.0
+
+dev_dependencies:
+  flutter_test:
+    sdk: flutter
+  flutter_lints: ^6.0.0
+
+  # drift code generation
+  drift_dev: ^2.20.0
+  build_runner: ^2.4.13
+
+  # Mocking + BLoC test
+  mocktail: ^1.0.4
+  bloc_test: ^10.0.0
+  sqflite_common_ffi: ^2.3.3  # test-only: sqflite backed by native sqlite3 (no platform channel)
+
+flutter:
+  generate: true
+  uses-material-design: true

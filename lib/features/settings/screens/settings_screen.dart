@@ -1,0 +1,611 @@
+import 'package:flutter/material.dart';
+import 'package:google_fonts/google_fonts.dart';
+import '../../../core/l10n/app_localizations.dart';
+import '../../../core/theme/app_theme.dart';
+import '../../../services/api_client.dart';
+
+class SettingsScreen extends StatelessWidget {
+  final ApiClient api;
+  final VoidCallback onLogout;
+
+  const SettingsScreen({super.key, required this.api, required this.onLogout});
+
+  void _showWebkassaDialog(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final loginC = TextEditingController();
+    final pwdC = TextEditingController();
+    bool testMode = true;
+
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => StatefulBuilder(
+        builder: (ctx, setDialogState) => AlertDialog(
+          title: Text(l.settingsWebkassa, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          content: Column(mainAxisSize: MainAxisSize.min, children: [
+            TextField(
+              controller: loginC,
+              decoration: InputDecoration(labelText: l.settingsWebkassaLogin, prefixIcon: const Icon(Icons.person_outline)),
+            ),
+            const SizedBox(height: 14),
+            TextField(
+              controller: pwdC,
+              decoration: InputDecoration(labelText: l.settingsWebkassPwd, prefixIcon: const Icon(Icons.lock_outline)),
+              obscureText: true,
+            ),
+            const SizedBox(height: 14),
+            SwitchListTile(
+              title: Text(l.settingsWebkassaTestMode, style: GoogleFonts.inter(fontSize: 14)),
+              value: testMode,
+              onChanged: (v) => setDialogState(() => testMode = v),
+              contentPadding: EdgeInsets.zero,
+            ),
+          ]),
+          actions: [
+            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
+            ElevatedButton(
+              onPressed: () async {
+                if (loginC.text.trim().isEmpty) return;
+                try {
+                  await api.setSetting('webkassa_login', loginC.text.trim());
+                  await api.setSetting('webkassa_password', pwdC.text.trim());
+                  await api.setSetting('webkassa_test_mode', testMode.toString());
+                  if (ctx.mounted) Navigator.pop(ctx);
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      SnackBar(content: const Text('Webkassa настроена'), backgroundColor: PosColors.of(context).successFg),
+                    );
+                  }
+                } on Exception catch (e) {
+                  if (context.mounted) {
+                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
+                  }
+                }
+              },
+              child: Text(l.save),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  void _showNktSearchDialog(BuildContext context) {
+    final queryC = TextEditingController();
+    showDialog<void>(
+      context: context,
+      builder: (ctx) => _NktSearchDialog(api: api, queryController: queryC),
+    );
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final cs = Theme.of(context).colorScheme;
+    final pos = PosColors.of(context);
+
+    return Scaffold(
+      body: CustomScrollView(
+        slivers: [
+          // Header
+          SliverToBoxAdapter(
+            child: Padding(
+              padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
+              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text(l.settingsTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                const SizedBox(height: 4),
+                Text(l.settingsSubtitle, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+              ]),
+            ),
+          ),
+
+          SliverPadding(
+            padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
+            sliver: SliverList(
+              delegate: SliverChildListDelegate([
+                _SectionLabel(l.settingsActions),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsTile(
+                    icon: Icons.dataset_outlined,
+                    iconColor: pos.accentFg,
+                    iconBg: pos.accentBg,
+                    title: l.settingsSeedDemo,
+                    subtitle: l.settingsSeedDemoSub,
+                    onTap: () async {
+                      try {
+                        await api.seedDemo();
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: const Text('Демо-данные загружены!'), backgroundColor: pos.successFg),
+                          );
+                        }
+                      } on Exception catch (e) {
+                        if (context.mounted) {
+                          ScaffoldMessenger.of(context).showSnackBar(
+                            SnackBar(content: Text('Ошибка: $e'), backgroundColor: pos.errorFg),
+                          );
+                        }
+                      }
+                    },
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.search_rounded,
+                    iconColor: pos.successFg,
+                    iconBg: pos.successBg,
+                    title: l.settingsCheckNkt,
+                    subtitle: l.settingsCheckNktSub,
+                    onTap: () => _showNktSearchDialog(context),
+                  ),
+                ]),
+
+                const SizedBox(height: 28),
+                _SectionLabel(l.settingsSystem),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsTile(
+                    icon: Icons.info_outline_rounded,
+                    iconColor: cs.onSurfaceVariant,
+                    iconBg: cs.surfaceContainer,
+                    title: l.settingsAbout,
+                    subtitle: l.settingsAboutSub,
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.dns_outlined,
+                    iconColor: cs.onSurfaceVariant,
+                    iconBg: cs.surfaceContainer,
+                    title: l.settingsServer,
+                    subtitle: api.baseUrl,
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.wifi_tethering_rounded,
+                    iconColor: cs.onSurfaceVariant,
+                    iconBg: cs.surfaceContainer,
+                    title: l.settingsServerStatus,
+                    trailing: FutureBuilder<bool>(
+                      future: api.checkHealth(),
+                      builder: (_, snap) {
+                        if (snap.connectionState == ConnectionState.waiting) {
+                          return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
+                        }
+                        final ok = snap.data == true;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: ok ? pos.successBg : pos.errorBg,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            ok ? l.settingsServerConnected : l.settingsServerUnavailable,
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ok ? pos.successFg : pos.errorFg),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                ]),
+
+                const SizedBox(height: 28),
+                _SectionLabel(l.settingsIntegrations),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsTile(
+                    icon: Icons.language_rounded,
+                    iconColor: pos.accentFg,
+                    iconBg: pos.accentBg,
+                    title: l.settingsLanguage,
+                    subtitle: l.settingsLanguageSub,
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.receipt_long_outlined,
+                    iconColor: pos.warningFg,
+                    iconBg: pos.warningBg,
+                    title: l.settingsWebkassa,
+                    subtitle: l.settingsWebkassaSub,
+                    onTap: () => _showWebkassaDialog(context),
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
+                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                    ),
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.verified_outlined,
+                    iconColor: pos.successFg,
+                    iconBg: pos.successBg,
+                    title: l.settingsNktTitle,
+                    // Register proxies NKT lookups through central (T6.5);
+                    // credentials are managed by the owner in the web admin.
+                    // A runtime "configured?" badge would need owner-gated
+                    // access to /api/nkt/credentials, so we just show a
+                    // static indicator that the call path is healthy.
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(
+                        color: pos.successBg,
+                        borderRadius: BorderRadius.circular(20),
+                      ),
+                      child: Text(
+                        l.settingsNktConnected,
+                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.successFg),
+                      ),
+                    ),
+                  ),
+                ]),
+
+                // Hardware
+                const SizedBox(height: 28),
+                _SectionLabel(l.settingsPrinter),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsTile(
+                    icon: Icons.print_rounded,
+                    iconColor: cs.primary,
+                    iconBg: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                    title: l.settingsPrinter,
+                    subtitle: l.settingsPrinterSub,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
+                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                    ),
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.qr_code_scanner_rounded,
+                    iconColor: cs.primary,
+                    iconBg: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                    title: l.settingsScanner,
+                    subtitle: l.settingsScannerSub,
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
+                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                    ),
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.scale_rounded,
+                    iconColor: cs.primary,
+                    iconBg: AppTheme.primaryContainer.withValues(alpha: 0.15),
+                    title: 'Весы',
+                    trailing: Container(
+                      padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                      decoration: BoxDecoration(color: pos.successBg, borderRadius: BorderRadius.circular(20)),
+                      child: Text('Симуляция', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
+                    ),
+                  ),
+                ]),
+
+                // Data & Sync
+                const SizedBox(height: 28),
+                _SectionLabel(l.settingsBackup),
+                const SizedBox(height: 10),
+                _SettingsCard(children: [
+                  _SettingsTile(
+                    icon: Icons.backup_rounded,
+                    iconColor: pos.accentFg,
+                    iconBg: pos.accentBg,
+                    title: l.settingsBackup,
+                    subtitle: l.settingsBackupSub,
+                    onTap: () {
+                      ScaffoldMessenger.of(context).showSnackBar(
+                        SnackBar(content: Text(l.settingsBackupExport)),
+                      );
+                    },
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.sync_rounded,
+                    iconColor: pos.successFg,
+                    iconBg: pos.successBg,
+                    title: l.settingsSyncStatus,
+                    trailing: FutureBuilder<Map<String, dynamic>>(
+                      future: api.syncStatus(),
+                      builder: (_, snap) {
+                        final unsynced = (snap.data?['unsynced_count'] as num?)?.toInt() ?? 0;
+                        return Container(
+                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                          decoration: BoxDecoration(
+                            color: unsynced > 0 ? pos.warningBg : pos.successBg,
+                            borderRadius: BorderRadius.circular(20),
+                          ),
+                          child: Text(
+                            unsynced > 0 ? '$unsynced' : 'OK',
+                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600,
+                              color: unsynced > 0 ? pos.warningFg : pos.successFg),
+                          ),
+                        );
+                      },
+                    ),
+                  ),
+                  Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
+                  _SettingsTile(
+                    icon: Icons.description_outlined,
+                    iconColor: cs.onSurfaceVariant,
+                    iconBg: cs.surfaceContainer,
+                    title: l.settingsReceiptFormat,
+                    subtitle: l.settingsReceiptFormatSub,
+                  ),
+                ]),
+
+                const SizedBox(height: 36),
+                SizedBox(
+                  height: 56,
+                  child: OutlinedButton.icon(
+                    onPressed: onLogout,
+                    icon: const Icon(Icons.logout_rounded, size: 20),
+                    label: Text(l.logout, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    style: OutlinedButton.styleFrom(
+                      foregroundColor: pos.errorFg,
+                      side: BorderSide(color: pos.errorFg.withValues(alpha: 0.5)),
+                      shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                    ),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+}
+
+class _SectionLabel extends StatelessWidget {
+  final String text;
+  const _SectionLabel(this.text);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Text(
+      text.toUpperCase(),
+      style: GoogleFonts.inter(
+        fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8,
+      ),
+    );
+  }
+}
+
+class _SettingsCard extends StatelessWidget {
+  final List<Widget> children;
+  const _SettingsCard({required this.children});
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      decoration: BoxDecoration(
+        color: cs.surfaceContainerLowest,
+        borderRadius: BorderRadius.circular(18),
+        boxShadow: [
+          const BoxShadow(color: Color(0x0A0D1C2F), blurRadius: 24, offset: Offset(0, 8)),
+        ],
+      ),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(18),
+        child: Column(children: children),
+      ),
+    );
+  }
+}
+
+class _SettingsTile extends StatelessWidget {
+  final IconData icon;
+  final Color iconColor;
+  final Color iconBg;
+  final String title;
+  final String? subtitle;
+  final VoidCallback? onTap;
+  final Widget? trailing;
+
+  const _SettingsTile({
+    required this.icon,
+    required this.iconColor,
+    required this.iconBg,
+    required this.title,
+    this.subtitle,
+    this.onTap,
+    this.trailing,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return InkWell(
+      onTap: onTap,
+      child: Padding(
+        padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 16),
+        child: Row(children: [
+          Container(
+            width: 40,
+            height: 40,
+            decoration: BoxDecoration(color: iconBg, borderRadius: BorderRadius.circular(12)),
+            child: Icon(icon, size: 20, color: iconColor),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
+                if (subtitle != null)
+                  Padding(
+                    padding: const EdgeInsets.only(top: 3),
+                    child: Text(subtitle!, style: GoogleFonts.inter(fontSize: 13, color: cs.onSurfaceVariant)),
+                  ),
+              ],
+            ),
+          ),
+          if (trailing != null)
+            trailing!
+          else if (onTap != null)
+            Icon(Icons.chevron_right_rounded, size: 22, color: cs.outline),
+        ]),
+      ),
+    );
+  }
+}
+
+class _NktSearchDialog extends StatefulWidget {
+  final ApiClient api;
+  final TextEditingController queryController;
+  const _NktSearchDialog({required this.api, required this.queryController});
+
+  @override
+  State<_NktSearchDialog> createState() => _NktSearchDialogState();
+}
+
+class _NktSearchDialogState extends State<_NktSearchDialog> {
+  List<dynamic>? _results;
+  bool _loading = false;
+  String? _error;
+  String _searchType = 'gtin';
+
+  Future<void> _search() async {
+    final q = widget.queryController.text.trim();
+    if (q.isEmpty) return;
+    setState(() {
+      _loading = true;
+      _error = null;
+      _results = null;
+    });
+    try {
+      Map<String, dynamic> response;
+      if (_searchType == 'gtin') {
+        response = await widget.api.nktSearchByGTIN(q);
+      } else {
+        response = await widget.api.nktSearchByName(q);
+      }
+      setState(() {
+        _results = response['products'] as List<dynamic>? ?? [];
+        _loading = false;
+      });
+    } on Exception catch (e) {
+      setState(() {
+        _error = e.toString();
+        _loading = false;
+      });
+    }
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    final pos = PosColors.of(context);
+    return AlertDialog(
+      title: Text(l.settingsNktSearch, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+      content: SizedBox(
+        width: 420,
+        child: Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            SegmentedButton<String>(
+              segments: [
+                ButtonSegment(value: 'gtin', label: Text(l.settingsNktBarcode)),
+                ButtonSegment(value: 'name', label: Text(l.settingsNktName)),
+              ],
+              selected: {_searchType},
+              onSelectionChanged: (v) => setState(() => _searchType = v.first),
+            ),
+            const SizedBox(height: 14),
+            Row(children: [
+              Expanded(
+                child: TextField(
+                  controller: widget.queryController,
+                  decoration: InputDecoration(
+                    labelText: _searchType == 'gtin' ? l.settingsNktGtinHint : l.settingsNktNameHint,
+                  ),
+                  keyboardType: _searchType == 'gtin' ? TextInputType.number : TextInputType.text,
+                ),
+              ),
+              const SizedBox(width: 8),
+              SizedBox(
+                height: 48,
+                child: ElevatedButton(
+                  onPressed: _search,
+                  style: ElevatedButton.styleFrom(padding: const EdgeInsets.symmetric(horizontal: 16)),
+                  child: const Icon(Icons.search_rounded),
+                ),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            if (_loading)
+              const Padding(padding: EdgeInsets.all(16), child: CircularProgressIndicator(strokeWidth: 2.5))
+            else if (_error != null)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: pos.errorBg, borderRadius: BorderRadius.circular(10)),
+                child: Text(_error!, style: GoogleFonts.inter(color: pos.errorFg, fontSize: 13)),
+              )
+            else if (_results != null && _results!.isEmpty)
+              Container(
+                width: double.infinity,
+                padding: const EdgeInsets.all(14),
+                decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(10)),
+                child: Text(l.settingsNktNotFound, style: GoogleFonts.inter(color: pos.warningFg, fontSize: 13)),
+              )
+            else if (_results != null)
+              Flexible(
+                child: ListView.separated(
+                  shrinkWrap: true,
+                  itemCount: _results!.length,
+                  separatorBuilder: (_, _) => const Divider(height: 1),
+                  itemBuilder: (_, i) {
+                    final p = _results![i] as Map<String, dynamic>;
+                    return Padding(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                        Text(p['name_ru']?.toString() ?? '-',
+                            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                        const SizedBox(height: 6),
+                        Row(children: [
+                          _NktChip('GTIN', p['gtin']?.toString() ?? '-'),
+                          const SizedBox(width: 6),
+                          _NktChip('NTIN', p['ntin_code']?.toString() ?? '-'),
+                          if (p['is_social'] == true) ...[
+                            const SizedBox(width: 6),
+                            Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+                              decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(6)),
+                              child: Text(l.settingsNktSocial,
+                                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                            ),
+                          ],
+                        ]),
+                      ]),
+                    );
+                  },
+                ),
+              ),
+          ],
+        ),
+      ),
+      actions: [
+        TextButton(onPressed: () => Navigator.pop(context), child: Text(l.close)),
+      ],
+    );
+  }
+}
+
+class _NktChip extends StatelessWidget {
+  final String label;
+  final String value;
+  const _NktChip(this.label, this.value);
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
+      decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(6)),
+      child: Text('$label: $value', style: GoogleFonts.inter(fontSize: 11, color: cs.outline)),
+    );
+  }
+}

@@ -1,0 +1,653 @@
+{
+  "@@locale": "ru",
+  "appTitle": "POS System",
+  "appRegion": "KAZAKHSTAN",
+  "navPos": "КАССА",
+  "navShift": "ИСТОРИЯ",
+  "navProducts": "ТОВАРЫ",
+  "navStaff": "ПЕРСОНАЛ",
+  "navDebts": "ДОЛГИ",
+  "navAnalytics": "АНАЛИТИКА",
+  "navDelivery": "ПОСТАВКИ",
+  "navApproval": "ОДОБРЕНИЕ",
+  "navAudit": "АУДИТ",
+  "navSettings": "НАСТРОЙКИ",
+  "navPosShort": "Касса",
+  "navShiftShort": "История",
+  "navMore": "Ещё",
+  "navProductsShort": "Товары",
+  "navStaffShort": "Персонал",
+  "navDebtsShort": "Долги",
+  "navAnalyticsShort": "Аналитика",
+  "navDeliveryShort": "Поставки",
+  "navApprovalShort": "Одобрение",
+  "navAuditShort": "Аудит",
+  "navSettingsShort": "Настройки",
+  "modeCashier": "Касса",
+  "modeOwner": "Владелец",
+  "logout": "Выйти из системы",
+  "systemOnline": "Система онлайн",
+  "shiftOpened": "Смена открыта",
+  "shiftClosed": "Смена закрыта",
+  "roleOwner": "Владелец",
+  "roleAdmin": "Администратор",
+  "roleSeniorCashier": "Старший кассир",
+  "roleSeniorCashierShort": "Ст. кассир",
+  "roleCashier": "Кассир",
+  "cancel": "Отмена",
+  "ok": "OK",
+  "close": "Закрыть",
+  "create": "Создать",
+  "delete": "Удалить",
+  "refresh": "Обновить",
+  "add": "Добавить",
+  "save": "Сохранить",
+  "search": "Поиск",
+  "loadMore": "Загрузить ещё",
+  "noData": "Нет данных",
+  "errorPrefix": "Ошибка: {error}",
+  "@errorPrefix": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "pinTerminal": "Терминал #001",
+  "pinSelectProfile": "ВЫБЕРИТЕ ПРОФИЛЬ",
+  "pinCashierLabel": "Кассир",
+  "pinEnterForLogin": "Введите PIN для входа",
+  "pinChangeTerminal": "Сменить терминал",
+  "pinWelcome": "Добро пожаловать",
+  "pinEnterCode": "Введите 4-значный PIN-код",
+  "pinEncryptedAccess": "ЗАШИФРОВАННЫЙ ДОСТУП",
+  "pinFirstRunTitle": "Добро пожаловать!",
+  "pinFirstRunSubtitle": "Создайте первого пользователя",
+  "pinFieldName": "Имя",
+  "pinFieldPin": "PIN-код (4 цифры)",
+  "pinFieldConfirm": "Подтвердите PIN",
+  "pinErrorLength": "PIN должен быть 4 цифры",
+  "pinErrorMismatch": "PIN-коды не совпадают",
+  "pinCreateAndLogin": "Создать и войти",
+  "pinLockedMessage": "Заблокировано: {display}",
+  "@pinLockedMessage": {
+    "placeholders": {
+      "display": {
+        "type": "String"
+      }
+    }
+  },
+  "pinSec": "сек.",
+  "paymentTitle": "Оплата",
+  "paymentToPay": "К оплате",
+  "paymentVatLine": "в т.ч. НДС 12%: {amount}",
+  "@paymentVatLine": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentCash": "Наличные",
+  "paymentCard": "Карта",
+  "paymentKaspiQR": "Kaspi QR",
+  "paymentMix": "Микс",
+  "paymentChange": "Сдача",
+  "paymentCardHint": "Приложите карту к терминалу",
+  "paymentQRHint": "Покажите QR-код покупателю",
+  "paymentPayButton": "Оплатить {amount}",
+  "@paymentPayButton": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "paymentPendingButton": "Внесите {amount}",
+  "@paymentPendingButton": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "shiftNotOpened": "Смена не открыта",
+  "shiftCashierLabel": "Кассир: {name}",
+  "@shiftCashierLabel": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "shiftCashInDrawer": "Наличные в кассе (₸)",
+  "shiftOpen": "Открыть смену",
+  "shiftReconciliation": "Сверка смены",
+  "shiftCountCash": "Пересчёт наличных",
+  "shiftCountInstruction": "Введите количество каждой купюры в кассе.",
+  "shiftBanknote": "КУПЮРА",
+  "shiftCoin": "МОНЕТЫ",
+  "shiftSubtotal": "Подитого",
+  "shiftManualAdjust": "Ручная корректировка",
+  "shiftAdjustSubtitle": "Заметки о недостачах или излишках",
+  "shiftNote": "Заметка",
+  "shiftStatCash": "НАЛИЧНЫЕ",
+  "shiftStatCard": "КАРТА",
+  "shiftStatKaspiQR": "KASPI QR",
+  "shiftStatReturns": "ВОЗВРАТЫ",
+  "shiftSummary": "Итоги смены",
+  "shiftStartBalance": "Начальный остаток",
+  "shiftCashSales": "Наличные продажи",
+  "shiftReturnsPayouts": "Возвраты/Выплаты",
+  "shiftExpectedBalance": "ОЖИДАЕМЫЙ ОСТАТОК",
+  "shiftCounted": "ПОДСЧИТАНО",
+  "shiftDiscrepancy": "Расхождение",
+  "shiftLabel": "Смена",
+  "shiftNumber": "Смена №{number}",
+  "@shiftNumber": {
+    "placeholders": {
+      "number": {
+        "type": "int"
+      }
+    }
+  },
+  "shiftReceipts": "чеков",
+  "shiftCashStart": "Наличные на начало",
+  "shiftCurrentBalance": "Текущий остаток",
+  "shiftCloseZReport": "Закрыть смену (Z-отчёт)",
+  "shiftCloseConfirmTitle": "Закрыть смену?",
+  "shiftCloseConfirmBody": "Будет сформирован Z-отчёт. Это действие нельзя отменить.",
+  "shiftCloseButton": "Закрыть смену",
+  "shiftCloseFooter": "Закрывая смену, вы подтверждаете пересчёт наличных в кассе.",
+  "productsTitle": "Товары",
+  "productsCountLabel": "{count} позиций в каталоге",
+  "@productsCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productsTotalStat": "ВСЕГО ТОВАРОВ",
+  "productsWeightedStat": "ВЕСОВЫХ",
+  "productsPieceStat": "ШТУЧНЫХ",
+  "productsAvgPriceStat": "СРЕДНЯЯ ЦЕНА",
+  "productsTotalShort": "ВСЕГО",
+  "productsAvgPriceShort": "СР. ЦЕНА",
+  "productsSearchHint": "Поиск по названию или штрих-коду...",
+  "productsTabAll": "Все ({count})",
+  "@productsTabAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productsTabWeighted": "Весовые ({count})",
+  "@productsTabWeighted": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productsTabPiece": "Штучные ({count})",
+  "@productsTabPiece": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "productsColName": "ТОВАР",
+  "productsColBarcode": "ШТРИХ-КОД",
+  "productsColVat": "НДС",
+  "productsColPrice": "ЦЕНА",
+  "productsNotFound": "Ничего не найдено",
+  "productsEmpty": "Нет товаров",
+  "productsTryAnother": "Попробуйте другой запрос",
+  "productsEmptyHint": "Добавьте первый товар или\nзагрузите демо-данные в настройках",
+  "productsDeleteConfirm": "Удалить товар?",
+  "productsNew": "Новый товар",
+  "productsFieldBarcode": "Штрих-код (GTIN)",
+  "productsNkt": "НКТ",
+  "productsEnterBarcode": "Введите штрих-код",
+  "productsNktNotFound": "Не найден в НКТ",
+  "productsNktError": "Ошибка НКТ: {error}",
+  "@productsNktError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "productsFieldName": "Название",
+  "productsFieldPrice": "Цена (₸)",
+  "productsWeighted": "Весовой товар",
+  "productsWeightedSubPriceKg": "Цена за кг",
+  "productsWeightedSubPricePcs": "Цена за штуку",
+  "productsTypeWeighted": "Весовой",
+  "productsTypePiece": "Штучный",
+  "cashiersTitle": "Персонал",
+  "cashiersCountLabel": "{count} сотрудников",
+  "@cashiersCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "cashiersStatTotal": "Всего",
+  "cashiersStatOwners": "Владельцев",
+  "cashiersStatManagers": "Менеджеров",
+  "cashiersColName": "ИМЯ",
+  "cashiersColRole": "РОЛЬ",
+  "cashiersEmpty": "Нет кассиров",
+  "cashiersNew": "Новый кассир",
+  "cashiersFieldName": "Имя",
+  "cashiersFieldPin": "PIN (4 цифры)",
+  "cashiersFieldRole": "Роль",
+  "cashiersEnterName": "Введите имя",
+  "debtsTitle": "Долги",
+  "debtsCountLabel": "{open} открытых, {clients} клиентов",
+  "@debtsCountLabel": {
+    "placeholders": {
+      "open": {
+        "type": "int"
+      },
+      "clients": {
+        "type": "int"
+      }
+    }
+  },
+  "debtsNewDebt": "Новый долг",
+  "debtsTotalBanner": "ОБЩАЯ ЗАДОЛЖЕННОСТЬ",
+  "debtsRecordsLabel": "записей",
+  "debtsTabOpen": "Открытые ({count})",
+  "@debtsTabOpen": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "debtsTabAll": "Все ({count})",
+  "@debtsTabAll": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "debtsEmpty": "Нет долгов",
+  "debtsPayTitle": "Погашение долга",
+  "debtsPayRemaining": "Остаток: {amount}",
+  "@debtsPayRemaining": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "debtsFieldAmount": "Сумма (₸)",
+  "debtsEnterAmount": "Введите сумму",
+  "debtsPay": "Оплатить",
+  "debtsCreateTitle": "Продажа в долг",
+  "debtsFieldClient": "Клиент",
+  "debtsFieldNote": "Примечание",
+  "debtsSelectClient": "Выберите клиента",
+  "debtsRecord": "Записать долг",
+  "debtsClientDefault": "Клиент",
+  "debtsPaid": "Погашено",
+  "debtsOfTotal": "из {amount}",
+  "@debtsOfTotal": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "debtsPayment": "Оплата",
+  "debtsClosed": "Закрыт",
+  "debtsPaidLabel": "Оплачено: {amount}",
+  "@debtsPaidLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "analyticsTitle": "Аналитика",
+  "analyticsSubtitle": "Обзор бизнеса",
+  "analyticsToday": "СЕГОДНЯ",
+  "analyticsYesterday": "ВЧЕРА",
+  "analyticsWeek": "НЕДЕЛЯ",
+  "analyticsMonth": "МЕСЯЦ",
+  "analyticsReceipts": "чеков",
+  "analyticsPaymentTypes": "Оплата по типам",
+  "analyticsTopProducts": "Топ товаров (30 дней)",
+  "analyticsCashiers": "Кассиры",
+  "analyticsLowStock": "Остатки (низкие)",
+  "analyticsDebts": "Долги",
+  "analyticsAllNormal": "Все в норме",
+  "analyticsCash": "Наличные",
+  "analyticsCard": "Карта",
+  "analyticsKaspiQR": "Kaspi QR",
+  "analyticsOpenDebts": "Открытых",
+  "analyticsToPayDebts": "К оплате",
+  "analyticsPaidDebts": "Погашено",
+  "deliveryTitle": "Поставка товаров",
+  "deliverySearchHint": "Поиск товара...",
+  "deliveryCostLabel": "Себестоимость: {amount}",
+  "@deliveryCostLabel": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "deliveryLinesLabel": "Позиции ({count})",
+  "@deliveryLinesLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "deliveryEmptyHint": "Добавьте товары для поставки",
+  "deliveryFieldQty": "Кол-во",
+  "deliveryFieldCost": "Себестоимость (тиын)",
+  "deliverySubmit": "Оформить поставку",
+  "deliverySuccess": "Поставка оформлена",
+  "approvalTitle": "Одобрение товаров",
+  "approvalSubtitle": "НКТ товары ожидают проверки",
+  "approvalEmpty": "Нет ожидающих товаров",
+  "approvalPending": "ОЖИДАЕТ",
+  "approvalFrom": "от: {name}",
+  "@approvalFrom": {
+    "placeholders": {
+      "name": {
+        "type": "String"
+      }
+    }
+  },
+  "approvalBarcode": "Штрих-код",
+  "approvalNtin": "НТИН",
+  "approvalSalePrice": "Цена продажи",
+  "approvalReject": "Отклонить",
+  "approvalApprove": "Одобрить",
+  "approvalApproveTitle": "Одобрить товар",
+  "approvalFieldName": "Название",
+  "approvalFieldPrice": "Цена продажи (тиын)",
+  "approvalRejectTitle": "Отклонить товар",
+  "approvalRejectReason": "Причина (необязательно)",
+  "approvalApproved": "Товар одобрен",
+  "approvalRejected": "Товар отклонён",
+  "auditTitle": "Журнал аудита",
+  "auditTotalLabel": "Всего записей: {count}",
+  "@auditTotalLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "auditEmpty": "Нет записей",
+  "auditActionReceiptCreated": "Чек создан",
+  "auditActionShiftOpened": "Смена открыта",
+  "auditActionShiftClosed": "Смена закрыта",
+  "auditActionNktApproved": "НКТ товар одобрен",
+  "auditActionNktRejected": "НКТ товар отклонён",
+  "auditActionProductCreated": "Товар создан",
+  "auditActionProductEdited": "Товар изменён",
+  "auditActionProductDeleted": "Товар удалён",
+  "auditActionDebtCreated": "Долг создан",
+  "auditActionDebtPaid": "Долг погашен",
+  "auditActionCashierCreated": "Кассир добавлен",
+  "auditActionDeliveryReceived": "Поставка оформлена",
+  "settingsTitle": "Настройки",
+  "settingsSubtitle": "Конфигурация системы",
+  "settingsActions": "Действия",
+  "settingsSeedDemo": "Загрузить демо-данные",
+  "settingsSeedDemoSub": "17 товаров, 6 категорий, 3 клиента",
+  "settingsCheckNkt": "Проверить НКТ",
+  "settingsCheckNktSub": "Поиск товара по штрих-коду или названию",
+  "settingsSystem": "Система",
+  "settingsAbout": "О системе",
+  "settingsAboutSub": "POS System Kazakhstan v0.1.0",
+  "settingsServer": "Сервер",
+  "settingsServerStatus": "Статус сервера",
+  "settingsServerConnected": "Подключен",
+  "settingsServerUnavailable": "Не доступен",
+  "settingsIntegrations": "Интеграции",
+  "settingsLanguage": "Язык / Тiл",
+  "settingsLanguageSub": "Русский",
+  "settingsLanguageKk": "Қазақша",
+  "settingsFiscal": "Фискализация",
+  "settingsNotConnected": "Не подключено",
+  "settingsNktTitle": "НКТ (Национальный каталог)",
+  "settingsNktConnected": "Подключено",
+  "settingsNktNotConfigured": "Не настроено",
+  "settingsNktSearch": "Поиск в НКТ",
+  "settingsNktBarcode": "Штрих-код",
+  "settingsNktName": "Название",
+  "settingsNktGtinHint": "GTIN (штрих-код)",
+  "settingsNktNameHint": "Название товара",
+  "settingsNktNotFound": "Ничего не найдено",
+  "settingsNktSocial": "СЗТ",
+  "posTabProducts": "Товары",
+  "posTabReceipt": "Чек",
+  "posSearchHint": "Поиск товара или скан штрих-кода...",
+  "posCatAll": "Все",
+  "posCatFood": "Продукты",
+  "posCatDrinks": "Напитки",
+  "posCatGrocery": "Бакалея",
+  "posCatDairy": "Молочные",
+  "posCatOther": "Прочее",
+  "posOnline": "Онлайн",
+  "posEnterNameOr": "Введите название или",
+  "posScanBarcode": "отсканируйте штрих-код",
+  "posNotFoundLocally": "Не найдено локально",
+  "posEnterFullBarcode": "Введите полный штрих-код (8–14 цифр)",
+  "posForAutoNkt": "для автоматического поиска в НКТ",
+  "posBarcodeProgress": "Введено {current} из 8–14 цифр",
+  "@posBarcodeProgress": {
+    "placeholders": {
+      "current": {
+        "type": "int"
+      }
+    }
+  },
+  "posNotFoundQuery": "По запросу «{query}» ничего не найдено",
+  "@posNotFoundQuery": {
+    "placeholders": {
+      "query": {
+        "type": "String"
+      }
+    }
+  },
+  "posSearchingNkt": "Поиск в НКТ...",
+  "posNotFoundLocallyHeader": "Товар не найден локально",
+  "posNktFoundCount": "Найдено {count} в Национальном каталоге (НКТ) по штрих-коду {barcode}",
+  "@posNktFoundCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      },
+      "barcode": {
+        "type": "String"
+      }
+    }
+  },
+  "posNktSelectInstruction": "Выберите товар для добавления в каталог:",
+  "posNktAddTitle": "Добавить товар из НКТ",
+  "posNktPriceKg": "Цена за кг (₸)",
+  "posNktPricePcs": "Цена (₸)",
+  "posNktAddAndSell": "Добавить и продать",
+  "posNktSentForApproval": "Товар отправлен на одобрение владельцу",
+  "posNktCreateError": "Ошибка создания товара: {error}",
+  "@posNktCreateError": {
+    "placeholders": {
+      "error": {
+        "type": "String"
+      }
+    }
+  },
+  "posCartTitle": "Текущий чек",
+  "posCartItems": "поз.",
+  "posCartEmpty": "Чек пуст",
+  "posCartEmptyHint": "Найдите товар слева",
+  "posQuantity": "Количество",
+  "posVat12": "НДС 12%",
+  "posTotal": "Итого",
+  "posPayment": "ОПЛАТА",
+  "posPaymentWithAmount": "ОПЛАТА  {amount}",
+  "@posPaymentWithAmount": {
+    "placeholders": {
+      "amount": {
+        "type": "String"
+      }
+    }
+  },
+  "posTakeaway": "С собой",
+  "posCancelSale": "Отмена",
+  "posOpenShiftFirst": "Сначала откройте смену",
+  "analyticsAllTime": "Всё время",
+  "analyticsAutoRefresh": "Автообновление",
+  "analyticsAvgReceipt": "Средний чек",
+  "analyticsClearFilter": "Сбросить фильтр",
+  "analyticsDateRange": "Период",
+  "analyticsExport": "Экспорт",
+  "analyticsExportSuccess": "Экспорт выполнен",
+  "analyticsProductName": "Товар",
+  "analyticsQty": "Кол-во",
+  "analyticsRevenue": "Выручка",
+  "analyticsRevenueByProduct": "Выручка по товарам",
+  "approvalBatchApprove": "Одобрить выбранные",
+  "approvalBatchCount": "{count, plural, one{{count} товар} few{{count} товара} other{{count} товаров}}",
+  "approvalDefaultMarkup": "Наценка по умолчанию",
+  "cashiersDeactivate": "Деактивировать",
+  "cashiersDeactivateConfirm": "Деактивировать кассира?",
+  "cashiersDeactivateHint": "Кассир не сможет войти. Активацию можно вернуть позже.",
+  "cashiersDeactivated": "Кассир деактивирован",
+  "cashiersEdit": "Изменить",
+  "cashiersNewPin": "Новый PIN",
+  "cashiersPinConfirm": "Подтвердите PIN",
+  "cashiersResetPin": "Сбросить PIN",
+  "cashiersResetPinSuccess": "PIN сброшен",
+  "cashiersRoleAdminDesc": "Полный доступ кроме владельца",
+  "cashiersRoleCashierDesc": "Только продажи и смены",
+  "cashiersRoleSeniorDesc": "Кассир + возвраты и скидки",
+  "debtsOverdue": "Просрочено",
+  "debtsRemainingAmount": "Остаток к погашению",
+  "debtsSearch": "Поиск по клиенту или телефону",
+  "deliveryActualQty": "Факт",
+  "deliveryAddSupplier": "Добавить поставщика",
+  "deliveryCreateProduct": "Создать товар",
+  "deliveryDiscrepancy": "Расхождение",
+  "deliveryDocNumber": "Номер документа",
+  "deliveryExpectedQty": "Ожидалось",
+  "deliveryHistory": "История поставок",
+  "deliveryNoHistory": "Нет истории поставок",
+  "deliverySupplier": "Поставщик",
+  "done": "Готово",
+  "importConfirm": "Подтвердить импорт",
+  "importCreate": "Создано",
+  "importDone": "Импорт завершён",
+  "importDownloadTemplate": "Скачать шаблон",
+  "importErrors": "Ошибки",
+  "importSelectFile": "Выбрать файл",
+  "importSkipped": "Пропущено",
+  "importTemplateSaved": "Шаблон сохранён",
+  "importTitle": "Импорт товаров",
+  "importUpdate": "Обновлено",
+  "importUploadHint": "Поддерживается CSV или Excel",
+  "paymentCancelTimeout": "Отменить ожидание",
+  "paymentDebt": "В долг",
+  "paymentDebtHint": "Запишется как долг клиента",
+  "paymentNewReceipt": "Новый чек",
+  "paymentNoShift": "Откройте смену",
+  "paymentPrintCopy": "Копия чека",
+  "paymentProcessing": "Обработка платежа",
+  "paymentReceiptNumber": "Чек № {number}",
+  "paymentSelectClient": "Выбрать клиента",
+  "paymentSuccess": "Оплачено",
+  "paymentTimeout": "Время ожидания истекло",
+  "posDelete": "Удалить",
+  "posEnterDiscount": "Скидка",
+  "posItemDiscount": "Скидка на позицию",
+  "posMultiAdd": "Добавить несколько",
+  "posParkCart": "Отложить",
+  "posParkedCarts": "Отложенные чеки",
+  "posResume": "Продолжить",
+  "posUndoRemove": "Отменить удаление",
+  "productsEdit": "Редактировать",
+  "productsMargin": "Наценка",
+  "productsPurchasePrice": "Цена закупки",
+  "productsSalePrice": "Цена продажи",
+  "productsStock": "Остаток",
+  "settingsBackup": "Резервная копия",
+  "settingsBackupExport": "Экспорт",
+  "settingsBackupSub": "Сохранить и восстановить данные",
+  "settingsPrinter": "Принтер чеков",
+  "settingsPrinterSub": "Подключение и тест печати",
+  "settingsReceiptFormat": "Формат чека",
+  "settingsReceiptFormatSub": "Шапка, подвал, реквизиты",
+  "settingsScanner": "Сканер штрих-кодов",
+  "settingsScannerSub": "Камера или USB",
+  "settingsSyncStatus": "Состояние синхронизации",
+  "settingsWebkassa": "Webkassa",
+  "settingsWebkassaLogin": "Логин",
+  "settingsWebkassPwd": "Пароль",
+  "settingsWebkassaSub": "Фискализация чеков (онлайн-ККМ)",
+  "settingsWebkassaTestMode": "Тестовый режим",
+  "shellNoNotifications": "Нет уведомлений",
+  "switchCashier": "Сменить кассира",
+  "shiftDeposit": "Внесение",
+  "shiftDepositSuccess": "Внесено",
+  "shiftDiscrepancyNote": "Комментарий к расхождению",
+  "shiftEnterAmount": "Сумма",
+  "shiftEnterNote": "Комментарий",
+  "shiftNoReceipts": "Чеков не было",
+  "shiftOverdue24h": "Смена открыта более 24 часов",
+  "shiftOverdueWarning": "Закройте смену вовремя",
+  "shiftPrintReport": "Печать отчёта",
+  "shiftReceiptList": "Чеки за смену",
+  "shiftSkipDenomination": "Пропустить номиналы",
+  "shiftWithdraw": "Изъятие",
+  "shiftWithdrawSuccess": "Изъято",
+  "shiftXReport": "X-отчёт",
+  "posStockExceeded": "Превышен остаток: доступно {qty}",
+  "@posStockExceeded": {
+    "placeholders": {
+      "qty": {
+        "type": "String"
+      }
+    }
+  },
+  "posParkedCartLabel": "{itemCount} поз. · {total}",
+  "@posParkedCartLabel": {
+    "placeholders": {
+      "itemCount": {
+        "type": "int"
+      },
+      "total": {
+        "type": "String"
+      }
+    }
+  },
+  "@approvalBatchCount": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "@paymentReceiptNumber": {
+    "placeholders": {
+      "number": {
+        "type": "String"
+      }
+    }
+  }
+}
