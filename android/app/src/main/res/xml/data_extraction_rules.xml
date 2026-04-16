@@ -1,0 +1,22 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Android 12+ data extraction rules (replaces android:fullBackupContent for
+  devices running API 31+). Both cloud backup and device-to-device transfer
+  exclude anything that persists credentials or local master data.
+-->
+<data-extraction-rules>
+    <cloud-backup>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="database" path="pos.drift.sqlite" />
+        <exclude domain="database" path="pos.drift.sqlite-journal" />
+        <exclude domain="database" path="pos.drift.sqlite-wal" />
+        <exclude domain="database" path="pos.drift.sqlite-shm" />
+    </cloud-backup>
+    <device-transfer>
+        <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+        <exclude domain="database" path="pos.drift.sqlite" />
+        <exclude domain="database" path="pos.drift.sqlite-journal" />
+        <exclude domain="database" path="pos.drift.sqlite-wal" />
+        <exclude domain="database" path="pos.drift.sqlite-shm" />
+    </device-transfer>
+</data-extraction-rules>

@@ -1,8 +1,12 @@
 import 'dart:async';
 import 'dart:convert';
+import 'dart:io' show Platform;
+import 'package:flutter/foundation.dart' show kIsWeb;
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../services/api_client.dart';
 import '../../../services/auth/auth_token_store.dart';
+import '../../../services/auth/device_id_store.dart';
+import '../../../services/auth/lockout_store.dart';
 import '../../../services/auth/workstation_store.dart';
 
 // === Events ===
@@ -149,6 +153,8 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ApiClient _api;
   final AuthTokenStore? _tokens;
   final WorkstationStore? _workstation;
+  final DeviceIdStore? _deviceIdStore;
+  final LockoutStore? _lockoutStore;
 
   /// Cached workstation info after activation — populated by hydrate /
   /// activation handlers so cashier-login has access to tenant_id without
@@ -166,7 +172,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     Duration(minutes: 15),  // after 20+
   ];
 
-  /// Tracks total failed attempts across state transitions.
+  /// Tracks total failed attempts across state transitions. Persisted to
+  /// [_lockoutStore] so killing / restarting the app doesn't reset the
+  /// counter — a common physical-device bypass.
   int _totalFailedAttempts = 0;
   DateTime? _lockedUntil;
 
@@ -185,8 +193,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     this._api, {
     AuthTokenStore? tokens,
     WorkstationStore? workstation,
+    DeviceIdStore? deviceIdStore,
+    LockoutStore? lockoutStore,
   })  : _tokens = tokens,
         _workstation = workstation,
+        _deviceIdStore = deviceIdStore,
+        _lockoutStore = lockoutStore,
         super(AuthInitial()) {
     on<PinDigitPressed>(_onDigitPressed);
     on<PinBackspacePressed>(_onBackspace);
@@ -258,14 +270,15 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     emit(RegisterNotActivated(busy: true));
     WorkstationInfo? info;
     try {
-      // Device fingerprint is best-effort — on a real deploy we'd use
-      // `device_info_plus`. For now a stable-ish string derived from the
-      // code is OK; the server only stores it as a display hint.
-      final deviceId = 'dev-${DateTime.now().millisecondsSinceEpoch}';
+      // Device fingerprint — stable UUID v4 held in platform secure storage.
+      // The prior timestamp-based id was predictable to the ms and enabled
+      // activation-code replay within the code's validity window.
+      final deviceId = await (_deviceIdStore?.getOrCreate() ??
+          Future.value('dev-unknown'));
       final resp = await _api.activateRegister(
         code: event.code.trim().toUpperCase(),
         deviceId: deviceId,
-        deviceName: 'POS macOS',
+        deviceName: _platformDeviceName(),
       );
       info = WorkstationInfo(
         workstationId: resp['workstation_id'] as String,
@@ -347,6 +360,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _totalFailedAttempts = 0;
       _lockedUntil = null;
+      _clearPersistedLockout();
       emit(AuthAuthenticated(
         cashierId: (resp['user_id'] as String?) ?? '',
         cashierName: event.login,
@@ -360,6 +374,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
               : e.statusCode >= 500
                   ? 'Ошибка сервера'
                   : 'Не удалось войти (${e.statusCode})';
+      // Only count actual credential failures toward the lockout — a 500 or
+      // network blip should not lock the operator out of their own device.
+      if (e.statusCode == 401) {
+        _totalFailedAttempts++;
+        _persistFailureCount();
+      }
       emit(RegisterActivated(ws, error: msg));
     } on Exception catch (_) {
       emit(RegisterActivated(ws, error: 'Нет связи с сервером'));
@@ -370,6 +390,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onHydrateSession(
       HydrateSession event, Emitter<AuthState> emit) async {
+    // Rehydrate the persistent lockout counter BEFORE any state emits — if
+    // the user was mid-lockout at last shutdown the new UI must honour it.
+    final lockout = await _lockoutStore?.load();
+    if (lockout != null) {
+      _totalFailedAttempts = lockout.failedAttempts;
+      final until = lockout.lockedUntil;
+      if (until != null && until.isAfter(DateTime.now())) {
+        _lockedUntil = until;
+        _lockoutTimer?.cancel();
+        _lockoutTimer = Timer(until.difference(DateTime.now()), () {
+          _lockedUntil = null;
+        });
+      }
+    }
+
     // Activation first — a device without it can't do anything.
     final wsInfo = await _workstation?.load();
     if (wsInfo == null) {
@@ -378,20 +413,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     }
     _activeWorkstation = wsInfo;
 
-    // Device is activated; now try to restore a user session on top.
+    // Cold-boot policy: ALWAYS require a PIN / password. Even if a valid
+    // access token is persisted, a stolen device must not auto-authenticate
+    // into the active cashier's session. Background sync can still use the
+    // stored token via [AuthTokenStore] directly; this handler only controls
+    // whether the UI lands on the login chooser vs. the main shell.
+    //
+    // Tokens are still loaded into the in-memory ApiClient so the login
+    // chooser can prefill the tenant id without a second round-trip when
+    // the cashier types their PIN.
     final saved = await _tokens?.load();
-    if (saved == null || saved.isAccessExpired) {
-      // Activated but nobody signed in — show the login chooser.
-      emit(RegisterActivated(wsInfo));
-      return;
+    if (saved != null && !saved.isAccessExpired) {
+      _ownerTenantId = saved.tenantId;
     }
-    _api.setAccessToken(saved.accessToken);
-    _ownerTenantId = saved.tenantId;
-    emit(AuthAuthenticated(
-      cashierId: saved.userId ?? '',
-      cashierName: saved.userId ?? '',
-      role: saved.role ?? 'owner',
-    ));
+    emit(RegisterActivated(wsInfo));
   }
 
   /// Emit `RegisterActivated(error)` when the device is already activated,
@@ -433,6 +468,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _totalFailedAttempts = 0;
       _lockedUntil = null;
+      _clearPersistedLockout();
       emit(AuthAuthenticated(
         cashierId: (resp['user_id'] as String?) ?? '',
         cashierName: event.email,
@@ -473,10 +509,27 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       error: 'Слишком много попыток. Подождите ${_formatDuration(duration)}',
     ));
 
+    // Persist so the counter isn't reset by force-stopping the app.
+    unawaited(_lockoutStore?.save(LockoutState(
+      failedAttempts: _totalFailedAttempts,
+      lockedUntil: _lockedUntil,
+    )));
+
     _lockoutTimer?.cancel();
     _lockoutTimer = Timer(duration, () {
       _lockedUntil = null;
     });
+  }
+
+  void _persistFailureCount() {
+    unawaited(_lockoutStore?.save(LockoutState(
+      failedAttempts: _totalFailedAttempts,
+      lockedUntil: _lockedUntil,
+    )));
+  }
+
+  void _clearPersistedLockout() {
+    unawaited(_lockoutStore?.clear());
   }
 
   String _formatDuration(Duration d) {
@@ -595,6 +648,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       _totalFailedAttempts = 0;
       _lockedUntil = null;
       _lockoutTimer?.cancel();
+      _clearPersistedLockout();
 
       emit(AuthAuthenticated(
         cashierId: cashier['ID'] as String? ?? '',
@@ -603,6 +657,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       ));
     } on ApiException catch (e) {
       _totalFailedAttempts++;
+      _persistFailureCount();
 
       // Check if we've hit a lockout threshold
       if (_totalFailedAttempts > 0 &&
@@ -630,6 +685,23 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         failedAttempts: _totalFailedAttempts,
       ));
     }
+  }
+
+  /// Platform-derived human-readable device name. Server uses this only as
+  /// a display hint, but it still shouldn't lie — the prior hardcoded
+  /// 'POS macOS' showed up on Android / Linux / Windows registers too.
+  String _platformDeviceName() {
+    if (kIsWeb) return 'POS Web';
+    try {
+      if (Platform.isAndroid) return 'POS Android';
+      if (Platform.isIOS) return 'POS iOS';
+      if (Platform.isMacOS) return 'POS macOS';
+      if (Platform.isWindows) return 'POS Windows';
+      if (Platform.isLinux) return 'POS Linux';
+    } on Object {
+      // Platform isn't available (unusual) — fall through.
+    }
+    return 'POS Register';
   }
 
   String _pluralSuffix(int n) {

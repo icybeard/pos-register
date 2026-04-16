@@ -5,8 +5,9 @@ import 'package:drift/native.dart';
 import 'package:path/path.dart' as p;
 import 'package:path_provider/path_provider.dart';
 import 'package:sqlite3/sqlite3.dart';
-import 'package:sqlite3_flutter_libs/sqlite3_flutter_libs.dart';
+import 'package:sqlcipher_flutter_libs/sqlcipher_flutter_libs.dart';
 
+import '../services/auth/database_key_store.dart';
 import 'tables/categories_table.dart';
 import 'tables/clients_table.dart';
 import 'tables/products_table.dart';
@@ -44,7 +45,8 @@ part 'database.g.dart';
   SyncCursorsTable,
 ])
 class AppDatabase extends _$AppDatabase {
-  AppDatabase() : super(_openConnection());
+  AppDatabase({DatabaseKeyStore? keyStore})
+      : super(_openConnection(keyStore ?? DatabaseKeyStore()));
 
   /// In-memory variant for unit tests. Each test gets a fresh DB.
   AppDatabase.forTesting(super.executor);
@@ -94,16 +96,21 @@ class AppDatabase extends _$AppDatabase {
       );
 }
 
-LazyDatabase _openConnection() {
+LazyDatabase _openConnection(DatabaseKeyStore keyStore) {
   return LazyDatabase(() async {
-    // sqlite3_flutter_libs ships its own SQLite build with FTS5/JSON1/R-Tree included.
-    // applyWorkaroundToOpenSqlite3OnOldAndroidVersions is required for KitKat (4.4) — POS
-    // hardware in Kazakhstan often runs older Android.
+    // sqlcipher_flutter_libs ships an SQLCipher-compatible SQLite build.
+    // applyWorkaroundToOpenSqlite3OnOldAndroidVersions is required for
+    // KitKat (4.4) — POS hardware in Kazakhstan often runs older Android.
     if (Platform.isAndroid) {
-      await applyWorkaroundToOpenSqlite3OnOldAndroidVersions();
+      await applyWorkaroundToOpenSqlCipherOnOldAndroidVersions();
     }
     final dir = await getApplicationDocumentsDirectory();
     final file = File(p.join(dir.path, 'pos.drift.sqlite'));
+
+    // Fetch the per-device encryption key BEFORE opening — PRAGMA key must
+    // be the very first statement on a fresh connection or SQLCipher will
+    // refuse to decrypt subsequent queries.
+    final key = await keyStore.getOrCreate();
 
     // Tunes for the cashier register workload: many small reads, occasional bursts of
     // writes during a sale. WAL gives concurrent reads + one writer; mmap reduces
@@ -115,6 +122,11 @@ LazyDatabase _openConnection() {
       file,
       logStatements: false,
       setup: (rawDb) {
+        // Keying MUST come first, before any other PRAGMA or query.
+        // Using the quoted form so arbitrary bytes in the key don't need
+        // hex-encoding (SQLCipher treats the value as a passphrase,
+        // derives the encryption key via PBKDF2).
+        rawDb.execute("PRAGMA key = '${_escapeKey(key)}'");
         rawDb.execute('PRAGMA journal_mode = WAL');
         rawDb.execute('PRAGMA foreign_keys = ON');
         rawDb.execute('PRAGMA cache_size = -8000');     // 8 MB cache
@@ -124,3 +136,8 @@ LazyDatabase _openConnection() {
     );
   });
 }
+
+/// Escape single-quote characters inside the passphrase so the quoted
+/// `PRAGMA key` statement stays well-formed. Base64-url alphabet doesn't
+/// produce quotes, but we defend in depth in case the generator changes.
+String _escapeKey(String key) => key.replaceAll("'", "''");

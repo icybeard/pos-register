@@ -104,7 +104,14 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
 
                         TextFormField(
                           controller: _passwordCtrl,
-                          autofillHints: const [AutofillHints.password],
+                          // No autofill hints on a POS device — this is an
+                          // operator console, not a consumer app. Password
+                          // managers (iCloud Keychain, Google Password
+                          // Manager) must not offer to save the owner
+                          // credential to a shared terminal.
+                          autofillHints: const <String>[],
+                          autocorrect: false,
+                          enableSuggestions: false,
                           obscureText: !_showPassword,
                           enabled: !isLoading,
                           textInputAction: TextInputAction.done,

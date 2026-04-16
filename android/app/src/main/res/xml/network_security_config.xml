@@ -1,0 +1,20 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Block cleartext HTTP for production builds. Localhost is permitted so that
+  `flutter run` against a dev server on 127.0.0.1 / 10.0.2.2 (Android emulator
+  host alias) still works without forcing every developer to set up TLS.
+  The POS_API_HOST dart-define is still the source of truth for the base URL;
+  this just enforces that arbitrary remote HTTP cannot be used at runtime.
+-->
+<network-security-config>
+    <base-config cleartextTrafficPermitted="false">
+        <trust-anchors>
+            <certificates src="system" />
+        </trust-anchors>
+    </base-config>
+    <domain-config cleartextTrafficPermitted="true">
+        <domain includeSubdomains="true">localhost</domain>
+        <domain includeSubdomains="true">127.0.0.1</domain>
+        <domain includeSubdomains="true">10.0.2.2</domain>
+    </domain-config>
+</network-security-config>

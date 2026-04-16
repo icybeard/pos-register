@@ -24,7 +24,9 @@ class CentralClient {
     Dio? dioOverride,
     Duration connectTimeout = const Duration(seconds: 10),
     Duration receiveTimeout = const Duration(seconds: 30),
+    void Function(AuthTokens tokens)? onTokensRefreshed,
   })  : _tokenStore = tokenStore,
+        _onTokensRefreshed = onTokensRefreshed,
         _dio = dioOverride ??
             Dio(BaseOptions(
               baseUrl: baseUrl,
@@ -40,6 +42,11 @@ class CentralClient {
 
   final Dio _dio;
   final AuthTokenStore _tokenStore;
+  /// Called after a successful token refresh so callers (e.g. the legacy
+  /// [ApiClient] that holds its own `_accessToken` field) can pick up the
+  /// new value — otherwise those callers would keep sending the expired
+  /// token after the interceptor refreshed it.
+  final void Function(AuthTokens tokens)? _onTokensRefreshed;
   Completer<AuthTokens>? _refreshCompleter;
 
   /// Raw request forwarder so repositories can call arbitrary endpoints.
@@ -94,9 +101,16 @@ class CentralClient {
         contentType: 'application/json; charset=utf-8',
       ))
         ..httpClientAdapter = _dio.httpClientAdapter;
+      // Include workstation id so central can enforce device binding on
+      // the refresh token — a leaked refresh token shouldn't be replayable
+      // from an arbitrary device. Server ignores the field gracefully if
+      // it's not ready to honour device binding yet.
       final resp = await bare.post<Map<String, dynamic>>(
         '/api/auth/refresh',
-        data: {'refresh_token': current.refreshToken},
+        data: {
+          'refresh_token': current.refreshToken,
+          if (current.workstationId != null) 'device_id': current.workstationId,
+        },
       );
 
       final body = resp.data ?? const {};
@@ -109,8 +123,10 @@ class CentralClient {
         userId: body['user_id'] as String? ?? current.userId,
         role: body['role'] as String? ?? current.role,
         storeId: current.storeId,
+        workstationId: current.workstationId,
       );
       await _tokenStore.save(fresh);
+      _onTokensRefreshed?.call(fresh);
       c.complete(fresh);
     } on Object catch (e, st) {
       // Wipe bad tokens — caller must re-login.

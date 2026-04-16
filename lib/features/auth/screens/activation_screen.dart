@@ -57,10 +57,12 @@ class _ActivationScreenState extends State<ActivationScreen> {
     if (raw == null || raw.isEmpty) return;
     if (!mounted) return;
     setState(() {
-      _ctrl.text = raw
-          .toUpperCase()
-          .replaceAll(RegExp(r'[^A-Z0-9]'), '')
-          .substring(0, raw.length.clamp(0, _maxLen));
+      // Normalise first, THEN cap — using raw.length here would RangeError
+      // when stripping characters shrinks the string below raw.length.
+      final normalised =
+          raw.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      _ctrl.text =
+          normalised.substring(0, normalised.length.clamp(0, _maxLen));
     });
   }
 

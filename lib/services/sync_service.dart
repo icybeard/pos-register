@@ -56,17 +56,26 @@ class SyncService {
         // For now, just update the timestamp
         final lastEntry = entries.last as Map<String, dynamic>;
         _lastSyncTimestamp = lastEntry['created_at'] as String?;
-        debugPrint('[SYNC] Pulled ${entries.length} changes from server');
+        assert(() {
+          debugPrint('[SYNC] Pulled ${entries.length} changes from server');
+          return true;
+        }());
       }
 
       // Step 3: Get sync stats
       final stats = await api.syncStatus();
       final unsynced = stats['unsynced_count'] as int? ?? 0;
-      debugPrint('[SYNC] Server reports $unsynced unsynced entries');
+      assert(() {
+        debugPrint('[SYNC] Server reports $unsynced unsynced entries');
+        return true;
+      }());
 
       _setStatus(SyncStatus.synced);
     } on Exception catch (e) {
-      debugPrint('[SYNC] Error: $e');
+      assert(() {
+        debugPrint('[SYNC] Error: $e');
+        return true;
+      }());
       _setStatus(SyncStatus.error);
     }
   }

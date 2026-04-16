@@ -25,7 +25,13 @@ dependencies:
   drift: ^2.20.0
   drift_flutter: ^0.2.4
   sqlite3: ^2.4.6
-  sqlite3_flutter_libs: ^0.5.24
+  # SQLCipher-compatible native libs. Drop-in replacement for
+  # sqlite3_flutter_libs; drift picks up the underlying sqlite3 symbols
+  # transparently. Combined with a per-device key held in secure storage
+  # (DatabaseKeyStore), this encrypts pos.drift.sqlite at rest so an `adb
+  # backup` / rooted-device extraction can't read bcrypt PIN hashes or
+  # sync_outbox payloads.
+  sqlcipher_flutter_libs: ^0.6.4
   path: ^1.9.0
   path_provider: ^2.1.4
 
@@ -41,9 +47,6 @@ dependencies:
   # by BCrypt.Net-Next on the .NET side. Locked decision #12.
   bcrypt: ^1.1.3
   collection: ^1.18.0
-
-  # Background work (sync drainer, fiscal queue) — used in P5+
-  workmanager: ^0.5.2
 
   # gRPC for sync (used in P2+)
   grpc: ^4.0.1

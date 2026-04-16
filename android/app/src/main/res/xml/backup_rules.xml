@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  Legacy Auto Backup rules (Android 6-11). Explicitly excludes every persistent
+  store that could leak credentials or sensitive local data:
+    - FlutterSecureStorage's EncryptedSharedPreferences
+    - drift SQLite database + WAL / SHM sidecar files
+  The top-level android:allowBackup="false" on <application> already disables
+  backup entirely, but these rules are a defence-in-depth layer in case a
+  future change re-enables backup for something benign.
+-->
+<full-backup-content>
+    <exclude domain="sharedpref" path="FlutterSecureStorage.xml" />
+    <exclude domain="sharedpref" path="VGhpc0lzVGhlQW5kcm9pZEtleVN0b3JlS2V5Rm9yVGhlRmx1dHRlclNlY3VyZVN0b3JhZ2UuYWVz" />
+    <exclude domain="database" path="pos.drift.sqlite" />
+    <exclude domain="database" path="pos.drift.sqlite-journal" />
+    <exclude domain="database" path="pos.drift.sqlite-wal" />
+    <exclude domain="database" path="pos.drift.sqlite-shm" />
+</full-backup-content>

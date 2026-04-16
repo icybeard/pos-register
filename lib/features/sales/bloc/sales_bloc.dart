@@ -418,7 +418,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
       final cats = (resp['categories'] as List?)?.cast<Map<String, dynamic>>() ?? [];
       emit(state.copyWith(categories: cats));
     } on Exception catch (e) {
-      debugPrint('[SalesBloc] loadCategories error: $e');
+      assert(() {
+        debugPrint('[SalesBloc] loadCategories error: $e');
+        return true;
+      }());
     }
   }
 
@@ -431,7 +434,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
   }
 
   Future<void> _onSearch(SearchProduct event, Emitter<SalesState> emit) async {
-    debugPrint('[SalesBloc] search query: "${event.query}"');
+    assert(() {
+      debugPrint('[SalesBloc] search query: "${event.query}"');
+      return true;
+    }());
     if (event.query.isEmpty) {
       emit(state.copyWith(searchResults: [], isSearching: false, clearNkt: true, lastQuery: ''));
       return;
@@ -451,12 +457,18 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
           final nktProducts = (nktResp['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           emit(state.copyWith(nktResults: nktProducts, isNktSearching: false));
         } on Exception catch (e) {
-          debugPrint('[SalesBloc] NKT search error: $e');
+          assert(() {
+            debugPrint('[SalesBloc] NKT search error: $e');
+            return true;
+          }());
           emit(state.copyWith(isNktSearching: false));
         }
       }
     } on Exception catch (e) {
-      debugPrint('[SalesBloc] search error: $e');
+      assert(() {
+        debugPrint('[SalesBloc] search error: $e');
+        return true;
+      }());
       emit(state.copyWith(isSearching: false, error: 'Ошибка поиска'));
     }
   }
@@ -487,7 +499,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
             emit(state.copyWith(isNktSearching: false, error: 'Товар не найден ни локально, ни в НКТ'));
           }
         } on Exception catch (nktErr) {
-          debugPrint('[SalesBloc] NKT fallback error: $nktErr');
+          assert(() {
+            debugPrint('[SalesBloc] NKT fallback error: $nktErr');
+            return true;
+          }());
           emit(state.copyWith(isNktSearching: false, error: 'Товар не найден'));
         }
       }
@@ -587,7 +602,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         categories: state.categories,
       ));
     } on ApiException catch (e) {
-      debugPrint('[SalesBloc] completeSale API error: $e');
+      assert(() {
+        debugPrint('[SalesBloc] completeSale API error: $e');
+        return true;
+      }());
       final msg = switch (e.statusCode) {
         400 => 'Некорректные данные чека',
         404 => 'Смена не найдена',
@@ -596,7 +614,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
       };
       emit(state.copyWith(isProcessingPayment: false, error: msg));
     } on Exception catch (e) {
-      debugPrint('[SalesBloc] completeSale error: $e');
+      assert(() {
+        debugPrint('[SalesBloc] completeSale error: $e');
+        return true;
+      }());
       emit(state.copyWith(
         isProcessingPayment: false,
         error: 'Нет связи с сервером. Попробуйте ещё раз.',

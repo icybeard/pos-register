@@ -7,64 +7,40 @@ import '../../../services/api_client.dart';
 class SettingsScreen extends StatelessWidget {
   final ApiClient api;
   final VoidCallback onLogout;
+  /// Role of the currently-authenticated user. Controls which tiles appear:
+  /// cashiers see only the minimal set (language, printer, receipt format),
+  /// owners/admins additionally see the integration + system tiles.
+  final String role;
 
-  const SettingsScreen({super.key, required this.api, required this.onLogout});
+  const SettingsScreen({
+    super.key,
+    required this.api,
+    required this.onLogout,
+    this.role = 'cashier',
+  });
 
-  void _showWebkassaDialog(BuildContext context) {
+  bool get _isOwner => role == 'owner' || role == 'admin';
+
+  void _showWebkassaReadOnlyInfo(BuildContext context) {
+    // The register never collects or transmits Webkassa credentials. Those
+    // are configured by the owner in the web admin — the register only sees
+    // the server-owned, already-configured integration at runtime. This
+    // dialog replaces the previous "type password here" form, which sent
+    // the password through the generic /api/settings key-value store and
+    // ended up in the local sync_outbox in plaintext.
     final l = AppLocalizations.of(context)!;
-    final loginC = TextEditingController();
-    final pwdC = TextEditingController();
-    bool testMode = true;
-
     showDialog<void>(
       context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.settingsWebkassa, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            TextField(
-              controller: loginC,
-              decoration: InputDecoration(labelText: l.settingsWebkassaLogin, prefixIcon: const Icon(Icons.person_outline)),
-            ),
-            const SizedBox(height: 14),
-            TextField(
-              controller: pwdC,
-              decoration: InputDecoration(labelText: l.settingsWebkassPwd, prefixIcon: const Icon(Icons.lock_outline)),
-              obscureText: true,
-            ),
-            const SizedBox(height: 14),
-            SwitchListTile(
-              title: Text(l.settingsWebkassaTestMode, style: GoogleFonts.inter(fontSize: 14)),
-              value: testMode,
-              onChanged: (v) => setDialogState(() => testMode = v),
-              contentPadding: EdgeInsets.zero,
-            ),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
-            ElevatedButton(
-              onPressed: () async {
-                if (loginC.text.trim().isEmpty) return;
-                try {
-                  await api.setSetting('webkassa_login', loginC.text.trim());
-                  await api.setSetting('webkassa_password', pwdC.text.trim());
-                  await api.setSetting('webkassa_test_mode', testMode.toString());
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(
-                      SnackBar(content: const Text('Webkassa настроена'), backgroundColor: PosColors.of(context).successFg),
-                    );
-                  }
-                } on Exception catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-                  }
-                }
-              },
-              child: Text(l.save),
-            ),
-          ],
+      builder: (ctx) => AlertDialog(
+        title: Text(l.settingsWebkassa,
+            style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        content: const Text(
+          'Логин и пароль Webkassa настраиваются владельцем в web-админке. '
+          'На кассе отображается только состояние интеграции.',
         ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.close)),
+        ],
       ),
     );
   }
@@ -156,7 +132,10 @@ class SettingsScreen extends StatelessWidget {
                     iconColor: cs.onSurfaceVariant,
                     iconBg: cs.surfaceContainer,
                     title: l.settingsServer,
-                    subtitle: api.baseUrl,
+                    // Raw base URL (host + port) is owner-only — it's an
+                    // infrastructure detail a cashier doesn't need to see
+                    // and shouldn't have handy when a terminal is shared.
+                    subtitle: _isOwner ? api.baseUrl : 'Central server configured',
                   ),
                   Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
                   _SettingsTile(
@@ -205,7 +184,7 @@ class SettingsScreen extends StatelessWidget {
                     iconBg: pos.warningBg,
                     title: l.settingsWebkassa,
                     subtitle: l.settingsWebkassaSub,
-                    onTap: () => _showWebkassaDialog(context),
+                    onTap: () => _showWebkassaReadOnlyInfo(context),
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),

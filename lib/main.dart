@@ -1,18 +1,24 @@
 import 'dart:async' show Timer;
 import 'dart:io' show Platform;
+import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
-import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:flutter/foundation.dart'
+    show FlutterError, FlutterErrorDetails, kIsWeb, kReleaseMode, debugPrint;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
+import 'core/constants/app_constants.dart';
 import 'core/l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/feature_flags.dart';
 import 'data/database.dart';
 import 'services/api_client.dart';
 import 'services/auth/auth_token_store.dart';
+import 'services/auth/database_key_store.dart';
+import 'services/auth/device_id_store.dart';
+import 'services/auth/lockout_store.dart';
 import 'services/auth/workstation_store.dart';
 import 'services/auth/bcrypt_pin_verifier.dart';
 import 'services/products/product_catalog_service.dart';
@@ -44,11 +50,67 @@ bool get _isDesktop =>
 
 void main() async {
   WidgetsFlutterBinding.ensureInitialized();
+
+  // Refuse to boot a release build that was compiled with a cleartext host
+  // (POS_API_HOST=http://...). The register would otherwise silently send
+  // JWTs, PINs, and full sync payloads in the clear on a production network.
+  AppConstants.assertApiHostIsSecure(isReleaseMode: kReleaseMode);
+
+  // Global error plumbing. Without these, uncaught Flutter framework errors
+  // either paint a red screen (debug) or a blank grey screen (release) and
+  // never surface to operators / support. For a fiscal device that swallows
+  // sale-path failures silently, that is unacceptable.
+  FlutterError.onError = (FlutterErrorDetails details) {
+    FlutterError.presentError(details);
+    // TODO: wire to Sentry / Crashlytics here once enabled.
+    assert(() {
+      debugPrint('[FlutterError] ${details.exceptionAsString()}');
+      return true;
+    }());
+  };
+  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+    assert(() {
+      debugPrint('[PlatformError] $error');
+      return true;
+    }());
+    return true; // swallow — UI error screen shown via ErrorWidget.builder
+  };
+  ErrorWidget.builder = (FlutterErrorDetails details) {
+    if (kReleaseMode) {
+      return const _FatalErrorScreen();
+    }
+    return ErrorWidget(details.exception);
+  };
+
   if (_isDesktop) {
     await windowManager.ensureInitialized();
     await windowManager.setFullScreen(true);
   }
   runApp(const PosApp());
+}
+
+/// Branded last-resort screen when the widget tree itself fails to build in
+/// release. Operators get a clear instruction rather than a blank grey frame.
+class _FatalErrorScreen extends StatelessWidget {
+  const _FatalErrorScreen();
+
+  @override
+  Widget build(BuildContext context) {
+    return Directionality(
+      textDirection: TextDirection.ltr,
+      child: Container(
+        color: const Color(0xFF111827),
+        alignment: Alignment.center,
+        padding: const EdgeInsets.all(24),
+        child: const Text(
+          'Произошла ошибка. Перезапустите приложение. '
+          'Если проблема повторяется — обратитесь в поддержку.',
+          textAlign: TextAlign.center,
+          style: TextStyle(color: Colors.white, fontSize: 16),
+        ),
+      ),
+    );
+  }
 }
 
 class PosApp extends StatefulWidget {
@@ -62,6 +124,8 @@ class _PosAppState extends State<PosApp> {
   late final AppDatabase _db;
   late final AuthTokenStore _tokenStore;
   late final WorkstationStore _workstationStore;
+  late final DeviceIdStore _deviceIdStore;
+  late final LockoutStore _lockoutStore;
 
   /// Memoised SalesGuards bundle. Built once in [initState] and rebuilt
   /// only when `_activeTenantId` / `_activeWorkstationId` change (via
@@ -90,9 +154,15 @@ class _PosAppState extends State<PosApp> {
   void initState() {
     super.initState();
     _apiClient = ApiClient();
-    _db = AppDatabase();
     _tokenStore = AuthTokenStore();
     _workstationStore = WorkstationStore();
+    _deviceIdStore = DeviceIdStore();
+    _lockoutStore = LockoutStore();
+    // Single shared key store — the AppDatabase takes it as an argument
+    // so tests can inject a deterministic key. In production each device
+    // mints a fresh 256-bit key on first boot and keeps it in the
+    // platform secure store (see DatabaseKeyStore).
+    _db = AppDatabase(keyStore: DatabaseKeyStore());
     _salesGuards = _buildSalesGuards();
     _loadTenantId();
   }
@@ -168,6 +238,8 @@ class _PosAppState extends State<PosApp> {
               _apiClient,
               tokens: _tokenStore,
               workstation: _workstationStore,
+              deviceIdStore: _deviceIdStore,
+              lockoutStore: _lockoutStore,
             )..add(HydrateSession()),
           ),
           BlocProvider(
@@ -389,6 +461,45 @@ class _MainShellState extends State<_MainShell> {
     if (mounted) widget.onLogout();
   }
 
+  /// Escape-key path to "switch cashier". Adds a confirmation prompt when
+  /// the cart has items so a customer who reaches the keyboard can't
+  /// silently drop an in-progress sale. No prompt when the cart is empty —
+  /// that keeps the shortcut snappy for the normal handoff flow.
+  void _handleEscapeSwitchCashier() {
+    if (!mounted) return;
+    final cartHasItems = context.read<SalesBloc>().state.items.isNotEmpty;
+    if (!cartHasItems) {
+      widget.onSwitchCashier();
+      return;
+    }
+    showDialog<bool>(
+      context: context,
+      barrierDismissible: false,
+      builder: (ctx) => AlertDialog(
+        title: const Text('Сменить кассира?'),
+        content: const Text(
+          'В корзине есть товары. Смена кассира отменит текущую продажу. '
+          'Вы уверены, что хотите продолжить?',
+        ),
+        actions: [
+          TextButton(
+            onPressed: () => Navigator.of(ctx).pop(false),
+            child: const Text('Отмена'),
+          ),
+          FilledButton(
+            onPressed: () => Navigator.of(ctx).pop(true),
+            style: FilledButton.styleFrom(
+              backgroundColor: Theme.of(ctx).colorScheme.error,
+            ),
+            child: const Text('Сменить'),
+          ),
+        ],
+      ),
+    ).then((confirmed) {
+      if (confirmed == true && mounted) widget.onSwitchCashier();
+    });
+  }
+
   Future<void> _loadShift() async {
     try {
       final resp = await widget.api.getCurrentShift(widget.cashierId);
@@ -431,7 +542,7 @@ class _MainShellState extends State<_MainShell> {
         const SingleActivator(LogicalKeyboardKey.f2): () => setState(() => _currentPage = _PageId.shift),
         const SingleActivator(LogicalKeyboardKey.f3): () => setState(() => _currentPage = _PageId.products),
         const SingleActivator(LogicalKeyboardKey.f4): () => setState(() => _currentPage = _PageId.debts),
-        const SingleActivator(LogicalKeyboardKey.escape): widget.onSwitchCashier,
+        const SingleActivator(LogicalKeyboardKey.escape): _handleEscapeSwitchCashier,
       },
       child: Focus(
         autofocus: true,
@@ -799,7 +910,7 @@ class _MainShellState extends State<_MainShell> {
     _PageId.delivery => DeliveryScreen(api: widget.api, cashierId: widget.cashierId, cashierName: widget.cashierName),
     _PageId.approval => ApprovalScreen(api: widget.api, reviewerId: widget.cashierId, reviewerName: widget.cashierName, onCountChanged: _loadPendingCount),
     _PageId.audit    => AuditScreen(api: widget.api),
-    _PageId.settings => SettingsScreen(api: widget.api, onLogout: widget.onLogout),
+    _PageId.settings => SettingsScreen(api: widget.api, onLogout: widget.onLogout, role: widget.role),
   };
 }
 
