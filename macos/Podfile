@@ -38,5 +38,28 @@ end
 post_install do |installer|
   installer.pods_project.targets.each do |target|
     flutter_additional_macos_build_settings(target)
+
+    # Xcode 26+ / Swift explicit module builds catch a duplicate
+    # `Sqlite3FlutterLibsPlugin` definition that sqlite3_flutter_libs and
+    # sqlcipher_flutter_libs both vendor. Older Xcodes ignored it; Xcode 26
+    # hard-fails with:
+    #   'Sqlite3FlutterLibsPlugin' has different definitions in different modules
+    # Disabling explicit modules restores the previous permissive behaviour
+    # without changing any plugin source.
+    target.build_configurations.each do |config|
+      config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+      config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+    end
+  end
+
+  # Same setting applied to the Runner app target (not just the pods project).
+  installer.aggregate_targets.each do |aggregate|
+    aggregate.user_project.targets.each do |target|
+      target.build_configurations.each do |config|
+        config.build_settings['SWIFT_ENABLE_EXPLICIT_MODULES'] = 'NO'
+        config.build_settings['CLANG_ENABLE_EXPLICIT_MODULES'] = 'NO'
+      end
+    end
+    aggregate.user_project.save
   end
 end
