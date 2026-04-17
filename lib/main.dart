@@ -546,6 +546,14 @@ class _MainShellState extends State<_MainShell> {
       },
       child: Focus(
         autofocus: true,
+        // onKeyEvent: reset the inactivity timer on every key event and
+        // return ignored so text fields + shortcuts still get the event.
+        // P0-7: owners composing long product descriptions were getting
+        // auto-locked at 5 min because typing didn't count as activity.
+        onKeyEvent: (node, event) {
+          _resetInactivityTimer();
+          return KeyEventResult.ignored;
+        },
         child: Listener(
           onPointerDown: (_) => _resetInactivityTimer(),
           onPointerMove: (_) => _resetInactivityTimer(),
