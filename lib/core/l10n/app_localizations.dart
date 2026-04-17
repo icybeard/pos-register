@@ -2570,6 +2570,30 @@ abstract class AppLocalizations {
   /// **'Пропустить номиналы'**
   String get shiftSkipDenomination;
 
+  /// No description provided for @shiftManualTotalTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ввести итог вручную'**
+  String get shiftManualTotalTitle;
+
+  /// No description provided for @shiftManualTotalBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Укажите подсчитанную сумму наличных в кассе. Введённое значение заменит сумму по номиналам.'**
+  String get shiftManualTotalBody;
+
+  /// No description provided for @shiftManualTotalLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Итого наличных'**
+  String get shiftManualTotalLabel;
+
+  /// No description provided for @shiftManualTotalClear.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сбросить'**
+  String get shiftManualTotalClear;
+
   /// No description provided for @shiftWithdraw.
   ///
   /// In ru, this message translates to:

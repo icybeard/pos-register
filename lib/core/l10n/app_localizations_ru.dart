@@ -1318,6 +1318,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get shiftSkipDenomination => 'Пропустить номиналы';
 
   @override
+  String get shiftManualTotalTitle => 'Ввести итог вручную';
+
+  @override
+  String get shiftManualTotalBody =>
+      'Укажите подсчитанную сумму наличных в кассе. Введённое значение заменит сумму по номиналам.';
+
+  @override
+  String get shiftManualTotalLabel => 'Итого наличных';
+
+  @override
+  String get shiftManualTotalClear => 'Сбросить';
+
+  @override
   String get shiftWithdraw => 'Изъятие';
 
   @override

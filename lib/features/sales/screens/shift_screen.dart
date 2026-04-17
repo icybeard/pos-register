@@ -21,10 +21,87 @@ class _ShiftScreenState extends State<ShiftScreen> {
   bool _loading = true;
   bool _hasShift = false;
 
+  /// Per-denomination count. Key is the denomination's value in tiyin (e.g.
+  /// 500000 for a 5 000 ₸ bill), value is the count the cashier entered.
+  /// Lifted out of _DenominationCard so the right sidebar can sum across
+  /// cards to render the "counted" total + discrepancy. P0-5.
+  final ValueNotifier<Map<int, int>> _denominationCounts =
+      ValueNotifier<Map<int, int>>(const <int, int>{});
+
+  /// Manual-override for the counted total. When non-null, the sidebar
+  /// uses this value instead of summing _denominationCounts — lets a
+  /// cashier skip per-denomination entry and punch in the grand total.
+  /// P0-4: wired via the "Skip denomination" action.
+  final ValueNotifier<int?> _manualTotal = ValueNotifier<int?>(null);
+
   @override
   void initState() {
     super.initState();
     _loadShift();
+  }
+
+  @override
+  void dispose() {
+    _denominationCounts.dispose();
+    _manualTotal.dispose();
+    super.dispose();
+  }
+
+  Future<void> _promptManualTotal(BuildContext context) async {
+    final l = AppLocalizations.of(context)!;
+    final controller = TextEditingController(
+      text: _manualTotal.value == null
+          ? ''
+          : (_manualTotal.value! ~/ 100).toString(),
+    );
+    final result = await showDialog<int?>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: Text(l.shiftManualTotalTitle),
+        content: Column(
+          mainAxisSize: MainAxisSize.min,
+          crossAxisAlignment: CrossAxisAlignment.start,
+          children: [
+            Text(l.shiftManualTotalBody,
+                style: GoogleFonts.inter(fontSize: 13)),
+            const SizedBox(height: 12),
+            TextField(
+              controller: controller,
+              keyboardType: TextInputType.number,
+              autofocus: true,
+              decoration: InputDecoration(
+                labelText: l.shiftManualTotalLabel,
+                suffixText: '₸',
+              ),
+            ),
+          ],
+        ),
+        actions: [
+          if (_manualTotal.value != null)
+            TextButton(
+              onPressed: () => Navigator.pop(ctx, -1),
+              child: Text(l.shiftManualTotalClear),
+            ),
+          TextButton(
+              onPressed: () => Navigator.pop(ctx, null),
+              child: Text(l.cancel)),
+          FilledButton(
+            onPressed: () {
+              final tenge = int.tryParse(controller.text.trim());
+              if (tenge == null || tenge < 0) {
+                Navigator.pop(ctx, null);
+                return;
+              }
+              Navigator.pop(ctx, tenge * 100); // tenge → tiyin
+            },
+            child: Text(l.save),
+          ),
+        ],
+      ),
+    );
+    controller.dispose();
+    if (result == null) return;
+    _manualTotal.value = result == -1 ? null : result;
   }
 
   Future<void> _loadShift() async {
@@ -167,6 +244,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
           totalReturns: totalReturns,
           receiptCount: receiptCount,
           cashStart: cashStart,
+          counts: _denominationCounts,
+          manualTotal: _manualTotal,
+          onSkipDenomination: () => _promptManualTotal(context),
         )),
         // Right: Shift summary sidebar
         SizedBox(
@@ -180,6 +260,8 @@ class _ShiftScreenState extends State<ShiftScreen> {
             shiftId: shiftId,
             isOverdue: isOverdue,
             api: widget.api,
+            counts: _denominationCounts,
+            manualTotal: _manualTotal,
             onRefresh: _loadShift,
             onClose: () async {
               try {
@@ -251,12 +333,18 @@ class _DenominationPanel extends StatelessWidget {
   final String cashierName, shiftNumber;
   final bool isOpen;
   final int totalSales, totalCash, totalCard, totalQR, totalReturns, receiptCount, cashStart;
+  final ValueNotifier<Map<int, int>> counts;
+  final ValueNotifier<int?> manualTotal;
+  final VoidCallback onSkipDenomination;
 
   const _DenominationPanel({
     required this.cashierName, required this.shiftNumber, required this.isOpen,
     required this.totalSales, required this.totalCash, required this.totalCard,
     required this.totalQR, required this.totalReturns, required this.receiptCount,
     required this.cashStart,
+    required this.counts,
+    required this.manualTotal,
+    required this.onSkipDenomination,
   });
 
   @override
@@ -324,7 +412,13 @@ class _DenominationPanel extends StatelessWidget {
               childAspectRatio: 1.15,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => _DenominationCard(label: bills[i].$1, isBill: true),
+              (context, i) => _DenominationCard(
+                label: bills[i].$1,
+                isBill: true,
+                denominationTiyin: bills[i].$2,
+                counts: counts,
+                manualTotal: manualTotal,
+              ),
               childCount: bills.length,
             ),
           ),
@@ -345,20 +439,37 @@ class _DenominationPanel extends StatelessWidget {
               childAspectRatio: 1.15,
             ),
             delegate: SliverChildBuilderDelegate(
-              (context, i) => _DenominationCard(label: coins[i].$1, isBill: false),
+              (context, i) => _DenominationCard(
+                label: coins[i].$1,
+                isBill: false,
+                denominationTiyin: coins[i].$2,
+                counts: counts,
+                manualTotal: manualTotal,
+              ),
               childCount: coins.length,
             ),
           ),
         ),
 
-        // Skip denomination — enter total manually
+        // Skip denomination — enter total manually (P0-4)
         SliverToBoxAdapter(child: Padding(
           padding: const EdgeInsets.fromLTRB(24, 0, 24, 16),
-          child: TextButton.icon(
-            onPressed: () {},
-            icon: const Icon(Icons.edit_rounded, size: 16),
-            label: Text(l.shiftSkipDenomination, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
-            style: TextButton.styleFrom(foregroundColor: AppTheme.primaryContainer),
+          child: ValueListenableBuilder<int?>(
+            valueListenable: manualTotal,
+            builder: (context, overrideValue, _) => TextButton.icon(
+              onPressed: onSkipDenomination,
+              icon: Icon(
+                overrideValue == null ? Icons.edit_rounded : Icons.edit_note_rounded,
+                size: 16,
+              ),
+              label: Text(
+                overrideValue == null
+                    ? l.shiftSkipDenomination
+                    : '${l.shiftManualTotalLabel}: ${Money.format(overrideValue)}',
+                style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+              ),
+              style: TextButton.styleFrom(foregroundColor: AppTheme.primaryContainer),
+            ),
           ),
         )),
 
@@ -380,64 +491,131 @@ class _DenominationPanel extends StatelessWidget {
   }
 }
 
-/// Stitch V4 denomination counting card
-class _DenominationCard extends StatelessWidget {
+/// Stitch V4 denomination counting card. Owns a local TextEditingController
+/// for the input; count state is mirrored into a shared
+/// `ValueNotifier<Map<int, int>>` so _ShiftSummarySidebar can sum totals across
+/// all cards. A non-null manualTotal override dims the input to indicate the
+/// user has opted into manual mode — per-denomination counts are still
+/// preserved in the notifier in case they clear the override.
+class _DenominationCard extends StatefulWidget {
   final String label;
   final bool isBill;
+  final int denominationTiyin;
+  final ValueNotifier<Map<int, int>> counts;
+  final ValueNotifier<int?> manualTotal;
 
-  const _DenominationCard({required this.label, this.isBill = true});
+  const _DenominationCard({
+    required this.label,
+    required this.denominationTiyin,
+    required this.counts,
+    required this.manualTotal,
+    this.isBill = true,
+  });
+
+  @override
+  State<_DenominationCard> createState() => _DenominationCardState();
+}
+
+class _DenominationCardState extends State<_DenominationCard> {
+  late final TextEditingController _controller;
+
+  @override
+  void initState() {
+    super.initState();
+    final initial = widget.counts.value[widget.denominationTiyin] ?? 0;
+    _controller = TextEditingController(text: initial == 0 ? '' : '$initial');
+    _controller.addListener(_pushToNotifier);
+  }
+
+  @override
+  void dispose() {
+    _controller.removeListener(_pushToNotifier);
+    _controller.dispose();
+    super.dispose();
+  }
+
+  void _pushToNotifier() {
+    final parsed = int.tryParse(_controller.text.trim()) ?? 0;
+    final current = widget.counts.value;
+    final existing = current[widget.denominationTiyin] ?? 0;
+    if (parsed == existing) return;
+    widget.counts.value = {
+      ...current,
+      widget.denominationTiyin: parsed,
+    };
+  }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     final l = AppLocalizations.of(context)!;
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: cs.surfaceContainerLowest,
-        borderRadius: BorderRadius.circular(16),
-        boxShadow: [
-          const BoxShadow(color: Color(0x0A0D1C2F), blurRadius: 12, offset: Offset(0, 4)),
-        ],
-      ),
-      child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
-            decoration: BoxDecoration(
-              color: AppTheme.primary.withValues(alpha: 0.06),
-              borderRadius: BorderRadius.circular(8),
-            ),
-            child: Text(label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.primary)),
-          ),
-          Text(isBill ? l.shiftBanknote : l.shiftCoin,
-            style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF74777D), letterSpacing: 1)),
-        ]),
-        const Spacer(),
-        // Input
-        Container(
+    return ValueListenableBuilder<int?>(
+      valueListenable: widget.manualTotal,
+      builder: (context, manual, _) {
+        final disabled = manual != null;
+        return Container(
+          padding: const EdgeInsets.all(16),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerHighest,
-            borderRadius: BorderRadius.circular(10),
+            color: cs.surfaceContainerLowest,
+            borderRadius: BorderRadius.circular(16),
+            boxShadow: [
+              const BoxShadow(color: Color(0x0A0D1C2F), blurRadius: 12, offset: Offset(0, 4)),
+            ],
           ),
-          child: TextField(
-            textAlign: TextAlign.center,
-            keyboardType: TextInputType.number,
-            style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
-            decoration: InputDecoration(
-              hintText: '0',
-              hintStyle: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: cs.outlineVariant),
-              border: InputBorder.none,
-              contentPadding: const EdgeInsets.symmetric(vertical: 10),
-            ),
+          child: Opacity(
+            opacity: disabled ? 0.55 : 1.0,
+            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+              Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+                  decoration: BoxDecoration(
+                    color: AppTheme.primary.withValues(alpha: 0.06),
+                    borderRadius: BorderRadius.circular(8),
+                  ),
+                  child: Text(widget.label, style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 14, color: AppTheme.primary)),
+                ),
+                Text(widget.isBill ? l.shiftBanknote : l.shiftCoin,
+                  style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: const Color(0xFF74777D), letterSpacing: 1)),
+              ]),
+              const Spacer(),
+              // Input
+              Container(
+                decoration: BoxDecoration(
+                  color: cs.surfaceContainerHighest,
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: TextField(
+                  controller: _controller,
+                  enabled: !disabled,
+                  textAlign: TextAlign.center,
+                  keyboardType: TextInputType.number,
+                  style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700),
+                  decoration: InputDecoration(
+                    hintText: '0',
+                    hintStyle: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: cs.outlineVariant),
+                    border: InputBorder.none,
+                    contentPadding: const EdgeInsets.symmetric(vertical: 10),
+                  ),
+                ),
+              ),
+              const SizedBox(height: 8),
+              // Subtotal derived from count × denomination. Rebuilds only
+              // when THIS card's count slot in the notifier changes.
+              ValueListenableBuilder<Map<int, int>>(
+                valueListenable: widget.counts,
+                builder: (context, map, _) {
+                  final count = map[widget.denominationTiyin] ?? 0;
+                  final subtotal = count * widget.denominationTiyin;
+                  return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
+                    Text(l.shiftSubtotal, style: GoogleFonts.inter(fontSize: 11, color: cs.onSurfaceVariant)),
+                    Text(Money.format(subtotal), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                  ]);
+                },
+              ),
+            ]),
           ),
-        ),
-        const SizedBox(height: 8),
-        Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-          Text(l.shiftSubtotal, style: GoogleFonts.inter(fontSize: 11, color: cs.onSurfaceVariant)),
-          Text('0 ₸', style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: AppTheme.primary)),
-        ]),
-      ]),
+        );
+      },
     );
   }
 }
@@ -451,13 +629,28 @@ class _ShiftSummarySidebar extends StatelessWidget {
   final ApiClient api;
   final VoidCallback onClose;
   final VoidCallback onRefresh;
+  final ValueNotifier<Map<int, int>> counts;
+  final ValueNotifier<int?> manualTotal;
 
   const _ShiftSummarySidebar({
     required this.cashStart, required this.totalCash, required this.totalReturns,
     required this.expectedInDrawer, required this.isOpen, required this.shiftId,
     required this.onClose, required this.isOverdue, required this.api,
     required this.onRefresh,
+    required this.counts,
+    required this.manualTotal,
   });
+
+  /// Counted cash in tiyin. Manual override wins when set; otherwise sum
+  /// the per-denomination counts.
+  int _countedTotal(Map<int, int> map, int? manual) {
+    if (manual != null) return manual;
+    var total = 0;
+    map.forEach((tiyin, count) {
+      total += tiyin * count;
+    });
+    return total;
+  }
 
   void _showCashDialog(BuildContext context, {required bool isDeposit}) {
     final l = AppLocalizations.of(context)!;
@@ -675,15 +868,32 @@ class _ShiftSummarySidebar extends StatelessWidget {
                 color: cs.surfaceContainerHigh,
                 borderRadius: BorderRadius.circular(16),
               ),
-              child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(l.shiftCounted, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF74777D), letterSpacing: 1.2)),
-                const SizedBox(height: 4),
-                Text('0 ₸', style: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.5, color: const Color(0xFF004493))),
-              ]),
+              // Counted + variance update together — single builder listens
+              // to both notifiers and derives both displays. P0-5.
+              child: AnimatedBuilder(
+                animation: Listenable.merge([counts, manualTotal]),
+                builder: (context, _) {
+                  final counted = _countedTotal(counts.value, manualTotal.value);
+                  return Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(l.shiftCounted, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF74777D), letterSpacing: 1.2)),
+                    const SizedBox(height: 4),
+                    Text(
+                      Money.format(counted),
+                      style: GoogleFonts.inter(
+                        fontSize: 36,
+                        fontWeight: FontWeight.w800,
+                        letterSpacing: -1.5,
+                        color: const Color(0xFF004493),
+                      ),
+                    ),
+                  ]);
+                },
+              ),
             ),
             const SizedBox(height: 16),
 
-            // Variance
+            // Variance (counted − expected). Same merged listener so it
+            // updates atomically with the counted display above.
             Container(
               width: double.infinity,
               padding: const EdgeInsets.all(16),
@@ -691,12 +901,25 @@ class _ShiftSummarySidebar extends StatelessWidget {
                 borderRadius: BorderRadius.circular(16),
                 border: Border.all(color: cs.outlineVariant.withValues(alpha: 0.4), style: BorderStyle.solid, width: 2),
               ),
-              child: Column(children: [
-                Text(l.shiftDiscrepancy, style: GoogleFonts.inter(fontSize: 12, color: cs.onSurfaceVariant, fontStyle: FontStyle.italic)),
-                const SizedBox(height: 4),
-                Text('-${Money.format(expectedInDrawer)}',
-                  style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.tertiary)),
-              ]),
+              child: AnimatedBuilder(
+                animation: Listenable.merge([counts, manualTotal]),
+                builder: (context, _) {
+                  final counted = _countedTotal(counts.value, manualTotal.value);
+                  final discrepancy = counted - expectedInDrawer;
+                  final sign = discrepancy >= 0 ? '+' : '-';
+                  final color = discrepancy == 0
+                      ? AppTheme.tertiary
+                      : (discrepancy > 0 ? pos.successFg : pos.errorFg);
+                  return Column(children: [
+                    Text(l.shiftDiscrepancy, style: GoogleFonts.inter(fontSize: 12, color: cs.onSurfaceVariant, fontStyle: FontStyle.italic)),
+                    const SizedBox(height: 4),
+                    Text(
+                      '$sign${Money.format(discrepancy.abs())}',
+                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: color),
+                    ),
+                  ]);
+                },
+              ),
             ),
           ]),
         )),

@@ -1311,6 +1311,19 @@ class AppLocalizationsKk extends AppLocalizations {
   String get shiftSkipDenomination => 'Номиналдарды өткізу';
 
   @override
+  String get shiftManualTotalTitle => 'Қолмен жиынтық енгізу';
+
+  @override
+  String get shiftManualTotalBody =>
+      'Кассадағы қолма-қол ақшаның есептелген сомасын көрсетіңіз. Енгізілген мән номиналдар бойынша жиынтықты алмастырады.';
+
+  @override
+  String get shiftManualTotalLabel => 'Қолма-қол ақша жиынтығы';
+
+  @override
+  String get shiftManualTotalClear => 'Тазарту';
+
+  @override
   String get shiftWithdraw => 'Алу';
 
   @override
