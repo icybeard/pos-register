@@ -620,23 +620,13 @@ class _PaymentConfirmation extends StatelessWidget {
                         ),
                       ),
                     ),
-                    const SizedBox(height: 12),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 48,
-                      child: OutlinedButton.icon(
-                        onPressed: () {
-                          ScaffoldMessenger.of(context).showSnackBar(
-                            SnackBar(content: Text(l.paymentPrintCopy)),
-                          );
-                        },
-                        icon: const Icon(Icons.print_outlined, size: 20),
-                        label: Text(l.paymentPrintCopy, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-                        style: OutlinedButton.styleFrom(
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                        ),
-                      ),
-                    ),
+                    // TODO(print): the "Распечатать копию" button lived here
+                    // but only showed a snackbar with its own label — a dead
+                    // CTA on the post-sale confirmation screen. Hidden until
+                    // printer integration lands (separate milestone: printer
+                    // driver + receipt PDF template). Re-enable by restoring
+                    // an OutlinedButton.icon with onPressed wired to the
+                    // `printing` package + a receipt PDF built from `result`.
                   ],
                 ),
               ),
