@@ -19,6 +19,10 @@ class PinDigitPressed extends AuthEvent {
 }
 
 class PinBackspacePressed extends AuthEvent {}
+/// Explicit submit fallback for the PIN keypad's OK key. The digit-4-autoloin
+/// path covers the happy case; this event exists so a user who backspaces
+/// and re-enters can still tap OK to re-submit without adding a 5th keypress.
+class PinSubmitPressed extends AuthEvent {}
 class PinCleared extends AuthEvent {}
 class LogoutRequested extends AuthEvent {}
 class CheckFirstRun extends AuthEvent {}
@@ -202,6 +206,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         super(AuthInitial()) {
     on<PinDigitPressed>(_onDigitPressed);
     on<PinBackspacePressed>(_onBackspace);
+    on<PinSubmitPressed>(_onSubmitPressed);
     on<PinCleared>(_onCleared);
     on<LogoutRequested>(_onLogout);
     on<CheckFirstRun>(_onCheckFirstRun);
@@ -622,7 +627,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       return;
     }
 
-    // 4 digits entered — attempt login.
+    // 4 digits entered — attempt login via the shared submission path.
+    await _attemptPinLogin(newPin, current, emit);
+  }
+
+  /// Explicit-submit handler for the OK keypad key. Only runs login when
+  /// the current PIN is exactly 4 digits — tapping OK with 0-3 digits is
+  /// a no-op (same guarantee the plan's P0-1 calls out).
+  Future<void> _onSubmitPressed(
+      PinSubmitPressed event, Emitter<AuthState> emit) async {
+    final current = state;
+    if (current is! AuthInitial) return;
+    if (current.isLockedOut) return;
+    if (current.pin.length != 4) return;
+    await _attemptPinLogin(current.pin, current, emit);
+  }
+
+  /// Shared cashier-login submission. Called both from the digit-4 autologin
+  /// path and from the explicit PinSubmitPressed (OK key) path.
+  Future<void> _attemptPinLogin(
+      String pin, AuthInitial current, Emitter<AuthState> emit) async {
     // TODO(P2): wire to /api/auth/cashier-login {tenant_id, login, pin}.
     // For now the boot path doesn't reach here (we go owner-first via
     // OwnerLoginScreen), so the PIN screen is dormant. Surface a clear
@@ -634,13 +658,11 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         throw ApiException(
             401, 'Войдите как владелец, затем выберите кассира из списка');
       }
-      final selectedLogin = (state is AuthInitial)
-          ? (state as AuthInitial).selectedCashierName ?? ''
-          : '';
+      final selectedLogin = current.selectedCashierName ?? '';
       final response = await _api.cashierLogin(
         tenantId: tenantId,
         login: selectedLogin,
-        pin: newPin,
+        pin: pin,
       );
       final cashier = (response['user'] as Map<String, dynamic>?) ?? response;
 

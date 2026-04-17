@@ -632,7 +632,12 @@ class _PinKeypad extends StatelessWidget {
             if (label == '<') {
               bloc.add(PinBackspacePressed());
             } else if (label == 'OK') {
-              // login is auto-triggered on 4th digit
+              // Auto-login fires on the 4th digit; OK here is the explicit
+              // fallback for the "user backspaced and re-typed" case and the
+              // general expectation that a labelled key does something. The
+              // handler is a no-op unless pin.length == 4, so a tap with 0-3
+              // digits still does nothing (plan P0-1 acceptance).
+              bloc.add(PinSubmitPressed());
             } else {
               bloc.add(PinDigitPressed(label));
             }
