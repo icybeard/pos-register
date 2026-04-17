@@ -1952,6 +1952,30 @@ abstract class AppLocalizations {
   /// **'Отмена'**
   String get posCancelSale;
 
+  /// No description provided for @posCancelSaleTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить продажу?'**
+  String get posCancelSaleTitle;
+
+  /// No description provided for @posCancelSaleBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'В корзине {count} позиций. Восстановить их будет нельзя.'**
+  String posCancelSaleBody(int count);
+
+  /// No description provided for @posCancelSaleConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отменить'**
+  String get posCancelSaleConfirm;
+
+  /// No description provided for @posCancelSaleKeep.
+  ///
+  /// In ru, this message translates to:
+  /// **'Оставить'**
+  String get posCancelSaleKeep;
+
   /// No description provided for @posOpenShiftFirst.
   ///
   /// In ru, this message translates to:

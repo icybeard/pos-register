@@ -511,6 +511,15 @@
   },
   "posTakeaway": "С собой",
   "posCancelSale": "Отмена",
+  "posCancelSaleTitle": "Отменить продажу?",
+  "posCancelSaleBody": "В корзине {count} позиций. Восстановить их будет нельзя.",
+  "@posCancelSaleBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "posCancelSaleConfirm": "Отменить",
+  "posCancelSaleKeep": "Оставить",
   "posOpenShiftFirst": "Сначала откройте смену",
   "analyticsAllTime": "Всё время",
   "analyticsAutoRefresh": "Автообновление",

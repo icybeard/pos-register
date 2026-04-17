@@ -997,6 +997,20 @@ class AppLocalizationsKk extends AppLocalizations {
   String get posCancelSale => 'Болдырмау';
 
   @override
+  String get posCancelSaleTitle => 'Сатылымды болдырмау керек пе?';
+
+  @override
+  String posCancelSaleBody(int count) {
+    return 'Себетте $count позиция бар. Оларды қайтару мүмкін болмайды.';
+  }
+
+  @override
+  String get posCancelSaleConfirm => 'Болдырмау';
+
+  @override
+  String get posCancelSaleKeep => 'Қалдыру';
+
+  @override
   String get posOpenShiftFirst => 'Алдымен ауысымды ашыңыз';
 
   @override

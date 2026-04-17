@@ -997,6 +997,20 @@ class AppLocalizationsRu extends AppLocalizations {
   String get posCancelSale => 'Отмена';
 
   @override
+  String get posCancelSaleTitle => 'Отменить продажу?';
+
+  @override
+  String posCancelSaleBody(int count) {
+    return 'В корзине $count позиций. Восстановить их будет нельзя.';
+  }
+
+  @override
+  String get posCancelSaleConfirm => 'Отменить';
+
+  @override
+  String get posCancelSaleKeep => 'Оставить';
+
+  @override
   String get posOpenShiftFirst => 'Сначала откройте смену';
 
   @override

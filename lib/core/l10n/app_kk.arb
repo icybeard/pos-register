@@ -309,6 +309,15 @@
   "posPaymentWithAmount": "ТӨЛЕМ  {amount}",
   "posTakeaway": "Өзіммен",
   "posCancelSale": "Болдырмау",
+  "posCancelSaleTitle": "Сатылымды болдырмау керек пе?",
+  "posCancelSaleBody": "Себетте {count} позиция бар. Оларды қайтару мүмкін болмайды.",
+  "@posCancelSaleBody": {
+    "placeholders": {
+      "count": {"type": "int"}
+    }
+  },
+  "posCancelSaleConfirm": "Болдырмау",
+  "posCancelSaleKeep": "Қалдыру",
   "posOpenShiftFirst": "Алдымен ауысымды ашыңыз",
   "analyticsAllTime": "Барлық уақыт",
   "analyticsAutoRefresh": "Авто жаңарту",

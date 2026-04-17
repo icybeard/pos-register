@@ -1052,9 +1052,42 @@ class _CartPanel extends StatelessWidget {
                   ))),
                   const SizedBox(width: 10),
                   Expanded(child: SizedBox(height: 44, child: OutlinedButton.icon(
-                    onPressed: state.items.isEmpty ? null : () {
-                      context.read<SalesBloc>().add(ClearCart());
-                    },
+                    onPressed: state.items.isEmpty
+                        ? null
+                        : () async {
+                            // Single-item carts cancel directly — common
+                            // recovery flow (scanned wrong item), don't
+                            // add friction. Multi-item cancels get a
+                            // confirm dialog because a stray tap on a
+                            // busy 8-item ticket loses the sale. P0-6.
+                            if (state.items.length <= 1) {
+                              context.read<SalesBloc>().add(ClearCart());
+                              return;
+                            }
+                            final confirm = await showDialog<bool>(
+                              context: context,
+                              builder: (ctx) => AlertDialog(
+                                title: Text(l.posCancelSaleTitle),
+                                content: Text(l.posCancelSaleBody(state.items.length)),
+                                actions: [
+                                  TextButton(
+                                    onPressed: () => Navigator.pop(ctx, false),
+                                    child: Text(l.posCancelSaleKeep),
+                                  ),
+                                  FilledButton(
+                                    onPressed: () => Navigator.pop(ctx, true),
+                                    style: FilledButton.styleFrom(
+                                      backgroundColor: AppTheme.error,
+                                    ),
+                                    child: Text(l.posCancelSaleConfirm),
+                                  ),
+                                ],
+                              ),
+                            );
+                            if (confirm != true) return;
+                            if (!context.mounted) return;
+                            context.read<SalesBloc>().add(ClearCart());
+                          },
                     icon: const Icon(Icons.cancel_outlined, size: 18),
                     label: Text(l.cancel, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
