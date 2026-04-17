@@ -622,43 +622,37 @@ class _ShiftSummarySidebar extends StatelessWidget {
             const SizedBox(height: 18),
             _SummaryLine(icon: Icons.assignment_return_rounded, label: l.shiftReturnsPayouts, value: '-${Money.format(totalReturns)}', valueColor: pos.errorFg),
 
-            // Action buttons: deposit / withdraw / receipts / X-report
+            // Action chips: deposit / withdraw / receipts.
+            // X-report chip removed (P0-3) — it only showed a snackbar. Wrap
+            // layout so 3 chips flow cleanly without the previous 2×2 row
+            // structure falling to "3 chips + awkward gap".
+            // TODO(print): restore the X-report _ActionChip here when printer
+            // integration + shift summary PDF generation lands.
             const SizedBox(height: 20),
-            Row(children: [
-              _ActionChip(
-                icon: Icons.add_circle_outline,
-                label: l.shiftDeposit,
-                onTap: () => _showCashDialog(context, isDeposit: true),
-                color: pos.successFg,
-              ),
-              const SizedBox(width: 8),
-              _ActionChip(
-                icon: Icons.remove_circle_outline,
-                label: l.shiftWithdraw,
-                onTap: () => _showCashDialog(context, isDeposit: false),
-                color: pos.errorFg,
-              ),
-            ]),
-            const SizedBox(height: 8),
-            Row(children: [
-              _ActionChip(
-                icon: Icons.receipt_long_outlined,
-                label: l.shiftReceiptList,
-                onTap: () => _showReceiptList(context),
-                color: pos.accentFg,
-              ),
-              const SizedBox(width: 8),
-              _ActionChip(
-                icon: Icons.summarize_outlined,
-                label: l.shiftXReport,
-                onTap: () {
-                  ScaffoldMessenger.of(context).showSnackBar(
-                    SnackBar(content: Text(l.shiftPrintReport)),
-                  );
-                },
-                color: pos.warningFg,
-              ),
-            ]),
+            Wrap(
+              spacing: 8,
+              runSpacing: 8,
+              children: [
+                _ActionChip(
+                  icon: Icons.add_circle_outline,
+                  label: l.shiftDeposit,
+                  onTap: () => _showCashDialog(context, isDeposit: true),
+                  color: pos.successFg,
+                ),
+                _ActionChip(
+                  icon: Icons.remove_circle_outline,
+                  label: l.shiftWithdraw,
+                  onTap: () => _showCashDialog(context, isDeposit: false),
+                  color: pos.errorFg,
+                ),
+                _ActionChip(
+                  icon: Icons.receipt_long_outlined,
+                  label: l.shiftReceiptList,
+                  onTap: () => _showReceiptList(context),
+                  color: pos.accentFg,
+                ),
+              ],
+            ),
           ]),
         ),
 
