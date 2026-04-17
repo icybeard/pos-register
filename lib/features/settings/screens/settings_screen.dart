@@ -4,7 +4,7 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
 
-class SettingsScreen extends StatelessWidget {
+class SettingsScreen extends StatefulWidget {
   final ApiClient api;
   final VoidCallback onLogout;
   /// Role of the currently-authenticated user. Controls which tiles appear:
@@ -19,7 +19,37 @@ class SettingsScreen extends StatelessWidget {
     this.role = 'cashier',
   });
 
+  @override
+  State<SettingsScreen> createState() => _SettingsScreenState();
+}
+
+class _SettingsScreenState extends State<SettingsScreen> {
+  // P0-9: cache both network probes so rebuilds don't spam the API. When
+  // SettingsScreen was a StatelessWidget, every scroll/theme change rebuilt
+  // FutureBuilder and kicked off a fresh checkHealth() / syncStatus(). On a
+  // flaky connection that was observable as a rapid burst of requests in
+  // the server log.
+  late Future<bool> _healthFuture;
+  late Future<Map<String, dynamic>> _syncFuture;
+
+  // Short-hand getters so the pre-refactor `api` references in build() still
+  // resolve without a blanket find-replace.
+  ApiClient get api => widget.api;
+  String get role => widget.role;
+  VoidCallback get onLogout => widget.onLogout;
+
   bool get _isOwner => role == 'owner' || role == 'admin';
+
+  @override
+  void initState() {
+    super.initState();
+    _refreshStatus();
+  }
+
+  void _refreshStatus() {
+    _healthFuture = widget.api.checkHealth();
+    _syncFuture = widget.api.syncStatus();
+  }
 
   void _showWebkassaReadOnlyInfo(BuildContext context) {
     // The register never collects or transmits Webkassa credentials. Those
@@ -143,25 +173,35 @@ class SettingsScreen extends StatelessWidget {
                     iconColor: cs.onSurfaceVariant,
                     iconBg: cs.surfaceContainer,
                     title: l.settingsServerStatus,
-                    trailing: FutureBuilder<bool>(
-                      future: api.checkHealth(),
-                      builder: (_, snap) {
-                        if (snap.connectionState == ConnectionState.waiting) {
-                          return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
-                        }
-                        final ok = snap.data == true;
-                        return Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-                          decoration: BoxDecoration(
-                            color: ok ? pos.successBg : pos.errorBg,
-                            borderRadius: BorderRadius.circular(20),
-                          ),
-                          child: Text(
-                            ok ? l.settingsServerConnected : l.settingsServerUnavailable,
-                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ok ? pos.successFg : pos.errorFg),
-                          ),
-                        );
-                      },
+                    trailing: Row(
+                      mainAxisSize: MainAxisSize.min,
+                      children: [
+                        FutureBuilder<bool>(
+                          future: _healthFuture,
+                          builder: (_, snap) {
+                            if (snap.connectionState == ConnectionState.waiting) {
+                              return const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2));
+                            }
+                            final ok = snap.data == true;
+                            return Container(
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
+                              decoration: BoxDecoration(
+                                color: ok ? pos.successBg : pos.errorBg,
+                                borderRadius: BorderRadius.circular(20),
+                              ),
+                              child: Text(
+                                ok ? l.settingsServerConnected : l.settingsServerUnavailable,
+                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ok ? pos.successFg : pos.errorFg),
+                              ),
+                            );
+                          },
+                        ),
+                        IconButton(
+                          icon: const Icon(Icons.refresh_rounded, size: 18),
+                          tooltip: l.settingsServerStatus,
+                          onPressed: () => setState(_refreshStatus),
+                        ),
+                      ],
                     ),
                   ),
                 ]),
@@ -284,7 +324,7 @@ class SettingsScreen extends StatelessWidget {
                     iconBg: pos.successBg,
                     title: l.settingsSyncStatus,
                     trailing: FutureBuilder<Map<String, dynamic>>(
-                      future: api.syncStatus(),
+                      future: _syncFuture,
                       builder: (_, snap) {
                         final unsynced = (snap.data?['unsynced_count'] as num?)?.toInt() ?? 0;
                         return Container(
