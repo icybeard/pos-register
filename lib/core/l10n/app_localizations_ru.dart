@@ -1108,6 +1108,19 @@ class AppLocalizationsRu extends AppLocalizations {
   String get debtsRemainingAmount => 'Остаток к погашению';
 
   @override
+  String debtsDaysSuffix(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days дня',
+      many: '$days дней',
+      few: '$days дня',
+      one: '$days день',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get debtsSearch => 'Поиск по клиенту или телефону';
 
   @override

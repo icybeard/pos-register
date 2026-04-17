@@ -2150,6 +2150,12 @@ abstract class AppLocalizations {
   /// **'Остаток к погашению'**
   String get debtsRemainingAmount;
 
+  /// No description provided for @debtsDaysSuffix.
+  ///
+  /// In ru, this message translates to:
+  /// **'{days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}'**
+  String debtsDaysSuffix(int days);
+
   /// No description provided for @debtsSearch.
   ///
   /// In ru, this message translates to:

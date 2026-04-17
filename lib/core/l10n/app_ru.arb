@@ -549,6 +549,12 @@
   "cashiersRoleSeniorDesc": "Кассир + возвраты и скидки",
   "debtsOverdue": "Просрочено",
   "debtsRemainingAmount": "Остаток к погашению",
+  "debtsDaysSuffix": "{days, plural, one{{days} день} few{{days} дня} many{{days} дней} other{{days} дня}}",
+  "@debtsDaysSuffix": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
   "debtsSearch": "Поиск по клиенту или телефону",
   "deliveryActualQty": "Факт",
   "deliveryAddSupplier": "Добавить поставщика",

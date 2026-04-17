@@ -482,7 +482,10 @@ class _DebtRow extends StatelessWidget {
                     padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
                     decoration: BoxDecoration(color: pos.errorBg, borderRadius: BorderRadius.circular(6)),
                     child: Text(
-                      '${l.debtsOverdue} ($daysSinceCreation ${l.debtsRemainingAmount})',
+                      // P0-8: was rendering '35 остаток' because debtsRemainingAmount
+                      // was misused as a "days" suffix. debtsDaysSuffix is the correct
+                      // plural-form key ("35 дней" / "1 день" / "2 дня").
+                      '${l.debtsOverdue} · ${l.debtsDaysSuffix(daysSinceCreation)}',
                       style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: pos.errorFg),
                     ),
                   ),

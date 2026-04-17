@@ -1101,6 +1101,16 @@ class AppLocalizationsKk extends AppLocalizations {
   String get debtsRemainingAmount => 'Өтеу қалдығы';
 
   @override
+  String debtsDaysSuffix(int days) {
+    String _temp0 = intl.Intl.pluralLogic(
+      days,
+      locale: localeName,
+      other: '$days күн',
+    );
+    return '$_temp0';
+  }
+
+  @override
   String get debtsSearch => 'Клиент немесе телефон бойынша іздеу';
 
   @override

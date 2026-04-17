@@ -347,6 +347,12 @@
   "cashiersRoleSeniorDesc": "Кассир + қайтарулар мен жеңілдіктер",
   "debtsOverdue": "Мерзімі өткен",
   "debtsRemainingAmount": "Өтеу қалдығы",
+  "debtsDaysSuffix": "{days, plural, other{{days} күн}}",
+  "@debtsDaysSuffix": {
+    "placeholders": {
+      "days": {"type": "int"}
+    }
+  },
   "debtsSearch": "Клиент немесе телефон бойынша іздеу",
   "deliveryActualQty": "Нақты",
   "deliveryAddSupplier": "Жеткізушіні қосу",
