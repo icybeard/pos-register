@@ -60,7 +60,7 @@ void main() {
       // Accept everything
       return adapter.ok({
         'accepted': receivedEntries.map((e) => e['uuid']).toList(),
-        'rejected': [],
+        'rejected': <String>[],
       });
     });
 
@@ -156,7 +156,7 @@ void main() {
     adapter.on('POST', '/api/sync/push', (_) async {
       calls += 1;
       await Future<void>.delayed(const Duration(milliseconds: 80));
-      return adapter.ok({'accepted': <String>[], 'rejected': []});
+      return adapter.ok({'accepted': <String>[], 'rejected': <String>[]});
     });
 
     final first = worker.drainOnce();

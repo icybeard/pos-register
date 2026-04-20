@@ -165,6 +165,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
   void _showAddSupplierDialog() {
     final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
     final nameC = TextEditingController();
     final phoneC = TextEditingController();
     showDialog<void>(
@@ -185,9 +186,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               if (ctx.mounted) Navigator.pop(ctx);
               await _loadSuppliers();
             } on Exception catch (e) {
-              if (context.mounted) {
-                ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-              }
+              messenger.showSnackBar(SnackBar(content: Text('$e')));
             }
           }, child: Text(l.create)),
         ],
@@ -197,6 +196,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
 
   void _showCreateProductDialog() {
     final l = AppLocalizations.of(context)!;
+    final messenger = ScaffoldMessenger.of(context);
     final nameC = TextEditingController();
     final priceC = TextEditingController();
     final barcodeC = TextEditingController();
@@ -244,9 +244,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                 // Auto-add to delivery
                 _addProduct({'ID': id, 'Name': nameC.text.trim(), 'PurchasePrice': price});
               } on Exception catch (e) {
-                if (context.mounted) {
-                  ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('$e')));
-                }
+                messenger.showSnackBar(SnackBar(content: Text('$e')));
               }
             }, child: Text(l.create)),
           ],

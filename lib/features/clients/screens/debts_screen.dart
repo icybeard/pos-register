@@ -1,10 +1,14 @@
+import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
-import '../../../core/l10n/app_localizations.dart';
-import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/hifi.dart';
 import '../../../core/utils/money.dart';
 import '../../../services/api_client.dart';
 
+/// Section 05 — Debts (running customer tab, "на долг").
+///
+/// Left pane: customer list (search by name/phone) + detail/history.
+/// Right pane: action tiles (Новый долг / Погашение / SMS / Карточка / ...)
+/// + Cancel + Pay tile.
 class DebtsScreen extends StatefulWidget {
   final ApiClient api;
   final String cashierId;
@@ -14,24 +18,16 @@ class DebtsScreen extends StatefulWidget {
   State<DebtsScreen> createState() => _DebtsScreenState();
 }
 
-class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStateMixin {
-  late TabController _tabController;
-  List<Map<String, dynamic>> _debts = [];
-  List<Map<String, dynamic>> _clients = [];
+class _DebtsScreenState extends State<DebtsScreen> {
   bool _loading = true;
+  List<_Debtor> _debtors = const [];
+  String? _selectedId;
   String _search = '';
 
   @override
   void initState() {
     super.initState();
-    _tabController = TabController(length: 2, vsync: this);
     _load();
-  }
-
-  @override
-  void dispose() {
-    _tabController.dispose();
-    super.dispose();
   }
 
   Future<void> _load() async {
@@ -39,524 +35,386 @@ class _DebtsScreenState extends State<DebtsScreen> with SingleTickerProviderStat
     try {
       final debtsResp = await widget.api.listDebts();
       final clientsResp = await widget.api.listClients();
+      final clients = (clientsResp['clients'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+      final debts = (debtsResp['debts'] as List<dynamic>?)
+              ?.cast<Map<String, dynamic>>() ??
+          const <Map<String, dynamic>>[];
+
+      final byClient = <String, _Debtor>{};
+      for (final c in clients) {
+        final id = c['ID'] as String? ?? '';
+        if (id.isEmpty) continue;
+        byClient[id] = _Debtor(
+          id: id,
+          name: (c['Name'] as String?) ?? '—',
+          phone: (c['Phone'] as String?) ?? '',
+          amount: 0,
+          lastDate: null,
+          itemsCount: 0,
+          entries: const [],
+        );
+      }
+      final tempEntries = <String, List<_Entry>>{};
+      for (final d in debts) {
+        final cid = d['ClientID'] as String? ?? '';
+        if (cid.isEmpty || byClient[cid] == null) continue;
+        final amt = (d['Amount'] as num?)?.toInt() ?? 0;
+        final paid = (d['PaidAmount'] as num?)?.toInt() ?? 0;
+        final open = amt - paid;
+        final status = d['Status'] as String? ?? 'open';
+        final created = DateTime.tryParse(d['CreatedAt'] as String? ?? '');
+        final list = tempEntries.putIfAbsent(cid, () => <_Entry>[]);
+        list.add(_Entry(
+          when: created ?? DateTime.now(),
+          kind: status == 'closed' ? 'оплат.' : 'долг',
+          label: status == 'closed'
+              ? 'Погашение чека'
+              : 'Долг (${(d['ItemCount'] as num?)?.toInt() ?? 1} поз.)',
+          amount: status == 'closed' ? -paid : amt,
+        ));
+        final d0 = byClient[cid]!;
+        byClient[cid] = d0.copyWith(
+          amount: d0.amount + open,
+          lastDate: created ?? d0.lastDate,
+          itemsCount: d0.itemsCount + ((d['ItemCount'] as num?)?.toInt() ?? 0),
+        );
+      }
+      for (final e in byClient.entries) {
+        byClient[e.key] = e.value.copyWith(entries: tempEntries[e.key] ?? const []);
+      }
+
+      final list = byClient.values.where((d) => d.amount > 0).toList()
+        ..sort((a, b) => b.amount.compareTo(a.amount));
+      if (!mounted) return;
       setState(() {
-        _debts = (debtsResp['debts'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-        _clients = (clientsResp['clients'] as List?)?.cast<Map<String, dynamic>>() ?? [];
+        _debtors = list;
+        _selectedId = list.isEmpty ? null : list.first.id;
         _loading = false;
       });
     } on Exception catch (e) {
-      if (mounted) {
-        setState(() => _loading = false);
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(content: Text('Ошибка загрузки: ${e is ApiException ? "Сервер недоступен" : "Нет связи"}')),
-        );
-      }
+      if (!mounted) return;
+      setState(() => _loading = false);
+      ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
     }
   }
+
+  _Debtor? get _selected => _debtors.where((d) => d.id == _selectedId).cast<_Debtor?>().firstWhere((_) => true, orElse: () => null);
 
   @override
   Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final pos = PosColors.of(context);
-
-    final openDebts = _debts.where((d) => d['Status'] != 'closed').toList();
-    final totalDebt = openDebts.fold<int>(
-        0, (sum, d) => sum + ((d['Amount'] as num?)?.toInt() ?? 0) - ((d['PaidAmount'] as num?)?.toInt() ?? 0));
-    final clientCount = <String>{};
-    for (final d in openDebts) {
-      final cid = d['ClientID'] as String?;
-      if (cid != null) clientCount.add(cid);
-    }
-
     return Scaffold(
-      body: _loading
-          ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
-          : CustomScrollView(
-              slivers: [
-                // Header
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
-                    child: Row(children: [
-                      Expanded(
-                        child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(l.debtsTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
-                          const SizedBox(height: 4),
-                          Text(l.debtsCountLabel(openDebts.length, clientCount.length),
-                              style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
-                        ]),
-                      ),
-                      Row(children: [
-                        IconButton(
-                          onPressed: _load,
-                          icon: const Icon(Icons.refresh_rounded, size: 22),
-                          tooltip: l.refresh,
-                          style: IconButton.styleFrom(
-                            backgroundColor: cs.surfaceContainerLow,
-                            fixedSize: const Size(48, 48),
-                            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-                          ),
-                        ),
-                        const SizedBox(width: 10),
-                        SizedBox(
-                          height: 48,
-                          child: ElevatedButton.icon(
-                            onPressed: () => _showCreateDebtDialog(context),
-                            icon: const Icon(Icons.add_rounded, size: 20),
-                            label: Text(l.debtsNewDebt, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-                          ),
-                        ),
-                      ]),
-                    ]),
-                  ),
-                ),
-
-                // Total debt banner
-                if (totalDebt > 0)
-                  SliverToBoxAdapter(
-                    child: Padding(
-                      padding: const EdgeInsets.fromLTRB(24, 20, 24, 0),
-                      child: Container(
-                        padding: const EdgeInsets.all(20),
-                        decoration: BoxDecoration(
-                          gradient: LinearGradient(
-                            colors: [
-                              pos.errorFg,
-                              pos.errorFg.withValues(alpha: 0.8),
-                            ],
-                          ),
-                          borderRadius: BorderRadius.circular(20),
-                        ),
-                        child: Row(children: [
-                          Container(
-                            width: 48,
-                            height: 48,
-                            decoration: BoxDecoration(
-                              color: Colors.white.withValues(alpha: 0.15),
-                              borderRadius: BorderRadius.circular(14),
-                            ),
-                            child: const Icon(Icons.warning_amber_rounded, color: Colors.white, size: 24),
-                          ),
-                          const SizedBox(width: 16),
-                          Expanded(
-                            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                              Text(
-                                l.debtsTotalBanner,
-                                style: GoogleFonts.inter(
-                                  fontSize: 11, fontWeight: FontWeight.w700,
-                                  color: Colors.white.withValues(alpha: 0.7), letterSpacing: 0.8,
-                                ),
-                              ),
-                              const SizedBox(height: 4),
-                              Text(
-                                Money.format(totalDebt),
-                                style: GoogleFonts.inter(
-                                  fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5,
-                                ),
-                              ),
-                            ]),
-                          ),
-                          Column(children: [
-                            Text(
-                              '${openDebts.length}',
-                              style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: Colors.white),
-                            ),
-                            Text(
-                              l.debtsRecordsLabel,
-                              style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.7)),
-                            ),
-                          ]),
-                        ]),
-                      ),
-                    ),
-                  ),
-
-                // Search
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
-                    child: TextField(
-                      onChanged: (v) => setState(() => _search = v),
-                      decoration: InputDecoration(
-                        hintText: l.debtsSearch,
-                        prefixIcon: const Icon(Icons.search_rounded, size: 20),
-                        filled: true,
-                        fillColor: cs.surfaceContainerLow,
-                        contentPadding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
-                        border: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                        enabledBorder: OutlineInputBorder(borderRadius: BorderRadius.circular(12), borderSide: BorderSide.none),
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Tabs
-                SliverToBoxAdapter(
-                  child: Padding(
-                    padding: const EdgeInsets.fromLTRB(24, 12, 24, 0),
-                    child: Container(
-                      decoration: BoxDecoration(
-                        color: cs.surfaceContainerLowest,
-                        borderRadius: const BorderRadius.vertical(top: Radius.circular(20)),
-                      ),
-                      child: TabBar(
-                        controller: _tabController,
-                        onTap: (_) => setState(() {}),
-                        tabs: [
-                          Tab(text: l.debtsTabOpen(openDebts.length)),
-                          Tab(text: l.debtsTabAll(_debts.length)),
-                        ],
-                      ),
-                    ),
-                  ),
-                ),
-
-                // Debt rows
-                SliverPadding(
-                  padding: const EdgeInsets.symmetric(horizontal: 24),
-                  sliver: _buildDebtSliver(
-                    _filterDebts(_tabController.index == 0 ? openDebts : _debts),
-                  ),
-                ),
-
-                const SliverToBoxAdapter(child: SizedBox(height: 24)),
-              ],
-            ),
+      backgroundColor: Hifi.canvas,
+      body: Column(children: [
+        HifiChrome(
+          shiftNumber: 'Долги',
+          cashierName: widget.cashierId,
+        ),
+        Expanded(
+          child: _loading
+              ? const Center(child: CircularProgressIndicator())
+              : Row(children: [
+                  Expanded(child: _leftPane()),
+                  _rightPanel(),
+                ]),
+        ),
+      ]),
     );
   }
 
-  List<Map<String, dynamic>> _filterDebts(List<Map<String, dynamic>> debts) {
-    if (_search.isEmpty) return debts;
-    final q = _search.toLowerCase();
-    return debts.where((d) {
-      final name = (d['ClientName'] as String? ?? '').toLowerCase();
-      return name.contains(q);
-    }).toList();
+  Widget _leftPane() {
+    return Container(
+      color: Hifi.paneBg,
+      padding: const EdgeInsets.all(10),
+      child: Row(children: [
+        SizedBox(width: 320, child: _list()),
+        const SizedBox(width: 8),
+        Expanded(child: _detail()),
+      ]),
+    );
   }
 
-  Widget _buildDebtSliver(List<Map<String, dynamic>> debts) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    if (debts.isEmpty) {
-      return SliverToBoxAdapter(
+  Widget _list() {
+    final filtered = _debtors
+        .where((d) =>
+            _search.isEmpty ||
+            d.name.toLowerCase().contains(_search.toLowerCase()) ||
+            d.phone.contains(_search))
+        .toList();
+    return Container(
+      decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Column(children: [
+          Padding(
+            padding: const EdgeInsets.all(6),
+            child: HifiSearchField(
+              hint: 'Имя / телефон',
+              onChanged: (v) => setState(() => _search = v),
+            ),
+          ),
+          Expanded(
+            child: filtered.isEmpty
+                ? Center(child: Text('Нет должников', style: Hifi.ui(size: 13, color: const Color(0xFF888888))))
+                : ListView.builder(
+                    padding: EdgeInsets.zero,
+                    itemCount: filtered.length,
+                    itemBuilder: (context, i) => _debtorRow(filtered[i]),
+                  ),
+          ),
+        ]),
+      ),
+    );
+  }
+
+  Widget _debtorRow(_Debtor d) {
+    final selected = _selectedId == d.id;
+    final daysAgo = d.lastDate == null ? 0 : DateTime.now().difference(d.lastDate!).inDays;
+    final accent = daysAgo > 14 ? Hifi.danger : daysAgo > 7 ? Hifi.warn : Hifi.chrome;
+    return Material(
+      color: selected ? const Color(0xFFE3F2FF) : Colors.white,
+      child: InkWell(
+        onTap: () => setState(() => _selectedId = d.id),
         child: Container(
-          padding: const EdgeInsets.symmetric(vertical: 60),
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
           decoration: BoxDecoration(
-            color: cs.surfaceContainerLowest,
-            borderRadius: const BorderRadius.vertical(bottom: Radius.circular(20)),
+            border: Border(
+              bottom: const BorderSide(color: Hifi.divider),
+              left: BorderSide(color: selected ? Hifi.chrome : Colors.transparent, width: 3),
+            ),
           ),
-          child: Center(
-            child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-              Container(
-                width: 72, height: 72,
-                decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(20)),
-                child: Icon(Icons.account_balance_wallet_outlined, size: 32, color: cs.outline),
-              ),
-              const SizedBox(height: 16),
-              Text(l.debtsEmpty, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(children: [
+              Expanded(child: Text(d.name, style: Hifi.ui(size: 13, weight: FontWeight.w600))),
+              Text(Money.formatTenge(d.amount), style: Hifi.mono(size: 13, weight: FontWeight.w700, color: accent)),
             ]),
+            const SizedBox(height: 2),
+            Row(children: [
+              Expanded(child: Text(d.phone, style: Hifi.ui(size: 11, color: const Color(0xFF666666)))),
+              Text(daysAgo == 0 ? 'сегодня' : '$daysAgo' 'д', style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+            ]),
+          ]),
+        ),
+      ),
+    );
+  }
+
+  Widget _detail() {
+    final d = _selected;
+    if (d == null) {
+      return Center(child: Text('Выберите клиента', style: Hifi.ui(size: 13, color: const Color(0xFF888888))));
+    }
+    final daysAgo = d.lastDate == null ? 0 : DateTime.now().difference(d.lastDate!).inDays;
+    final amountColor = daysAgo > 14 ? Hifi.danger : Hifi.chrome;
+    return Column(children: [
+      Container(
+        padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 12),
+        decoration: BoxDecoration(
+          color: Hifi.infoStrip,
+          borderRadius: BorderRadius.circular(6),
+          border: Border.all(color: Hifi.border),
+        ),
+        child: Row(children: [
+          Container(
+            width: 44,
+            height: 44,
+            decoration: const BoxDecoration(color: Hifi.chrome, shape: BoxShape.circle),
+            alignment: Alignment.center,
+            child: Text(
+              d.name.isEmpty ? '?' : d.name.characters.first,
+              style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Colors.white),
+            ),
           ),
+          const SizedBox(width: 10),
+          Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
+            Text(d.name, style: Hifi.ui(size: 15, weight: FontWeight.w700, color: Hifi.chrome)),
+            Text(
+              '${d.phone} · последняя операция ${d.lastDate == null ? '—' : _date(d.lastDate!)}',
+              style: Hifi.ui(size: 11, color: const Color(0xFF666666)),
+            ),
+          ])),
+          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
+            Text('ДОЛГ', style: Hifi.ui(size: 10, color: const Color(0xFF666666))),
+            Text(Money.formatTenge(d.amount), style: Hifi.mono(size: 22, weight: FontWeight.w700, color: amountColor)),
+          ]),
+        ]),
+      ),
+      const SizedBox(height: 8),
+      Expanded(child: _history(d)),
+    ]);
+  }
+
+  String _date(DateTime d) {
+    String p(int n) => n.toString().padLeft(2, '0');
+    return '${p(d.day)}.${p(d.month)}.${d.year}';
+  }
+
+  Widget _history(_Debtor d) {
+    if (d.entries.isEmpty) {
+      return Container(
+        decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
+        child: Center(
+          child: Text('Нет операций', style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
         ),
       );
     }
-
-    return SliverList(
-      delegate: SliverChildBuilderDelegate(
-        (context, i) => _DebtRow(
-          debt: debts[i],
-          index: i,
-          isLast: i == debts.length - 1,
-          onPay: () {
-            final d = debts[i];
-            final amount = (d['Amount'] as num?)?.toInt() ?? 0;
-            final paid = (d['PaidAmount'] as num?)?.toInt() ?? 0;
-            _showPayDialog(context, d['ID'] as String, amount - paid);
-          },
-        ),
-        childCount: debts.length,
-      ),
-    );
-  }
-
-  void _showPayDialog(BuildContext context, String debtId, int remainingTiyin) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final amountC = TextEditingController(text: Money.tiyinToTenge(remainingTiyin).toStringAsFixed(0));
-    bool submitting = false;
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.debtsPayTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-          content: Column(mainAxisSize: MainAxisSize.min, children: [
-            Container(
-              width: double.infinity,
-              padding: const EdgeInsets.all(14),
-              decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(12)),
-              child: Text(l.debtsPayRemaining(Money.format(remainingTiyin)), style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
-            ),
-            const SizedBox(height: 16),
-            TextField(
-              controller: amountC,
-              decoration: InputDecoration(labelText: l.debtsFieldAmount),
-              keyboardType: TextInputType.number,
-            ),
-          ]),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
-            ElevatedButton(
-              onPressed: submitting
-                  ? null
-                  : () async {
-                      final amount = ((double.tryParse(amountC.text) ?? 0) * 100).round();
-                      if (amount <= 0) {
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.debtsEnterAmount)));
-                        }
-                        return;
-                      }
-                      setDialogState(() => submitting = true);
-                      try {
-                        await widget.api.payDebt(debtId, {
-                          'amount': amount,
-                          'payment_type': 'cash',
-                          'cashier_id': widget.cashierId,
-                        });
-                        if (ctx.mounted) Navigator.pop(ctx);
-                        if (mounted) await _load();
-                      } on Exception catch (e) {
-                        if (ctx.mounted) setDialogState(() => submitting = false);
-                        if (context.mounted) {
-                          ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-                        }
-                      }
-                    },
-              style: ElevatedButton.styleFrom(backgroundColor: AppTheme.success, foregroundColor: Colors.white),
-              child: submitting
-                  ? const SizedBox(width: 18, height: 18, child: CircularProgressIndicator(strokeWidth: 2))
-                  : Text(l.debtsPay),
-            ),
-          ],
-        ),
-      ),
-    );
-  }
-
-  void _showCreateDebtDialog(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final amountC = TextEditingController();
-    final noteC = TextEditingController();
-    String? selectedClientId;
-
-    showDialog<void>(
-      context: context,
-      builder: (ctx) => StatefulBuilder(
-        builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.debtsCreateTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
-          content: SingleChildScrollView(
-            child: Column(mainAxisSize: MainAxisSize.min, children: [
-              DropdownButtonFormField<String>(
-                decoration: InputDecoration(labelText: l.debtsFieldClient),
-                items: _clients
-                    .map((c) => DropdownMenuItem(value: c['ID'] as String, child: Text(c['Name'] as String? ?? '')))
-                    .toList(),
-                onChanged: (v) => setDialogState(() => selectedClientId = v),
-              ),
-              const SizedBox(height: 14),
-              TextField(
-                controller: amountC,
-                decoration: InputDecoration(labelText: l.debtsFieldAmount),
-                keyboardType: TextInputType.number,
-              ),
-              const SizedBox(height: 14),
-              TextField(controller: noteC, decoration: InputDecoration(labelText: l.debtsFieldNote)),
+    return Container(
+      decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
+      child: ClipRRect(
+        borderRadius: BorderRadius.circular(4),
+        child: Column(children: [
+          Container(
+            height: 30,
+            padding: const EdgeInsets.symmetric(horizontal: 12),
+            decoration: const BoxDecoration(color: Hifi.tableHead, border: Border(bottom: BorderSide(color: Hifi.border))),
+            child: Row(children: [
+              SizedBox(width: 90, child: _th('ДАТА')),
+              Expanded(child: _th('ОПЕРАЦИЯ')),
+              SizedBox(width: 80, child: _th('ТИП', align: TextAlign.center)),
+              SizedBox(width: 110, child: _th('СУММА', align: TextAlign.right)),
             ]),
           ),
-          actions: [
-            TextButton(onPressed: () => Navigator.pop(ctx), child: Text(l.cancel)),
-            ElevatedButton(
-              onPressed: () async {
-                if (selectedClientId == null) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.debtsSelectClient)));
-                  }
-                  return;
-                }
-                final amount = ((double.tryParse(amountC.text) ?? 0) * 100).round();
-                if (amount <= 0) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text(l.debtsEnterAmount)));
-                  }
-                  return;
-                }
-                try {
-                  await widget.api.createDebt({
-                    'client_id': selectedClientId,
-                    'amount': amount,
-                    'note': noteC.text,
-                    'cashier_id': widget.cashierId,
-                  });
-                  if (ctx.mounted) Navigator.pop(ctx);
-                  if (mounted) await _load();
-                } on Exception catch (e) {
-                  if (context.mounted) {
-                    ScaffoldMessenger.of(context).showSnackBar(SnackBar(content: Text('Ошибка: $e')));
-                  }
-                }
+          Expanded(
+            child: ListView.builder(
+              padding: EdgeInsets.zero,
+              itemCount: d.entries.length,
+              itemBuilder: (context, i) {
+                final e = d.entries[i];
+                final typeColor = e.kind == 'долг' ? Hifi.danger : Hifi.success;
+                final amtColor = e.amount >= 0 ? Hifi.danger : Hifi.success;
+                final amtStr = e.amount >= 0 ? '+${Money.formatTenge(e.amount)}' : '−${Money.formatTenge(e.amount.abs())}';
+                return Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+                  decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Hifi.divider))),
+                  child: Row(children: [
+                    SizedBox(width: 90, child: Text(_date(e.when), style: Hifi.mono(size: 12, color: const Color(0xFF666666)))),
+                    Expanded(child: Text(e.label, style: Hifi.ui(size: 12))),
+                    SizedBox(width: 80, child: Text(e.kind, textAlign: TextAlign.center, style: Hifi.ui(size: 12, weight: FontWeight.w600, color: typeColor))),
+                    SizedBox(width: 110, child: Text(amtStr, textAlign: TextAlign.right, style: Hifi.mono(size: 12, weight: FontWeight.w600, color: amtColor))),
+                  ]),
+                );
               },
-              child: Text(l.debtsRecord),
             ),
-          ],
-        ),
+          ),
+        ]),
       ),
+    );
+  }
+
+  Widget _th(String label, {TextAlign align = TextAlign.left}) => Text(
+        label,
+        textAlign: align,
+        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)).copyWith(letterSpacing: 0.3),
+      );
+
+  Widget _rightPanel() {
+    final d = _selected;
+    final tiles = <ActionTile>[
+      ActionTile(label: 'Новый долг', hotkey: 'F4', variant: HifiTileVariant.green, onTap: () => _todo('Новый долг')),
+      ActionTile(label: 'Погашение', hotkey: 'F2', variant: HifiTileVariant.green, onTap: d == null ? null : () => _payDown(d)),
+      ActionTile(label: 'Поиск', hotkey: 'F3', onTap: () {}),
+      ActionTile(label: 'SMS напом.', onTap: () => _todo('SMS напоминание')),
+      ActionTile(label: 'Карточка', onTap: () => _todo('Карточка клиента')),
+      ActionTile(label: 'История', onTap: () => _todo('Полная история')),
+      ActionTile(label: 'Экспорт', onTap: () => _todo('Экспорт .csv')),
+      ActionTile(label: 'Печать', hotkey: 'F11', onTap: () => _todo('Печать выписки')),
+      ActionTile(label: 'Фильтр > 14д', onTap: () => _todo('Фильтр > 14 дней')),
+      ActionTile(label: 'Фильтр > 30д', onTap: () => _todo('Фильтр > 30 дней')),
+    ];
+    return ActionGridPanel(
+      tiles: tiles,
+      voidTile: ActionTile(
+        label: 'Закрыть',
+        variant: HifiTileVariant.red,
+        hotkey: 'Esc',
+        onTap: () => Navigator.of(context).maybePop(),
+      ),
+      payTile: ActionTile(
+        label: d == null ? '💰 Погасить долг' : '💰 Погасить ${d.shortName} · ${Money.formatTenge(d.amount)}',
+        variant: HifiTileVariant.pay,
+        hotkey: 'F2',
+        fontSize: 16,
+        onTap: d == null ? null : () => _payDown(d),
+      ),
+    );
+  }
+
+  Future<void> _payDown(_Debtor d) async {
+    final ctrl = TextEditingController(text: (d.amount / 100).toStringAsFixed(0));
+    final amount = await showDialog<int>(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(8)),
+        title: Text('Погашение долга · ${d.name}', style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Hifi.chrome)),
+        content: TextField(
+          controller: ctrl,
+          autofocus: true,
+          keyboardType: TextInputType.number,
+          decoration: const InputDecoration(suffixText: '₸'),
+        ),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Отмена')),
+          FilledButton(
+            onPressed: () => Navigator.pop(ctx, ((double.tryParse(ctrl.text) ?? 0) * 100).round()),
+            child: const Text('Принять'),
+          ),
+        ],
+      ),
+    );
+    if (amount == null || amount <= 0 || !mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('Погашение ${Money.formatTenge(amount)} (в разработке)')),
+    );
+    unawaited(_load());
+  }
+
+  void _todo(String label) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(content: Text('$label — в разработке'), duration: const Duration(seconds: 2)),
     );
   }
 }
 
-class _DebtRow extends StatelessWidget {
-  final Map<String, dynamic> debt;
-  final int index;
-  final bool isLast;
-  final VoidCallback onPay;
+class _Debtor {
+  final String id;
+  final String name;
+  final String phone;
+  final int amount;
+  final DateTime? lastDate;
+  final int itemsCount;
+  final List<_Entry> entries;
 
-  const _DebtRow({required this.debt, required this.index, required this.isLast, required this.onPay});
+  const _Debtor({
+    required this.id,
+    required this.name,
+    required this.phone,
+    required this.amount,
+    required this.lastDate,
+    required this.itemsCount,
+    required this.entries,
+  });
 
-  @override
-  Widget build(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final cs = Theme.of(context).colorScheme;
-    final pos = PosColors.of(context);
-    final amount = (debt['Amount'] as num?)?.toInt() ?? 0;
-    final paid = (debt['PaidAmount'] as num?)?.toInt() ?? 0;
-    final remaining = amount - paid;
-    final status = debt['Status'] as String? ?? 'open';
-    final isClosed = status == 'closed';
-    final note = debt['Note'] as String? ?? '';
-    final progress = amount > 0 ? paid / amount : 0.0;
-    final createdAt = debt['CreatedAt'] as String? ?? '';
+  _Debtor copyWith({int? amount, DateTime? lastDate, int? itemsCount, List<_Entry>? entries}) => _Debtor(
+        id: id,
+        name: name,
+        phone: phone,
+        amount: amount ?? this.amount,
+        lastDate: lastDate ?? this.lastDate,
+        itemsCount: itemsCount ?? this.itemsCount,
+        entries: entries ?? this.entries,
+      );
 
-    // Calculate days since creation for "overdue" hint
-    int daysSinceCreation = 0;
-    try {
-      final dt = DateTime.parse(createdAt);
-      daysSinceCreation = DateTime.now().difference(dt).inDays;
-    } on FormatException catch (_) {}
-    final isOverdue = !isClosed && daysSinceCreation > 30;
-
-    return Container(
-      padding: const EdgeInsets.all(16),
-      decoration: BoxDecoration(
-        color: index.isEven ? cs.surfaceContainerLowest : cs.surfaceContainerLow.withValues(alpha: 0.4),
-        borderRadius: isLast ? const BorderRadius.vertical(bottom: Radius.circular(20)) : null,
-      ),
-      child: Column(children: [
-        Row(children: [
-          // Status icon
-          Container(
-            width: 42,
-            height: 42,
-            decoration: BoxDecoration(
-              color: isClosed ? pos.successBg : pos.errorBg,
-              borderRadius: BorderRadius.circular(12),
-            ),
-            child: Icon(
-              isClosed ? Icons.check_rounded : Icons.warning_amber_rounded,
-              size: 20,
-              color: isClosed ? pos.successFg : pos.errorFg,
-            ),
-          ),
-          const SizedBox(width: 14),
-
-          // Client + note + overdue
-          Expanded(
-            child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-              Text(
-                debt['ClientName'] as String? ?? l.debtsClientDefault,
-                style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15),
-              ),
-              if (isOverdue)
-                Padding(
-                  padding: const EdgeInsets.only(top: 3),
-                  child: Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 2),
-                    decoration: BoxDecoration(color: pos.errorBg, borderRadius: BorderRadius.circular(6)),
-                    child: Text(
-                      // P0-8: was rendering '35 остаток' because debtsRemainingAmount
-                      // was misused as a "days" suffix. debtsDaysSuffix is the correct
-                      // plural-form key ("35 дней" / "1 день" / "2 дня").
-                      '${l.debtsOverdue} · ${l.debtsDaysSuffix(daysSinceCreation)}',
-                      style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: pos.errorFg),
-                    ),
-                  ),
-                ),
-              if (note.isNotEmpty)
-                Padding(
-                  padding: const EdgeInsets.only(top: 2),
-                  child: Text(note, style: GoogleFonts.inter(fontSize: 12, fontStyle: FontStyle.italic, color: cs.outline)),
-                ),
-            ]),
-          ),
-
-          // Amount + action
-          Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text(
-              isClosed ? Money.format(amount) : Money.format(remaining),
-              style: GoogleFonts.inter(
-                fontSize: 16,
-                fontWeight: FontWeight.w700,
-                color: isClosed ? pos.successFg : pos.errorFg,
-              ),
-            ),
-            const SizedBox(height: 2),
-            Text(
-              isClosed ? l.debtsPaid : l.debtsOfTotal(Money.format(amount)),
-              style: GoogleFonts.inter(fontSize: 11, color: cs.outline),
-            ),
-          ]),
-          const SizedBox(width: 12),
-
-          if (!isClosed)
-            SizedBox(
-              height: 36,
-              child: ElevatedButton(
-                onPressed: onPay,
-                style: ElevatedButton.styleFrom(
-                  backgroundColor: AppTheme.success,
-                  foregroundColor: Colors.white,
-                  padding: const EdgeInsets.symmetric(horizontal: 16),
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-                ),
-                child: Text(l.debtsPayment, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
-              ),
-            )
-          else
-            Container(
-              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
-              decoration: BoxDecoration(color: pos.successBg, borderRadius: BorderRadius.circular(20)),
-              child: Text(l.debtsClosed, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
-            ),
-        ]),
-
-        // Progress bar
-        if (!isClosed && paid > 0) ...[
-          const SizedBox(height: 10),
-          ClipRRect(
-            borderRadius: BorderRadius.circular(4),
-            child: LinearProgressIndicator(
-              value: progress,
-              minHeight: 4,
-              backgroundColor: cs.surfaceContainer,
-              valueColor: AlwaysStoppedAnimation<Color>(pos.successFg),
-            ),
-          ),
-          const SizedBox(height: 4),
-          Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-            Text(l.debtsPaidLabel(Money.format(paid)), style: GoogleFonts.inter(fontSize: 11, color: cs.outline)),
-            Text('${(progress * 100).toStringAsFixed(0)}%', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
-          ]),
-        ],
-      ]),
-    );
+  String get shortName {
+    final parts = name.split(' ');
+    return parts.isEmpty ? name : parts.first;
   }
+}
+
+class _Entry {
+  final DateTime when;
+  final String kind; // 'долг' | 'оплат.'
+  final String label;
+  final int amount; // +долг, −оплат.
+  const _Entry({required this.when, required this.kind, required this.label, required this.amount});
 }

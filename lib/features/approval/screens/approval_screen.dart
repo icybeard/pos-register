@@ -168,14 +168,13 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     }
     await _load();
     widget.onCountChanged();
-    if (mounted) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Text(l.approvalBatchCount(approved)),
-          backgroundColor: PosColors.of(context).successFg,
-        ),
-      );
-    }
+    if (!context.mounted) return;
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Text(l.approvalBatchCount(approved)),
+        backgroundColor: PosColors.of(context).successFg,
+      ),
+    );
   }
 
   @override

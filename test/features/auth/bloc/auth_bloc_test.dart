@@ -46,7 +46,7 @@ void main() {
   // -------------------------------------------------------------------------
   group('CheckFirstRun', () {
     test('emits isFirstRun=true when no cashiers exist', () async {
-      mockApi.onListCashiers = () async => {'cashiers': []};
+      mockApi.onListCashiers = () async => {'cashiers': <Map<String, dynamic>>[]};
 
       final states = await collectStates(bloc, CheckFirstRun());
 

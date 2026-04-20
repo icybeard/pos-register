@@ -307,7 +307,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                     );
                     if (range != null) {
                       setState(() => _dateRange = range);
-                      _load();
+                      unawaited(_load());
                     }
                   },
                 ),

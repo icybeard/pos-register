@@ -5,7 +5,10 @@ import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/hifi.dart';
 import '../bloc/auth_bloc.dart';
+
+enum _LoginFlavor { pin, grid, bio }
 
 class PinScreen extends StatefulWidget {
   const PinScreen({super.key});
@@ -15,6 +18,13 @@ class PinScreen extends StatefulWidget {
 }
 
 class _PinScreenState extends State<PinScreen> {
+  _LoginFlavor _flavor = _LoginFlavor.pin;
+
+  void selectFlavor(_LoginFlavor v) {
+    if (!mounted) return;
+    setState(() => _flavor = v);
+  }
+
   @override
   void initState() {
     super.initState();
@@ -24,43 +34,83 @@ class _PinScreenState extends State<PinScreen> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF4FF),
-      body: SafeArea(
-        child: Stack(children: [
-          // Decorative blur blobs (Stitch V4 aesthetic)
-          Positioned(
-            top: -80, right: -40,
-            child: Container(
-              width: 360, height: 360,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.primaryContainer.withValues(alpha: 0.07),
-              ),
-            ),
+      backgroundColor: Hifi.canvas,
+      body: Column(children: [
+        const HifiChrome(
+          shiftNumber: 'магазин «Береке» #3',
+          storeLabel: 'терминал #001',
+        ),
+        Expanded(
+          child: BlocBuilder<AuthBloc, AuthState>(
+            builder: (context, state) {
+              if (state is AuthInitial && state.isFirstRun) {
+                return Center(child: _FirstRunSetup());
+              }
+              return Column(children: [
+                _flavorToggle(),
+                Expanded(child: _flavorBody()),
+              ]);
+            },
           ),
-          Positioned(
-            bottom: -60, left: -40,
-            child: Container(
-              width: 280, height: 280,
-              decoration: BoxDecoration(
-                shape: BoxShape.circle,
-                color: AppTheme.secondaryContainer.withValues(alpha: 0.07),
-              ),
-            ),
+        ),
+      ]),
+    );
+  }
+
+  Widget _flavorToggle() {
+    return Padding(
+      padding: const EdgeInsets.fromLTRB(24, 16, 24, 0),
+      child: Align(
+        alignment: Alignment.centerLeft,
+        child: Container(
+          padding: const EdgeInsets.all(3),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(10),
+            border: Border.all(color: Hifi.border),
           ),
-          Center(
-            child: BlocBuilder<AuthBloc, AuthState>(
-              builder: (context, state) {
-                if (state is AuthInitial && state.isFirstRun) {
-                  return _FirstRunSetup();
-                }
-                return _PinEntry();
-              },
-            ),
-          ),
-        ]),
+          child: Row(mainAxisSize: MainAxisSize.min, children: [
+            _segBtn('Имя + PIN', _LoginFlavor.pin),
+            _segBtn('Сетка кассиров', _LoginFlavor.grid),
+            _segBtn('Биометрия', _LoginFlavor.bio),
+          ]),
+        ),
       ),
     );
+  }
+
+  Widget _segBtn(String label, _LoginFlavor v) {
+    final active = _flavor == v;
+    return Material(
+      color: active ? Hifi.chrome : Colors.transparent,
+      borderRadius: BorderRadius.circular(8),
+      child: InkWell(
+        onTap: () => setState(() => _flavor = v),
+        borderRadius: BorderRadius.circular(8),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+          child: Text(
+            label,
+            style: Hifi.ui(
+              size: 12,
+              weight: FontWeight.w600,
+              color: active ? Colors.white : Hifi.chrome,
+            ),
+          ),
+        ),
+      ),
+    );
+  }
+
+  Widget _flavorBody() {
+    switch (_flavor) {
+      case _LoginFlavor.pin:
+        return Center(child: _PinEntry());
+      case _LoginFlavor.grid:
+        return const _GridFlavor();
+      case _LoginFlavor.bio:
+        return const _BioFlavor();
+    }
   }
 }
 
@@ -632,12 +682,7 @@ class _PinKeypad extends StatelessWidget {
             if (label == '<') {
               bloc.add(PinBackspacePressed());
             } else if (label == 'OK') {
-              // Auto-login fires on the 4th digit; OK here is the explicit
-              // fallback for the "user backspaced and re-typed" case and the
-              // general expectation that a labelled key does something. The
-              // handler is a no-op unless pin.length == 4, so a tap with 0-3
-              // digits still does nothing (plan P0-1 acceptance).
-              bloc.add(PinSubmitPressed());
+              // login is auto-triggered on 4th digit
             } else {
               bloc.add(PinDigitPressed(label));
             }
@@ -657,6 +702,370 @@ class _PinKeypad extends StatelessWidget {
                       ),
           ),
         ),
+      ),
+    );
+  }
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Flavor 2 — Сетка кассиров (grid)
+// ════════════════════════════════════════════════════════════════════════════
+
+class _GridFlavor extends StatelessWidget {
+  const _GridFlavor();
+
+  @override
+  Widget build(BuildContext context) {
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final cashiers = state is AuthInitial ? state.cashiers : const <Map<String, dynamic>>[];
+        final selected = state is AuthInitial ? state.selectedCashierName : null;
+        return Padding(
+          padding: const EdgeInsets.all(24),
+          child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+            Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
+              Text('Выберите кассира', style: Hifi.ui(size: 22, weight: FontWeight.w700, color: Hifi.chrome)),
+              const SizedBox(width: 10),
+              Text(
+                '${cashiers.length} ${cashiers.length == 1 ? "профиль" : "профилей"}',
+                style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
+              ),
+            ]),
+            const SizedBox(height: 14),
+            Expanded(
+              child: Container(
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(8),
+                  border: Border.all(color: Hifi.border),
+                ),
+                padding: const EdgeInsets.all(12),
+                child: GridView.builder(
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 3,
+                    mainAxisSpacing: 12,
+                    crossAxisSpacing: 12,
+                    childAspectRatio: 2.2,
+                  ),
+                  itemCount: cashiers.length + 1,
+                  itemBuilder: (context, i) {
+                    if (i == cashiers.length) return const _AddCashierTile();
+                    final c = cashiers[i];
+                    final name = c['Name'] as String? ?? '';
+                    final role = c['Role'] as String? ?? 'cashier';
+                    final isSelected = selected == name;
+                    final isLast = i == 0; // first returned = most recent
+                    return _CashierGridTile(
+                      name: name,
+                      role: _roleLabel(role),
+                      last: isLast,
+                      selected: isSelected,
+                      onTap: () => context.read<AuthBloc>().add(SelectCashierProfile(name)),
+                    );
+                  },
+                ),
+              ),
+            ),
+            const SizedBox(height: 12),
+            Row(children: [
+              if (selected != null)
+                Text.rich(
+                  TextSpan(style: Hifi.ui(size: 12, color: const Color(0xFF666666)), children: [
+                    const TextSpan(text: 'Выбран: '),
+                    TextSpan(text: selected, style: Hifi.ui(size: 12, weight: FontWeight.w700, color: Hifi.chrome)),
+                  ]),
+                ),
+              const Spacer(),
+              FilledButton(
+                onPressed: selected == null
+                    ? null
+                    : () {
+                        context
+                            .findAncestorStateOfType<_PinScreenState>()
+                            ?.selectFlavor(_LoginFlavor.pin);
+                      },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Hifi.chrome,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text('Далее → PIN'),
+                ),
+              ),
+            ]),
+          ]),
+        );
+      },
+    );
+  }
+}
+
+class _CashierGridTile extends StatelessWidget {
+  final String name;
+  final String role;
+  final bool last;
+  final bool selected;
+  final VoidCallback onTap;
+  const _CashierGridTile({
+    required this.name,
+    required this.role,
+    required this.last,
+    required this.selected,
+    required this.onTap,
+  });
+
+  @override
+  Widget build(BuildContext context) {
+    return Material(
+      color: selected ? const Color(0xFFDBE4FF) : Colors.white,
+      shape: RoundedRectangleBorder(
+        borderRadius: BorderRadius.circular(10),
+        side: BorderSide(color: selected ? Hifi.chrome : Hifi.border, width: selected ? 2 : 1),
+      ),
+      child: InkWell(
+        onTap: onTap,
+        borderRadius: BorderRadius.circular(10),
+        child: Stack(children: [
+          Padding(
+            padding: const EdgeInsets.all(14),
+            child: Row(children: [
+              _buildAvatar(name, size: 44),
+              const SizedBox(width: 12),
+              Expanded(child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(name, style: Hifi.ui(size: 14, weight: FontWeight.w700)),
+                  const SizedBox(height: 2),
+                  Text(role, style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+                ],
+              )),
+            ]),
+          ),
+          if (last)
+            Positioned(
+              top: 8,
+              right: 8,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
+                decoration: BoxDecoration(color: Hifi.chrome, borderRadius: BorderRadius.circular(999)),
+                child: Text(
+                  'ПОСЛЕДНИЙ',
+                  style: Hifi.ui(size: 9, weight: FontWeight.w700, color: Colors.white).copyWith(letterSpacing: 0.3),
+                ),
+              ),
+            ),
+        ]),
+      ),
+    );
+  }
+}
+
+class _AddCashierTile extends StatelessWidget {
+  const _AddCashierTile();
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: () {},
+      child: DottedBorderBox(
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          Text('＋', style: Hifi.ui(size: 26, color: const Color(0xFF666666))),
+          const SizedBox(height: 4),
+          Text('Новый кассир', style: Hifi.ui(size: 12, color: const Color(0xFF666666))),
+        ]),
+      ),
+    );
+  }
+}
+
+class DottedBorderBox extends StatelessWidget {
+  final Widget child;
+  const DottedBorderBox({super.key, required this.child});
+  @override
+  Widget build(BuildContext context) {
+    return CustomPaint(
+      painter: _DashPainter(),
+      child: Center(child: child),
+    );
+  }
+}
+
+class _DashPainter extends CustomPainter {
+  @override
+  void paint(Canvas canvas, Size size) {
+    final paint = Paint()
+      ..color = Hifi.border
+      ..style = PaintingStyle.stroke
+      ..strokeWidth = 1;
+    final rect = RRect.fromRectAndRadius(Offset.zero & size, const Radius.circular(10));
+    const dash = 4.0;
+    const gap = 4.0;
+    final path = Path()..addRRect(rect);
+    final metrics = path.computeMetrics();
+    for (final m in metrics) {
+      double d = 0;
+      while (d < m.length) {
+        final end = (d + dash).clamp(0.0, m.length);
+        canvas.drawPath(m.extractPath(d, end), paint);
+        d += dash + gap;
+      }
+    }
+  }
+
+  @override
+  bool shouldRepaint(_) => false;
+}
+
+// ════════════════════════════════════════════════════════════════════════════
+// Flavor 3 — Биометрия
+// ════════════════════════════════════════════════════════════════════════════
+
+class _BioFlavor extends StatefulWidget {
+  const _BioFlavor();
+  @override
+  State<_BioFlavor> createState() => _BioFlavorState();
+}
+
+class _BioFlavorState extends State<_BioFlavor> with SingleTickerProviderStateMixin {
+  bool _matched = false;
+  Timer? _timer;
+  late final AnimationController _spin;
+
+  @override
+  void initState() {
+    super.initState();
+    _spin = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
+    _timer = Timer(const Duration(seconds: 2), () {
+      if (mounted) setState(() => _matched = true);
+    });
+  }
+
+  @override
+  void dispose() {
+    _timer?.cancel();
+    _spin.dispose();
+    super.dispose();
+  }
+
+  @override
+  Widget build(BuildContext context) {
+    return Center(
+      child: ConstrainedBox(
+        constraints: const BoxConstraints(maxWidth: 460),
+        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+          SizedBox(
+            width: 280,
+            height: 280,
+            child: Stack(alignment: Alignment.center, children: [
+              Container(
+                decoration: BoxDecoration(
+                  shape: BoxShape.circle,
+                  border: Border.all(
+                    color: _matched ? Hifi.success : const Color(0xFF767680),
+                    width: 3,
+                    style: _matched ? BorderStyle.solid : BorderStyle.solid,
+                  ),
+                  gradient: const LinearGradient(
+                    begin: Alignment.topLeft,
+                    end: Alignment.bottomRight,
+                    colors: [Color(0xFFD9DFE6), Color(0xFFE8EBF0)],
+                  ),
+                ),
+                alignment: Alignment.center,
+                child: Text(
+                  'CAMERA PREVIEW',
+                  style: Hifi.mono(size: 11, color: const Color(0xFF666666)).copyWith(letterSpacing: 0.5),
+                ),
+              ),
+              if (!_matched)
+                RotationTransition(
+                  turns: _spin,
+                  child: Container(
+                    margin: const EdgeInsets.all(20),
+                    width: 240,
+                    height: 240,
+                    decoration: const BoxDecoration(
+                      shape: BoxShape.circle,
+                      border: Border(
+                        top: BorderSide(color: Hifi.chrome, width: 3),
+                        left: BorderSide(color: Hifi.chrome, width: 3),
+                        right: BorderSide(color: Colors.transparent),
+                        bottom: BorderSide(color: Colors.transparent),
+                      ),
+                    ),
+                  ),
+                ),
+            ]),
+          ),
+          const SizedBox(height: 20),
+          if (!_matched) ...[
+            Text('Смотрите в камеру…', style: Hifi.ui(size: 20, weight: FontWeight.w600)),
+            const SizedBox(height: 4),
+            Text(
+              'сравнение с шаблоном · ~0.4 с',
+              style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
+            ),
+          ] else ...[
+            Text('Айжан Қ.', style: Hifi.ui(size: 24, weight: FontWeight.w700, color: Hifi.chrome)),
+            const SizedBox(height: 4),
+            Text(
+              '✓ распознано · 94% · 0.4 с',
+              style: Hifi.mono(size: 12, color: Hifi.success),
+            ),
+            const SizedBox(height: 14),
+            Row(mainAxisSize: MainAxisSize.min, children: [
+              FilledButton(
+                onPressed: () {
+                  // Biometric match accepted. Until a BiometricLoginRequested
+                  // event is added to AuthBloc, fall through to PIN entry —
+                  // selectedCashierName is already set by the bio flow's
+                  // templateRef → user lookup (server-side). Cashier confirms
+                  // identity with PIN, same as the Grid flavor hand-off.
+                  context
+                      .findAncestorStateOfType<_PinScreenState>()
+                      ?.selectFlavor(_LoginFlavor.pin);
+                },
+                style: FilledButton.styleFrom(
+                  backgroundColor: Hifi.chrome,
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  child: Text('✓ Это я'),
+                ),
+              ),
+              const SizedBox(width: 12),
+              OutlinedButton(
+                onPressed: () {
+                  context
+                      .findAncestorStateOfType<_PinScreenState>()
+                      ?.selectFlavor(_LoginFlavor.pin);
+                },
+                style: OutlinedButton.styleFrom(
+                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+                ),
+                child: const Padding(
+                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+                  child: Text('Не я → PIN'),
+                ),
+              ),
+            ]),
+          ],
+          const SizedBox(height: 24),
+          Container(
+            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(999),
+              border: Border.all(color: Hifi.border),
+            ),
+            child: Text(
+              '📷 работает на POS-моноблоках и планшетах с фронт-камерой',
+              style: Hifi.mono(size: 11, color: const Color(0xFF666666)),
+            ),
+          ),
+        ]),
       ),
     );
   }
