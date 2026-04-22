@@ -19,6 +19,8 @@ flutter run -d macos    # or: linux / windows / chrome / <device>
 
 The register works fully offline against its local drift DB. To talk to a server, activate it from the admin panel.
 
+> **First `flutter pub get` (and first build per platform) compiles ~13 MB of SQLite3 Multiple Ciphers source from [third_party/sqlite3mc/](third_party/sqlite3mc/).** Takes ~60–90 s per target triple; cached afterward in `.dart_tool/hooks_runner/`. See [third_party/sqlite3mc/README.md](third_party/sqlite3mc/README.md) for why it's vendored (self-contained builds — no GitHub-release-CDN dependency).
+
 ## Run against a local server
 
 1. Start `pos-server` (see its README — Postgres on :5433, API on :5000).

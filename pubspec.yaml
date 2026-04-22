@@ -88,28 +88,73 @@ flutter:
   generate: true
   uses-material-design: true
 
-# Overrides for Xcode 26 compatibility on macOS.
+# Tell the sqlite3 pub package's native-asset hook to compile SQLite3 Multiple
+# Ciphers (sqlite3mc) from the vendored amalgamation in third_party/sqlite3mc/
+# instead of downloading a precompiled dylib from GitHub's release CDN.
 #
-# Problem: sqlite3_flutter_libs (pulled in transitively by drift_flutter) and
-# sqlcipher_flutter_libs both register an ObjC class named
-# `Sqlite3FlutterLibsPlugin`. Xcode 26 / Swift 6 modules hard-fail on the
-# collision; older Xcodes silently let it slide.
+# Why: release-assets.githubusercontent.com redirects to Azure Blob Storage,
+# which is blocked by some KZ ISPs — `flutter pub get` times out, which breaks
+# Xcode's Run Script build phase. Compiling locally removes the dependency on
+# the CDN entirely. First build per platform takes ~60-90s; cached thereafter.
 #
-# Fix: pin sqlite3_flutter_libs to 0.6.0+eol and sqlcipher_flutter_libs to
-# 0.7.0+eol — simolus3 renamed/namespaced the class in those "EOL" releases
-# specifically to resolve this. The `+eol` suffix marks these packages as
-# superseded by native Swift PM integration in future Flutter releases; for
-# now they are the last working versions.
+# Why sqlite3mc and not plain sqlite3 / SQLCipher proper:
+#   - We need SQLCipher-compatible PRAGMA key encryption (see database.dart).
+#   - sqlite3mc bundles its own AES, so iOS doesn't need Security framework,
+#     Linux doesn't need libcrypto, Windows doesn't need OpenSSL, Android
+#     doesn't need a crypto backend picker. One amalgamation, five platforms.
+#   - SQLITE3MC_USE_SQL_CIPHER=1 + CODEC_TYPE_SQLCIPHER selects the wire
+#     format that matches existing encrypted DBs created by the previous
+#     sqlcipher_flutter_libs 0.7.0+eol build path.
+#
+# See third_party/sqlite3mc/README.md for re-vendoring instructions.
+hooks:
+  user_defines:
+    sqlite3:
+      source: source
+      path: ./third_party/sqlite3mc/sqlite3mc_amalgamation.c
+      defines:
+        default_options: false  # sqlite3mc has its own curated defaults
+        defines:
+          # SQLCipher wire-format compatibility with existing encrypted DBs
+          - SQLITE3MC_USE_SQL_CIPHER=1
+          - SQLITE3MC_DEFAULT_CIPHER=CODEC_TYPE_SQLCIPHER
+          # Threading + temp storage (drift expectations)
+          - SQLITE_THREADSAFE=1
+          - SQLITE_TEMP_STORE=2
+          # Features drift / our queries use
+          - SQLITE_ENABLE_FTS5
+          - SQLITE_ENABLE_RTREE
+          - SQLITE_ENABLE_MATH_FUNCTIONS
+          - SQLITE_ENABLE_SESSION
+          - SQLITE_ENABLE_PREUPDATE_HOOK
+          - SQLITE_ENABLE_DBSTAT_VTAB
+          # Hardening / footprint
+          - SQLITE_DQS=0
+          - SQLITE_DEFAULT_MEMSTATUS=0
+          - SQLITE_MAX_EXPR_DEPTH=0
+          - SQLITE_OMIT_DEPRECATED
+          - SQLITE_OMIT_SHARED_CACHE
+          - SQLITE_OMIT_TRACE
+
+# Overrides:
+#
+# (1) drift 2.32 at runtime requires sqlite3 3.x (which is where the new
+#     native-asset hook lives). drift_dev stays at 2.31 because its
+#     analyzer 10+ dep conflicts with Flutter SDK's analyzer 8. Generated
+#     .g.dart files are forward-compatible (drift 2.32 runtime reads
+#     2.31-generated schemas fine).
+#
+# (2) sqlite3_flutter_libs / sqlcipher_flutter_libs pinned to their
+#     `+eol` shells. Xcode 26 / Swift 6 rejects the duplicate ObjC class
+#     `Sqlite3FlutterLibsPlugin` that older (non-eol) versions ship. The
+#     `+eol` versions are empty transitional shells that renamed the
+#     ObjC class out of the way. They no longer provide runtime sqlite
+#     symbols — that now comes from the hooks.user_defines block above
+#     compiling sqlite3mc locally. Keeping the pins prevents pub from
+#     resolving to older non-eol versions that would bring back the
+#     collision.
 dependency_overrides:
-  # +eol packages are empty transitional shells — their only job is to
-  # displace the older Flutter-specific build scripts that shipped the
-  # duplicate `Sqlite3FlutterLibsPlugin` ObjC class Xcode 26 rejects.
-  # Real SQLCipher support now lives in package:sqlite3 3.x.
-  sqlite3_flutter_libs: 0.6.0+eol
-  sqlcipher_flutter_libs: 0.7.0+eol
-  # Runtime drift can go to 2.32 (which requires sqlite3 3.x); drift_dev
-  # stays at 2.31 because its analyzer 10+ dep conflicts with Flutter SDK's
-  # analyzer 8. Generated .g.dart files are forward-compatible (drift 2.32
-  # runtime reads 2.31-generated schemas fine).
   drift: ^2.32.0
   sqlite3: ^3.0.0
+  sqlite3_flutter_libs: 0.6.0+eol
+  sqlcipher_flutter_libs: 0.7.0+eol

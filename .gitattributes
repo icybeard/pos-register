@@ -1,0 +1,6 @@
+# Vendored SQLite3 Multiple Ciphers amalgamation — byte-identical to upstream
+# release at github.com/utelle/SQLite3MultipleCiphers. Don't diff (too big) and
+# don't count toward repo language stats.
+third_party/sqlite3mc/sqlite3mc_amalgamation.c -diff linguist-vendored=true
+third_party/sqlite3mc/sqlite3mc_amalgamation.h -diff linguist-vendored=true
+third_party/sqlite3mc/sqlite3.h -diff linguist-vendored=true
