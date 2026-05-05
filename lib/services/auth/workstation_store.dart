@@ -43,6 +43,24 @@ class WorkstationInfo {
         storeName: j['store_name'] as String? ?? '',
         activatedAt: DateTime.parse(j['activated_at'] as String).toUtc(),
       );
+
+  // Value equality so AuthState.props comparisons short-circuit when the
+  // same workstation is loaded twice (e.g. after an in-memory rebuild that
+  // wraps it in a fresh RegisterActivated). Without this, BlocBuilder
+  // rebuilds even when nothing logically changed.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is WorkstationInfo &&
+        other.workstationId == workstationId &&
+        other.tenantId == tenantId &&
+        other.storeId == storeId &&
+        other.storeName == storeName &&
+        other.activatedAt == activatedAt;
+  }
+
+  @override
+  int get hashCode => Object.hash(workstationId, tenantId, storeId, storeName, activatedAt);
 }
 
 /// Secure-storage-backed persistence for [WorkstationInfo].

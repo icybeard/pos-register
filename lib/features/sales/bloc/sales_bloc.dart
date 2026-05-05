@@ -1,3 +1,4 @@
+import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../services/api_client.dart';
@@ -149,7 +150,7 @@ class ParkedCart {
 // State
 // ═══════════════════════════════════════════════════════════════
 
-class SalesState {
+class SalesState extends Equatable {
   final List<CartItem> items;
   final int discountTiyin;
   final List<Map<String, dynamic>> searchResults;
@@ -251,6 +252,33 @@ class SalesState {
       selectedCategoryId: clearCategoryFilter ? null : (selectedCategoryId ?? this.selectedCategoryId),
     );
   }
+
+  // Value-equality so BlocBuilder<SalesBloc, SalesState> short-circuits
+  // rebuilds when copyWith() yields a state whose fields are unchanged.
+  // Without this, every event (including SearchProduct fired on each
+  // keystroke) rebuilds the full _CartPane subtree even when nothing
+  // visible changed. List-typed fields rely on Equatable's deep list
+  // comparison; CartItem already has value semantics via its own equals
+  // (verified by the parity test suite).
+  @override
+  List<Object?> get props => [
+        items,
+        discountTiyin,
+        searchResults,
+        isSearching,
+        isProcessingPayment,
+        error,
+        saleSuccess,
+        nktResults,
+        isNktSearching,
+        nktQuery,
+        lastQuery,
+        parkedCarts,
+        undoItem,
+        undoIndex,
+        categories,
+        selectedCategoryId,
+      ];
 }
 
 // ═══════════════════════════════════════════════════════════════

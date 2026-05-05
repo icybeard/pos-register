@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import 'package:printing/printing.dart';
+import '../../../core/constants/app_constants.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
@@ -495,7 +496,16 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      // Controllers must be disposed when the dialog closes (any path —
+      // Cancel, Save success, Save error, barrier dismiss). Without this,
+      // each open leaks a TextEditingController + the listenable it
+      // registers with the framework.
+      nameC.dispose();
+      salePriceC.dispose();
+      purchasePriceC.dispose();
+      barcodeC.dispose();
+    });
   }
 
   void _showAddDialog(BuildContext context) {
@@ -636,19 +646,35 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                   'sale_unit': isWeighted ? 'kg' : 'pcs',
                   'sale_price': price,
                   'is_weighted': isWeighted,
-                  'vat_rate': 12,
+                  // Locked invariant: KZ retail uses 12% (standard) or 0%
+                  // (zero-rated) — never 10% or 20%. Standard VAT is the
+                  // default for new products; user can edit later for
+                  // zero-rated items via the edit dialog (P2).
+                  'vat_rate': AppConstants.vatRateStandard,
                   'is_active': true,
+                  // device_id pulled from DeviceIdStore in pos-register's
+                  // boot path; for products created via the admin-style
+                  // dialog here we don't have a workstation context, so
+                  // 'local-001' is a placeholder until the products screen
+                  // gains real owner-flow wiring (P2). The server stamps
+                  // the actual creator from the JWT regardless.
                   'device_id': 'local-001',
                 });
                 if (ctx.mounted) Navigator.pop(ctx);
-                await _load();
+                if (mounted) await _load();
               },
               child: Text(l.create),
             ),
           ],
         ),
       ),
-    );
+    ).whenComplete(() {
+      // See _showEditDialog: controllers must be disposed on every dialog
+      // exit path; otherwise each open leaks one + its listeners.
+      nameC.dispose();
+      priceC.dispose();
+      barcodeC.dispose();
+    });
   }
 }
 

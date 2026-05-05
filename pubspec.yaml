@@ -16,6 +16,11 @@ dependencies:
 
   # State management
   flutter_bloc: ^9.1.0
+  # Value equality for BLoC states. Without this every emit() of a state
+  # whose fields are unchanged still triggers a rebuild because BlocBuilder
+  # compares by identity. Equatable's `props` overrides == + hashCode in
+  # one place per state class.
+  equatable: ^2.0.7
 
   # HTTP — kept (http) for legacy ApiClient + dio for the new client with interceptors.
   http: ^1.3.0
@@ -50,6 +55,10 @@ dependencies:
 
   # Auth / sync infra
   flutter_secure_storage: ^9.2.2
+  # Biometric authentication — Face ID / Touch ID on iOS + macOS,
+  # BiometricPrompt on Android. Used as a local trust boundary to unlock
+  # a previously-stored access token without re-typing the PIN.
+  local_auth: ^2.3.0
   uuid: ^4.5.0
   pointycastle: ^3.9.1
   crypto: ^3.0.5

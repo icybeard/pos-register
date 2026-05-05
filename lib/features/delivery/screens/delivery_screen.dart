@@ -256,7 +256,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    final isWide = MediaQuery.of(context).size.width >= 700;
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
 
     return Scaffold(
       body: isWide ? _buildWide(context, cs) : _buildNarrow(context, cs),

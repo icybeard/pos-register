@@ -1,4 +1,10 @@
 <manifest xmlns:android="http://schemas.android.com/apk/res/android">
+    <!-- local_auth (BiometricPrompt) — used by the Bio login flavor on
+         the PIN screen to unlock a stored access token without re-typing
+         the 4-digit PIN. USE_BIOMETRIC covers fingerprint + face on
+         Android 9+. USE_FINGERPRINT is the pre-9 fallback. -->
+    <uses-permission android:name="android.permission.USE_BIOMETRIC"/>
+    <uses-permission android:name="android.permission.USE_FINGERPRINT"/>
     <application
         android:label="pos_system"
         android:name="${applicationName}"

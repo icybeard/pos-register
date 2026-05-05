@@ -2,9 +2,11 @@ import 'dart:async';
 import 'dart:convert';
 import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb;
+import 'package:equatable/equatable.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../services/api_client.dart';
 import '../../../services/auth/auth_token_store.dart';
+import '../../../services/auth/biometric_auth_service.dart';
 import '../../../services/auth/device_id_store.dart';
 import '../../../services/auth/lockout_store.dart';
 import '../../../services/auth/workstation_store.dart';
@@ -74,9 +76,27 @@ class CashierLoginRequested extends AuthEvent {
 /// activation screen. Dangerous — only the owner should surface this.
 class DeactivateRegisterRequested extends AuthEvent {}
 
-// === States ===
+/// Prompt biometric (Face ID / Touch ID / fingerprint) and, on success,
+/// unlock the previously-stored access token to re-establish the session
+/// without re-typing the PIN.
+///
+/// Pre-conditions: the user must have logged in via PIN at least once on
+/// this device so that [AuthTokenStore] has a token pair to restore from.
+/// If no token is saved, or the saved access token is expired, the handler
+/// surfaces a clear error and leaves the UI on [RegisterActivated] so the
+/// user can fall back to PIN.
+class BiometricLoginRequested extends AuthEvent {}
 
-sealed class AuthState {}
+// === States ===
+//
+// Every state extends Equatable so BlocBuilder's `==` short-circuits
+// rebuilds when the same logical state is emitted twice. Without this,
+// e.g. each PIN digit press emits a fresh `AuthInitial(...)` whose fields
+// are otherwise unchanged, but the rebuild still fires because identity
+// differs. Subclasses override `props` to list every field that
+// participates in equality.
+
+sealed class AuthState extends Equatable {}
 
 class AuthInitial extends AuthState {
   final String pin;
@@ -114,9 +134,24 @@ class AuthInitial extends AuthState {
 
   Duration get lockoutRemaining =>
       isLockedOut ? lockedUntil!.difference(DateTime.now()) : Duration.zero;
+
+  @override
+  List<Object?> get props => [
+        pin,
+        error,
+        isFirstRun,
+        cashiers,
+        openShifts,
+        selectedCashierName,
+        failedAttempts,
+        lockedUntil,
+      ];
 }
 
-class AuthLoading extends AuthState {}
+class AuthLoading extends AuthState {
+  @override
+  List<Object?> get props => const [];
+}
 
 class AuthAuthenticated extends AuthState {
   final String cashierId;
@@ -127,6 +162,9 @@ class AuthAuthenticated extends AuthState {
     required this.cashierName,
     required this.role,
   });
+
+  @override
+  List<Object?> get props => [cashierId, cashierName, role];
 }
 
 /// Fresh / never-activated device. Boot lands here the first time the app
@@ -137,6 +175,9 @@ class RegisterNotActivated extends AuthState {
   final String? error;
   final bool busy;
   RegisterNotActivated({this.error, this.busy = false});
+
+  @override
+  List<Object?> get props => [error, busy];
 }
 
 /// Device is activated but no user is logged in. Shows the login chooser
@@ -149,6 +190,9 @@ class RegisterActivated extends AuthState {
   final String? error;
   final bool busy;
   RegisterActivated(this.workstation, {this.error, this.busy = false});
+
+  @override
+  List<Object?> get props => [workstation, error, busy];
 }
 
 // === BLoC ===
@@ -159,6 +203,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final WorkstationStore? _workstation;
   final DeviceIdStore? _deviceIdStore;
   final LockoutStore? _lockoutStore;
+  final BiometricAuthService _biometric;
 
   /// Cached workstation info after activation — populated by hydrate /
   /// activation handlers so cashier-login has access to tenant_id without
@@ -199,10 +244,12 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     WorkstationStore? workstation,
     DeviceIdStore? deviceIdStore,
     LockoutStore? lockoutStore,
+    BiometricAuthService? biometric,
   })  : _tokens = tokens,
         _workstation = workstation,
         _deviceIdStore = deviceIdStore,
         _lockoutStore = lockoutStore,
+        _biometric = biometric ?? BiometricAuthService(),
         super(AuthInitial()) {
     on<PinDigitPressed>(_onDigitPressed);
     on<PinBackspacePressed>(_onBackspace);
@@ -217,6 +264,7 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     on<ActivateRegisterRequested>(_onActivateRegister);
     on<CashierLoginRequested>(_onCashierLogin);
     on<DeactivateRegisterRequested>(_onDeactivateRegister);
+    on<BiometricLoginRequested>(_onBiometricLogin);
   }
 
   // --- Error helpers -----------------------------------------------------
@@ -321,6 +369,79 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // we fix persistence, they'll re-activate with a fresh code.
     }
     emit(RegisterActivated(info));
+  }
+
+  // --- Biometric login (reuse saved session) ----------------------------
+
+  Future<void> _onBiometricLogin(
+      BiometricLoginRequested event, Emitter<AuthState> emit) async {
+    final ws = _activeWorkstation;
+    if (ws == null) {
+      emit(RegisterNotActivated(error: 'Сначала активируйте кассу'));
+      return;
+    }
+
+    // Can't unlock a session we never had. Caller should hide the bio
+    // button when tokens.load() == null; this guard is belt-and-braces.
+    final saved = await _tokens?.load();
+    if (saved == null) {
+      emit(RegisterActivated(ws,
+          error: 'Сначала войдите по PIN — Face ID запомнит сессию'));
+      return;
+    }
+    if (saved.isAccessExpired) {
+      // Could call /api/auth/refresh here once the client gets that method;
+      // for now, PIN is the fallback. Short-lived cashier access tokens
+      // mean this fires after ~15 min of idle — acceptable for MVP.
+      emit(RegisterActivated(ws,
+          error: 'Сессия истекла — войдите по PIN'));
+      return;
+    }
+
+    final available = await _biometric.isAvailable();
+    if (!available) {
+      emit(RegisterActivated(ws,
+          error: 'Биометрия не настроена на этом устройстве'));
+      return;
+    }
+
+    emit(RegisterActivated(ws, busy: true));
+    final hasFace = await _biometric.hasFace();
+    final outcome = await _biometric.authenticate(
+      reason: hasFace
+          ? 'Подтвердите вход по Face ID'
+          : 'Подтвердите вход по отпечатку',
+    );
+
+    switch (outcome) {
+      case BiometricOutcome.success:
+        _api.setAccessToken(saved.accessToken);
+        _ownerTenantId = saved.tenantId;
+        _totalFailedAttempts = 0;
+        _lockedUntil = null;
+        _clearPersistedLockout();
+        emit(AuthAuthenticated(
+          cashierId: saved.userId ?? '',
+          cashierName: saved.userId ?? 'cashier',
+          role: saved.role ?? 'cashier',
+        ));
+      case BiometricOutcome.userCancelled:
+        // Silent return — user dismissed deliberately, no error UI.
+        emit(RegisterActivated(ws));
+      case BiometricOutcome.notEnrolled:
+        emit(RegisterActivated(ws,
+            error: 'Добавьте отпечаток / Face ID в настройках устройства'));
+      case BiometricOutcome.lockedOut:
+      case BiometricOutcome.permanentlyLockedOut:
+        emit(RegisterActivated(ws,
+            error: 'Биометрия временно заблокирована — разблокируйте устройство паролем'));
+      case BiometricOutcome.notSupported:
+        emit(RegisterActivated(ws,
+            error: 'Устройство не поддерживает биометрию'));
+      case BiometricOutcome.otherError:
+        emit(RegisterActivated(ws,
+            error: 'Не удалось выполнить вход по биометрии'));
+    }
   }
 
   Future<void> _onDeactivateRegister(
@@ -623,6 +744,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
         openShifts: _openShifts,
         selectedCashierName: current.selectedCashierName,
         failedAttempts: _totalFailedAttempts,
+        // Always thread the lockout deadline through. Without this the
+        // UI countdown vanishes the moment a digit is queued during a
+        // lockout race — a real bug observed on slow taps.
+        lockedUntil: _lockedUntil,
       ));
       return;
     }

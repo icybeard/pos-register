@@ -23,6 +23,7 @@ import 'services/auth/workstation_store.dart';
 import 'services/auth/bcrypt_pin_verifier.dart';
 import 'services/products/product_catalog_service.dart';
 import 'services/sales/sales_service.dart';
+import 'services/sync/sync_status_service.dart';
 import 'services/override/manager_override_service.dart';
 import 'services/override/oversell_guard.dart';
 import 'data/repositories/cashier_repository.dart';
@@ -126,6 +127,7 @@ class _PosAppState extends State<PosApp> {
   late final WorkstationStore _workstationStore;
   late final DeviceIdStore _deviceIdStore;
   late final LockoutStore _lockoutStore;
+  late final SyncStatusService _syncStatusService;
 
   /// Memoised SalesGuards bundle. Built once in [initState] and rebuilt
   /// only when `_activeTenantId` / `_activeWorkstationId` change (via
@@ -163,6 +165,7 @@ class _PosAppState extends State<PosApp> {
     // mints a fresh 256-bit key on first boot and keeps it in the
     // platform secure store (see DatabaseKeyStore).
     _db = AppDatabase(keyStore: DatabaseKeyStore());
+    _syncStatusService = SyncStatusService(_db, _apiClient);
     _salesGuards = _buildSalesGuards();
     _loadTenantId();
   }
@@ -230,6 +233,10 @@ class _PosAppState extends State<PosApp> {
         // storage) — calling _buildSalesGuards() on every build() would
         // leak the underlying repos on each frame.
         RepositoryProvider<SalesGuards>.value(value: _salesGuards),
+        // Sync status aggregator — read by SyncStatusChip in the top
+        // chrome of every screen to render the combined online/pull/
+        // outbox indicator. Stateless service, safe to share app-wide.
+        RepositoryProvider<SyncStatusService>.value(value: _syncStatusService),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -272,6 +279,27 @@ class _PosAppState extends State<PosApp> {
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
           themeMode: ThemeMode.system,
+          // Prevent the on-screen keyboard from resizing the app body on
+          // iOS/Android. POS layouts are bottom-heavy (cart + payment
+          // pad, activation-code numpad, Z-report KPIs) — letting the
+          // keyboard push content up triggers RenderFlex overflows and
+          // looks broken on an iPad. Keyboard floats ABOVE the UI instead.
+          //
+          // Trade-off: if an input field sits very close to the bottom
+          // edge, the keyboard will cover it. iOS still echoes the typed
+          // text in the field's "selection bar" so users can see what
+          // they're typing; visible input fields should live in the
+          // top/middle of the screen (they already do, by design).
+          builder: (context, child) {
+            final media = MediaQuery.of(context);
+            return MediaQuery(
+              data: media.copyWith(
+                viewInsets: EdgeInsets.zero,
+                viewPadding: media.viewPadding,
+              ),
+              child: child ?? const SizedBox.shrink(),
+            );
+          },
           localizationsDelegates: const [
             AppLocalizations.delegate,
             GlobalMaterialLocalizations.delegate,
@@ -435,15 +463,53 @@ class _MainShellState extends State<_MainShell> {
   static const _autoLockDuration = Duration(minutes: 5);
   Timer? _inactivityTimer;
 
+  /// Memoized product-catalog service. Built once when the shell mounts
+  /// (or when the tenant id changes via didUpdateWidget below). Without
+  /// this, _buildPage() constructed a fresh service on every rebuild —
+  /// each inactivity-timer reset triggered build(), which re-instantiated
+  /// the service, leaking any drift watchers it set up internally.
+  late ProductCatalogService _catalogService;
+
   bool get _isOwner => widget.role == 'owner' || widget.role == 'admin';
+
+  ProductCatalogService _buildCatalogService() {
+    if (widget.tenantId == null) {
+      return LegacyApiProductCatalogService(widget.api);
+    }
+    return createProductCatalogService(
+      flags: widget.flags,
+      db: widget.db,
+      tenantId: widget.tenantId!,
+      api: widget.api,
+    );
+  }
 
   @override
   void initState() {
     super.initState();
     _viewMode = _isOwner ? ViewMode.owner : ViewMode.cashier;
+    _catalogService = _buildCatalogService();
     _loadShift();
-    if (_isOwner) { _loadPendingCount(); }
+    // Pending-products count is no longer polled eagerly on login. The
+    // Approval screen refreshes its own count via the onCountChanged
+    // callback when the owner actually opens that tab. Keeping the poll
+    // in initState caused a noisy 404 in the log on every owner login
+    // (the server-side approval queue isn't built yet) and delayed the
+    // badge by exactly one round-trip for zero user benefit.
     _resetInactivityTimer();
+  }
+
+  @override
+  void didUpdateWidget(covariant _MainShell oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Rebuild the catalog service only when its inputs actually change —
+    // tenant id is the only one that can flip (api/db/flags are owned by
+    // the parent _PosAppState and are stable for the lifetime of the
+    // process). This prevents stale closures over old tenantId after
+    // owner login completes mid-session.
+    if (oldWidget.tenantId != widget.tenantId) {
+      _catalogService = _buildCatalogService();
+    }
   }
 
   @override
@@ -533,7 +599,7 @@ class _MainShellState extends State<_MainShell> {
 
   @override
   Widget build(BuildContext context) {
-    final isWide = MediaQuery.of(context).size.width >= 700;
+    final isWide = MediaQuery.sizeOf(context).width >= 700;
 
     // Wrap in Listener for auto-lock + CallbackShortcuts for keyboard nav
     return CallbackShortcuts(
@@ -901,16 +967,10 @@ class _MainShellState extends State<_MainShell> {
     _PageId.products => ProductsScreen(
       api: widget.api,
       // T4.4c: factory picks drift vs. legacy HTTP based on FeatureFlags.
-      // Falls back to the legacy impl when tenantId isn't loaded yet (pre-login
-      // screens don't render ProductsScreen, but defensively `null` means legacy).
-      catalog: widget.tenantId == null
-          ? LegacyApiProductCatalogService(widget.api)
-          : createProductCatalogService(
-              flags: widget.flags,
-              db: widget.db,
-              tenantId: widget.tenantId!,
-              api: widget.api,
-            ),
+      // Memoized in initState/didUpdateWidget — see [_catalogService].
+      // Building it inside _buildPage (which runs on every rebuild) leaked
+      // a fresh drift-watching service on each inactivity-timer tick.
+      catalog: _catalogService,
     ),
     _PageId.cashiers => CashiersScreen(api: widget.api),
     _PageId.debts    => DebtsScreen(api: widget.api, cashierId: widget.cashierId),

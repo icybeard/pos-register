@@ -196,6 +196,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
   }
 
   void _completePayment() {
+    // Belt-and-braces: callers (Future.delayed terminal-stub, _payCashOnly,
+    // _payCardOnly etc.) check `mounted` before calling, but a race between
+    // the check and this body could still hit a disposed widget — verify
+    // again before we touch state or context.
+    if (!mounted) return;
     setState(() => _processing = false);
     _timeoutTimer?.cancel();
 

@@ -126,7 +126,29 @@ LazyDatabase _openConnection(DatabaseKeyStore keyStore) {
       file,
       logStatements: false,
       setup: (rawDb) {
-        // Keying MUST come first, before any other PRAGMA or query.
+        // --- SQLCipher compat preamble (sqlite3mc) ---
+        // We compile sqlite3mc with SQLITE3MC_USE_SQL_CIPHER=1 +
+        // SQLITE3MC_DEFAULT_CIPHER=CODEC_TYPE_SQLCIPHER, which makes
+        // `PRAGMA key` behave SQLCipher-style. But the default is
+        // SQLCipher-v4 (PBKDF2-HMAC-SHA512, 256k rounds, 4096-byte page).
+        // The previous build path (sqlcipher_flutter_libs 0.7.0+eol,
+        // bundled SQLCipher) also defaulted to v4 — DBs created before
+        // today's vendoring round-trip cleanly. Still, pin the legacy
+        // level explicitly so future sqlite3mc version bumps can't
+        // silently flip the default and break the on-disk format.
+        // These MUST come before `PRAGMA key`; sqlite3mc refuses to
+        // change the cipher scheme after the key is set.
+        try {
+          rawDb.execute("PRAGMA cipher = 'sqlcipher'");
+          rawDb.execute('PRAGMA legacy = 4');
+        } on Object {
+          // Non-fatal: on a vanilla sqlite3 build (e.g. in unit tests that
+          // don't use sqlite3mc) these PRAGMAs are unknown and ignored by
+          // older engines but may throw on newer ones. PRAGMA key below
+          // will still work with the library's default cipher.
+        }
+
+        // Keying MUST come next, before any other PRAGMA or query.
         // Using the quoted form so arbitrary bytes in the key don't need
         // hex-encoding (SQLCipher treats the value as a passphrase,
         // derives the encryption key via PBKDF2).

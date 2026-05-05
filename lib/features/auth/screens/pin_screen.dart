@@ -6,6 +6,7 @@ import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
+import '../../../services/auth/biometric_auth_service.dart';
 import '../bloc/auth_bloc.dart';
 
 enum _LoginFlavor { pin, grid, bio }
@@ -18,7 +19,11 @@ class PinScreen extends StatefulWidget {
 }
 
 class _PinScreenState extends State<PinScreen> {
-  _LoginFlavor _flavor = _LoginFlavor.pin;
+  // Default to the cashier grid — quickest path for the "switch cashier"
+  // scenario (tap your tile, enter 4-digit PIN). Users who want the full
+  // Имя + PIN form can tap that tab explicitly. Biometrics is tab 3 —
+  // prompts Face ID / Touch ID on supported devices.
+  _LoginFlavor _flavor = _LoginFlavor.grid;
 
   void selectFlavor(_LoginFlavor v) {
     if (!mounted) return;
@@ -107,9 +112,9 @@ class _PinScreenState extends State<PinScreen> {
       case _LoginFlavor.pin:
         return Center(child: _PinEntry());
       case _LoginFlavor.grid:
-        return const _GridFlavor();
+        return _GridFlavor(onSwitchToPin: () => selectFlavor(_LoginFlavor.pin));
       case _LoginFlavor.bio:
-        return const _BioFlavor();
+        return _BioFlavor(onSwitchToPin: () => selectFlavor(_LoginFlavor.pin));
     }
   }
 }
@@ -117,7 +122,10 @@ class _PinScreenState extends State<PinScreen> {
 class _PinEntry extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
-    final size = MediaQuery.of(context).size;
+    // sizeOf() subscribes only to the size aspect of MediaQueryData, not
+    // every aspect (orientation, keyboard insets, font scale, ...). Far
+    // fewer rebuilds when the keyboard appears/disappears.
+    final size = MediaQuery.sizeOf(context);
     final isWide = size.width >= 800;
 
     if (isWide) {
@@ -312,7 +320,7 @@ class _WidePinLayout extends StatelessWidget {
                             onTap: () => context.read<AuthBloc>().add(SelectCashierProfile(name)),
                             child: _ProfileCard(
                               name: name,
-                              subtitle: _roleLabel(role),
+                              subtitle: _roleLabel(l, role),
                               selected: isSelected,
                               shiftOpenedAt: shiftOpenedAt,
                             ),
@@ -414,11 +422,15 @@ class _NarrowPinLayout extends StatelessWidget {
   }
 }
 
-String _roleLabel(String role) => switch (role) {
-  'owner' => 'Владелец',
-  'admin' => 'Администратор',
-  'senior_cashier' => 'Ст. кассир',
-  _ => 'Кассир',
+/// Localized role label. Mirrors `_MainShellState._roleLabel` in
+/// `main.dart`. Takes `AppLocalizations` rather than a BuildContext so
+/// callers in narrow widget builders can pass the already-resolved
+/// instance and we don't repeat `AppLocalizations.of(context)!` per tile.
+String _roleLabel(AppLocalizations l, String role) => switch (role) {
+  'owner' => l.roleOwner,
+  'admin' => l.roleAdmin,
+  'senior_cashier' => l.roleSeniorCashier,
+  _ => l.roleCashier,
 };
 
 class _ProfileCard extends StatelessWidget {
@@ -712,10 +724,15 @@ class _PinKeypad extends StatelessWidget {
 // ════════════════════════════════════════════════════════════════════════════
 
 class _GridFlavor extends StatelessWidget {
-  const _GridFlavor();
+  // Parent-supplied callback to flip the segmented toggle to PIN entry.
+  // Replaces the previous `findAncestorStateOfType<_PinScreenState>()` walk —
+  // grid tile children stay decoupled from _PinScreenState's private API.
+  final VoidCallback onSwitchToPin;
+  const _GridFlavor({required this.onSwitchToPin});
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     return BlocBuilder<AuthBloc, AuthState>(
       builder: (context, state) {
         final cashiers = state is AuthInitial ? state.cashiers : const <Map<String, dynamic>>[];
@@ -757,7 +774,7 @@ class _GridFlavor extends StatelessWidget {
                     final isLast = i == 0; // first returned = most recent
                     return _CashierGridTile(
                       name: name,
-                      role: _roleLabel(role),
+                      role: _roleLabel(l, role),
                       last: isLast,
                       selected: isSelected,
                       onTap: () => context.read<AuthBloc>().add(SelectCashierProfile(name)),
@@ -777,13 +794,7 @@ class _GridFlavor extends StatelessWidget {
                 ),
               const Spacer(),
               FilledButton(
-                onPressed: selected == null
-                    ? null
-                    : () {
-                        context
-                            .findAncestorStateOfType<_PinScreenState>()
-                            ?.selectFlavor(_LoginFlavor.pin);
-                      },
+                onPressed: selected == null ? null : onSwitchToPin,
                 style: FilledButton.styleFrom(
                   backgroundColor: Hifi.chrome,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
@@ -918,156 +929,184 @@ class _DashPainter extends CustomPainter {
 }
 
 // ════════════════════════════════════════════════════════════════════════════
-// Flavor 3 — Биометрия
+// Flavor 3 — Биометрия (real Face ID / Touch ID / fingerprint)
 // ════════════════════════════════════════════════════════════════════════════
+//
+// Flow:
+//   1. On mount, probe BiometricAuthService to learn if the device has
+//      any enrolled biometric. Cache the result for the widget lifetime.
+//   2. Render one of three states:
+//        – not supported / not enrolled → explanatory message + "Use PIN"
+//        – ready                        → big icon + "Войти по Face ID" button
+//        – in-progress                  → spinner while the OS prompt is up
+//   3. Button dispatches [BiometricLoginRequested] to AuthBloc. The bloc
+//      prompts the OS, verifies saved tokens, and emits AuthAuthenticated
+//      on success — the _PinScreenState doesn't need to do anything with
+//      the resulting state; the outer auth listener in main.dart already
+//      routes AuthAuthenticated → main shell.
+//
+// Enrollment: there's no "enroll Face ID on this device" step. Any cashier
+// who successfully logs in via PIN has their session tokens saved to secure
+// storage by AuthBloc's _onCashierLogin; that's the point of trust-transfer
+// the Face ID prompt unlocks. Hand-off is per-device: the last PIN login
+// wins — a fresh PIN login from a different cashier overwrites the saved
+// tokens, and the next Face ID unlock authenticates as that cashier.
 
 class _BioFlavor extends StatefulWidget {
-  const _BioFlavor();
+  // Parent-supplied callback used by the "Войти по PIN" fallback button.
+  // Decouples the bio flavor from _PinScreenState's private API.
+  final VoidCallback onSwitchToPin;
+  const _BioFlavor({required this.onSwitchToPin});
   @override
   State<_BioFlavor> createState() => _BioFlavorState();
 }
 
-class _BioFlavorState extends State<_BioFlavor> with SingleTickerProviderStateMixin {
-  bool _matched = false;
-  Timer? _timer;
-  late final AnimationController _spin;
+class _BioFlavorState extends State<_BioFlavor> {
+  final _biometric = BiometricAuthService();
+  bool _probing = true;
+  bool _available = false;
+  bool _hasFace = false;
 
   @override
   void initState() {
     super.initState();
-    _spin = AnimationController(vsync: this, duration: const Duration(seconds: 1))..repeat();
-    _timer = Timer(const Duration(seconds: 2), () {
-      if (mounted) setState(() => _matched = true);
+    _probe();
+  }
+
+  Future<void> _probe() async {
+    final available = await _biometric.isAvailable();
+    final hasFace = available ? await _biometric.hasFace() : false;
+    if (!mounted) return;
+    setState(() {
+      _probing = false;
+      _available = available;
+      _hasFace = hasFace;
     });
   }
 
-  @override
-  void dispose() {
-    _timer?.cancel();
-    _spin.dispose();
-    super.dispose();
-  }
+  void _switchToPin() => widget.onSwitchToPin();
 
   @override
   Widget build(BuildContext context) {
-    return Center(
-      child: ConstrainedBox(
-        constraints: const BoxConstraints(maxWidth: 460),
-        child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          SizedBox(
-            width: 280,
-            height: 280,
-            child: Stack(alignment: Alignment.center, children: [
-              Container(
-                decoration: BoxDecoration(
-                  shape: BoxShape.circle,
-                  border: Border.all(
-                    color: _matched ? Hifi.success : const Color(0xFF767680),
-                    width: 3,
-                    style: _matched ? BorderStyle.solid : BorderStyle.solid,
-                  ),
-                  gradient: const LinearGradient(
-                    begin: Alignment.topLeft,
-                    end: Alignment.bottomRight,
-                    colors: [Color(0xFFD9DFE6), Color(0xFFE8EBF0)],
-                  ),
-                ),
-                alignment: Alignment.center,
-                child: Text(
-                  'CAMERA PREVIEW',
-                  style: Hifi.mono(size: 11, color: const Color(0xFF666666)).copyWith(letterSpacing: 0.5),
-                ),
-              ),
-              if (!_matched)
-                RotationTransition(
-                  turns: _spin,
-                  child: Container(
-                    margin: const EdgeInsets.all(20),
-                    width: 240,
-                    height: 240,
-                    decoration: const BoxDecoration(
-                      shape: BoxShape.circle,
-                      border: Border(
-                        top: BorderSide(color: Hifi.chrome, width: 3),
-                        left: BorderSide(color: Hifi.chrome, width: 3),
-                        right: BorderSide(color: Colors.transparent),
-                        bottom: BorderSide(color: Colors.transparent),
-                      ),
-                    ),
-                  ),
-                ),
-            ]),
-          ),
-          const SizedBox(height: 20),
-          if (!_matched) ...[
-            Text('Смотрите в камеру…', style: Hifi.ui(size: 20, weight: FontWeight.w600)),
-            const SizedBox(height: 4),
-            Text(
-              'сравнение с шаблоном · ~0.4 с',
-              style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
-            ),
-          ] else ...[
-            Text('Айжан Қ.', style: Hifi.ui(size: 24, weight: FontWeight.w700, color: Hifi.chrome)),
-            const SizedBox(height: 4),
-            Text(
-              '✓ распознано · 94% · 0.4 с',
-              style: Hifi.mono(size: 12, color: Hifi.success),
-            ),
-            const SizedBox(height: 14),
-            Row(mainAxisSize: MainAxisSize.min, children: [
-              FilledButton(
-                onPressed: () {
-                  // Biometric match accepted. Until a BiometricLoginRequested
-                  // event is added to AuthBloc, fall through to PIN entry —
-                  // selectedCashierName is already set by the bio flow's
-                  // templateRef → user lookup (server-side). Cashier confirms
-                  // identity with PIN, same as the Grid flavor hand-off.
-                  context
-                      .findAncestorStateOfType<_PinScreenState>()
-                      ?.selectFlavor(_LoginFlavor.pin);
-                },
-                style: FilledButton.styleFrom(
-                  backgroundColor: Hifi.chrome,
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  child: Text('✓ Это я'),
-                ),
-              ),
-              const SizedBox(width: 12),
-              OutlinedButton(
-                onPressed: () {
-                  context
-                      .findAncestorStateOfType<_PinScreenState>()
-                      ?.selectFlavor(_LoginFlavor.pin);
-                },
-                style: OutlinedButton.styleFrom(
-                  shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
-                ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
-                  child: Text('Не я → PIN'),
-                ),
-              ),
-            ]),
-          ],
-          const SizedBox(height: 24),
-          Container(
-            padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(999),
-              border: Border.all(color: Hifi.border),
-            ),
-            child: Text(
-              '📷 работает на POS-моноблоках и планшетах с фронт-камерой',
-              style: Hifi.mono(size: 11, color: const Color(0xFF666666)),
+    return BlocBuilder<AuthBloc, AuthState>(
+      builder: (context, state) {
+        final busy = state is RegisterActivated && state.busy;
+        final error = state is RegisterActivated ? state.error : null;
+        return Center(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Padding(
+              padding: const EdgeInsets.all(24),
+              child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
+                if (_probing)
+                  const Padding(
+                    padding: EdgeInsets.all(60),
+                    child: CircularProgressIndicator(),
+                  )
+                else if (!_available)
+                  _unsupportedBlock()
+                else
+                  _readyBlock(busy: busy, error: error),
+              ]),
             ),
           ),
-        ]),
-      ),
+        );
+      },
     );
+  }
+
+  Widget _unsupportedBlock() {
+    return Column(children: [
+      Icon(Icons.fingerprint, size: 80, color: Hifi.border),
+      const SizedBox(height: 16),
+      Text(
+        'Биометрия недоступна на этом устройстве',
+        style: Hifi.ui(size: 18, weight: FontWeight.w600, color: Hifi.chrome),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 8),
+      Text(
+        'Добавьте Face ID / отпечаток в настройках, либо войдите по PIN',
+        style: Hifi.ui(size: 13, color: const Color(0xFF666666)),
+        textAlign: TextAlign.center,
+      ),
+      const SizedBox(height: 20),
+      OutlinedButton(
+        onPressed: _switchToPin,
+        style: OutlinedButton.styleFrom(
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        child: const Padding(
+          padding: EdgeInsets.symmetric(horizontal: 24, vertical: 14),
+          child: Text('Войти по PIN'),
+        ),
+      ),
+    ]);
+  }
+
+  Widget _readyBlock({required bool busy, String? error}) {
+    final icon = _hasFace ? Icons.face_retouching_natural : Icons.fingerprint;
+    final label = _hasFace ? 'Войти по Face ID' : 'Войти по отпечатку';
+    return Column(children: [
+      Container(
+        width: 160,
+        height: 160,
+        decoration: BoxDecoration(
+          shape: BoxShape.circle,
+          color: Colors.white,
+          border: Border.all(color: Hifi.border, width: 2),
+        ),
+        alignment: Alignment.center,
+        child: busy
+            ? const CircularProgressIndicator()
+            : Icon(icon, size: 80, color: Hifi.chrome),
+      ),
+      const SizedBox(height: 20),
+      Text(
+        _hasFace ? 'Face ID' : 'Отпечаток пальца',
+        style: Hifi.ui(size: 22, weight: FontWeight.w700, color: Hifi.chrome),
+      ),
+      const SizedBox(height: 4),
+      Text(
+        'разблокирует последнюю сессию',
+        style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
+      ),
+      const SizedBox(height: 20),
+      FilledButton(
+        onPressed: busy
+            ? null
+            : () => context.read<AuthBloc>().add(BiometricLoginRequested()),
+        style: FilledButton.styleFrom(
+          backgroundColor: Hifi.chrome,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
+        ),
+        child: Padding(
+          padding: const EdgeInsets.symmetric(horizontal: 28, vertical: 14),
+          child: Text(label),
+        ),
+      ),
+      const SizedBox(height: 10),
+      TextButton(
+        onPressed: _switchToPin,
+        child: Text('Войти по PIN', style: Hifi.ui(size: 13, color: Hifi.chrome)),
+      ),
+      if (error != null) ...[
+        const SizedBox(height: 14),
+        Container(
+          padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+          decoration: BoxDecoration(
+            color: const Color(0xFFFEF2F2),
+            borderRadius: BorderRadius.circular(6),
+            border: Border.all(color: const Color(0xFFFCA5A5)),
+          ),
+          child: Text(
+            error,
+            style: Hifi.ui(size: 12, color: const Color(0xFFB91C1C)),
+            textAlign: TextAlign.center,
+          ),
+        ),
+      ],
+    ]);
   }
 }
 

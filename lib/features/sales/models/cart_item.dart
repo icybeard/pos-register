@@ -1,3 +1,5 @@
+import '../../../core/utils/money.dart';
+
 /// Позиция в текущем чеке (корзине) — immutable
 class CartItem {
   final String productId;
@@ -56,29 +58,59 @@ class CartItem {
     );
   }
 
-  /// Итого по позиции в тиынах
-  int get total {
-    int result;
-    if (isWeighted) {
-      // Весовой: (вес_г * цена_кг + 500) / 1000
-      result = ((weightGrams * basePrice) + 500) ~/ 1000;
-    } else {
-      // Штучный: кол-во * цена
-      result = (quantity * basePrice).round();
-    }
-    result -= discount;
-    return result < 0 ? 0 : result;
-  }
+  /// Итого по позиции в тиынах. Делегируется в [Money.calculateItemTotal] —
+  /// тот же путь использует .NET `Calculator.ItemTotal` и Go-сервер,
+  /// поэтому in-memory корзина и записанный чек дают тот же результат
+  /// до тиыны (см. test/calculator_parity_test.dart).
+  ///
+  /// Для штучных товаров `quantity` всегда целое (кол-во штук), хранится
+  /// как `double` только ради удобного сравнения со `stockQty`. Преобразуем
+  /// через `.toInt()` — никаких float-операций над деньгами.
+  int get total => Money.calculateItemTotal(
+        isWeighted: isWeighted,
+        basePriceTiyin: basePrice,
+        quantity: isWeighted ? 0 : quantity.toInt(),
+        weightGrams: weightGrams,
+        discountTiyin: discount,
+      );
 
-  /// Сумма НДС «изнутри»
-  int get vatAmount {
-    if (vatRate == 0) return 0;
-    return ((total * vatRate) / (100 + vatRate)).round();
-  }
+  /// Сумма НДС «изнутри». Делегируется в [Money.calculateVat],
+  /// которое выполняет truncating integer division — байт-в-байт
+  /// совпадает с .NET `Calculator.VatFromInside`.
+  int get vatAmount => Money.calculateVat(total, vatRate);
 
   /// Цена за единицу для отображения
   int get displayPrice => basePrice;
 
   /// Whether quantity exceeds available stock
   bool get isOverStock => stockQty >= 0 && quantity > stockQty;
+
+  // Value equality so SalesState's `items` list comparison via Equatable
+  // short-circuits when the cart contents are unchanged. Without this,
+  // copyWith() with the same list creates new identity references and
+  // every BlocBuilder rebuilds. All fields contribute — `stockQty` too,
+  // because a stock-freshness pull that updates the warning level should
+  // re-render the row.
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is CartItem &&
+        other.productId == productId &&
+        other.name == name &&
+        other.ntin == ntin &&
+        other.unit == unit &&
+        other.basePrice == basePrice &&
+        other.isWeighted == isWeighted &&
+        other.vatRate == vatRate &&
+        other.quantity == quantity &&
+        other.weightGrams == weightGrams &&
+        other.discount == discount &&
+        other.stockQty == stockQty;
+  }
+
+  @override
+  int get hashCode => Object.hash(
+        productId, name, ntin, unit, basePrice, isWeighted, vatRate,
+        quantity, weightGrams, discount, stockQty,
+      );
 }
