@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// POS System Kazakhstan — "Slate & Action" Design System
 ///
@@ -114,9 +113,9 @@ class AppTheme {
 
   static ThemeData _buildTheme(ColorScheme cs) {
     final isDark = cs.brightness == Brightness.dark;
-    final baseTextTheme = GoogleFonts.interTextTheme(
-      isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme,
-    );
+    final baseTextTheme =
+        (isDark ? ThemeData.dark().textTheme : ThemeData.light().textTheme)
+            .apply(fontFamily: 'Inter');
 
     final textTheme = baseTextTheme.copyWith(
       displayLarge: baseTextTheme.displayLarge!.copyWith(
@@ -160,7 +159,7 @@ class AppTheme {
       ),
     );
 
-    final buttonTextStyle = GoogleFonts.inter(
+    const buttonTextStyle = TextStyle(fontFamily: 'Inter', 
       fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2,
     );
 
@@ -177,7 +176,7 @@ class AppTheme {
         elevation: 0,
         scrolledUnderElevation: 0.5,
         centerTitle: false,
-        titleTextStyle: GoogleFonts.inter(
+        titleTextStyle: TextStyle(fontFamily: 'Inter', 
           fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface, letterSpacing: -0.4,
         ),
       ),
@@ -218,7 +217,7 @@ class AppTheme {
       ),
       textButtonTheme: TextButtonThemeData(
         style: TextButton.styleFrom(
-          textStyle: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+          textStyle: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600),
           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 12),
         ),
       ),
@@ -230,15 +229,15 @@ class AppTheme {
         border: _inputBorder.copyWith(borderSide: BorderSide.none),
         enabledBorder: _inputBorder.copyWith(borderSide: BorderSide.none),
         focusedBorder: _inputBorder.copyWith(borderSide: BorderSide(color: cs.primary, width: 2)),
-        hintStyle: GoogleFonts.inter(color: cs.outline, fontSize: 14),
-        labelStyle: GoogleFonts.inter(color: cs.onSurfaceVariant, fontSize: 14),
+        hintStyle: TextStyle(fontFamily: 'Inter', color: cs.outline, fontSize: 14),
+        labelStyle: TextStyle(fontFamily: 'Inter', color: cs.onSurfaceVariant, fontSize: 14),
       ),
 
       chipTheme: ChipThemeData(
         backgroundColor: cs.surfaceContainerLow,
         selectedColor: cs.primaryContainer,
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(20), side: BorderSide.none),
-        labelStyle: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+        labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600),
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
 
@@ -251,15 +250,15 @@ class AppTheme {
         height: 68,
         labelTextStyle: WidgetStateProperty.resolveWith((states) {
           if (states.contains(WidgetState.selected)) {
-            return GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary);
+            return TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: cs.primary);
           }
-          return GoogleFonts.inter(fontSize: 11, color: cs.onSurfaceVariant);
+          return TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.onSurfaceVariant);
         }),
       ),
 
       dialogTheme: DialogThemeData(
         shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(24)),
-        titleTextStyle: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface),
+        titleTextStyle: TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w700, color: cs.onSurface),
         backgroundColor: cs.surfaceContainerLowest,
         surfaceTintColor: Colors.transparent,
       ),
@@ -280,8 +279,8 @@ class AppTheme {
         labelColor: cs.primary,
         unselectedLabelColor: cs.onSurfaceVariant,
         indicatorColor: cs.primary,
-        labelStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600),
-        unselectedLabelStyle: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500),
+        labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600),
+        unselectedLabelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500),
         dividerColor: cs.outlineVariant.withValues(alpha: 0.3),
       ),
 

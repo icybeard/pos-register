@@ -1,7 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../bloc/auth_bloc.dart';
 
 /// First-boot device activation. Owner generates a one-time code on the
@@ -102,7 +101,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                       const SizedBox(height: 12),
                       Text(
                         'Активация кассы',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 22,
                           fontWeight: FontWeight.w800,
                           color: cs.onSurface,
@@ -112,7 +111,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                       const SizedBox(height: 6),
                       Text(
                         'Введите код из web-админки:\nМагазины → Активировать кассу.',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 13,
                           color: cs.onSurfaceVariant,
                         ),
@@ -140,7 +139,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                         ],
                         textAlign: TextAlign.center,
                         textCapitalization: TextCapitalization.characters,
-                        style: GoogleFonts.jetBrainsMono(
+                        style: const TextStyle(fontFamily: 'JetBrainsMono', 
                           fontSize: 26,
                           fontWeight: FontWeight.w700,
                           letterSpacing: 4,
@@ -162,7 +161,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                       const SizedBox(height: 6),
                       Text(
                         'Регистр и дефисы не важны — мы очистим код.',
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 11,
                           color: cs.onSurfaceVariant,
                         ),
@@ -186,7 +185,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                               Expanded(
                                 child: Text(
                                   errorMsg,
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'Inter', 
                                     fontSize: 13,
                                     color: cs.onErrorContainer,
                                   ),
@@ -208,9 +207,9 @@ class _ActivationScreenState extends State<ActivationScreen> {
                                   height: 18,
                                   child: CircularProgressIndicator(
                                       strokeWidth: 2))
-                              : Text(
+                              : const Text(
                                   'Активировать',
-                                  style: GoogleFonts.inter(
+                                  style: TextStyle(fontFamily: 'Inter', 
                                     fontSize: 15,
                                     fontWeight: FontWeight.w600,
                                   ),
@@ -221,7 +220,7 @@ class _ActivationScreenState extends State<ActivationScreen> {
                       Text(
                         'Код действует один раз и только в течение 24 часов.',
                         textAlign: TextAlign.center,
-                        style: GoogleFonts.inter(
+                        style: TextStyle(fontFamily: 'Inter', 
                           fontSize: 11,
                           color: cs.onSurfaceVariant,
                         ),

@@ -1,6 +1,5 @@
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
@@ -156,10 +155,10 @@ class _ImportScreenState extends State<ImportScreen> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.upload_file_rounded, size: 64, color: cs.primary),
         const SizedBox(height: 16),
-        Text(l.importUploadHint, style: GoogleFonts.inter(fontSize: 16), textAlign: TextAlign.center),
+        Text(l.importUploadHint, style: const TextStyle(fontFamily: 'Inter', fontSize: 16), textAlign: TextAlign.center),
         const SizedBox(height: 24),
         if (_error != null) ...[
-          Text(_error!, style: GoogleFonts.inter(color: pos.errorFg, fontSize: 13)),
+          Text(_error!, style: TextStyle(fontFamily: 'Inter', color: pos.errorFg, fontSize: 13)),
           const SizedBox(height: 16),
         ],
         Row(mainAxisSize: MainAxisSize.min, children: [
@@ -240,11 +239,11 @@ class _ImportScreenState extends State<ImportScreen> {
                   ? Icon(Icons.error_outline, size: 16, color: pos.errorFg)
                   : Text(actionLabel[0], style: TextStyle(fontSize: 11, fontWeight: FontWeight.w700, color: actionColor)),
             ),
-            title: Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500)),
+            title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500)),
             subtitle: rowErrors.isNotEmpty
                 ? Text(rowErrors.join(', '), style: TextStyle(fontSize: 11, color: pos.errorFg))
-                : Text('$barcode  ${Money.format(price)}', style: GoogleFonts.inter(fontSize: 11, color: cs.outline)),
-            trailing: Text(actionLabel, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: actionColor)),
+                : Text('$barcode  ${Money.format(price)}', style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.outline)),
+            trailing: Text(actionLabel, style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: actionColor)),
           );
         },
       )),
@@ -261,11 +260,11 @@ class _ImportScreenState extends State<ImportScreen> {
       child: Column(mainAxisSize: MainAxisSize.min, children: [
         Icon(Icons.check_circle_rounded, size: 64, color: pos.successFg),
         const SizedBox(height: 16),
-        Text(l.importDone, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700)),
+        Text(l.importDone, style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700)),
         const SizedBox(height: 16),
-        Text('${l.importCreate}: $created', style: GoogleFonts.inter(fontSize: 14)),
-        Text('${l.importUpdate}: $updated', style: GoogleFonts.inter(fontSize: 14)),
-        Text('${l.importSkipped}: $skipped', style: GoogleFonts.inter(fontSize: 14)),
+        Text('${l.importCreate}: $created', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
+        Text('${l.importUpdate}: $updated', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
+        Text('${l.importSkipped}: $skipped', style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
         const SizedBox(height: 24),
         FilledButton(onPressed: () => Navigator.pop(context), child: Text(l.done)),
       ]),
@@ -287,7 +286,7 @@ class _CountChip extends StatelessWidget {
         color: color.withValues(alpha: 0.12),
         borderRadius: BorderRadius.circular(8),
       ),
-      child: Text('$label: $count', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: color)),
+      child: Text('$label: $count', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: color)),
     );
   }
 }

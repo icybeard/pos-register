@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart' show FilteringTextInputFormatter;
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
@@ -61,10 +60,10 @@ class _CashiersScreenState extends State<CashiersScreen> {
                     child: Row(children: [
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(l.cashiersTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                          Text(l.cashiersTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                           const SizedBox(height: 4),
                           Text(l.cashiersCountLabel(_cashiers.length),
-                              style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
                         ]),
                       ),
                       SizedBox(
@@ -72,7 +71,7 @@ class _CashiersScreenState extends State<CashiersScreen> {
                         child: ElevatedButton.icon(
                           onPressed: () => _showAddDialog(context),
                           icon: const Icon(Icons.person_add_outlined, size: 20),
-                          label: Text(l.add, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                          label: Text(l.add, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ]),
@@ -138,7 +137,7 @@ class _CashiersScreenState extends State<CashiersScreen> {
     );
   }
 
-  TextStyle _headerStyle(ColorScheme cs) => GoogleFonts.inter(
+  TextStyle _headerStyle(ColorScheme cs) => TextStyle(fontFamily: 'Inter', 
         fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8,
       );
 
@@ -159,7 +158,7 @@ class _CashiersScreenState extends State<CashiersScreen> {
             child: Icon(Icons.people_outline, size: 32, color: cs.outline),
           ),
           const SizedBox(height: 16),
-          Text(l.cashiersEmpty, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+          Text(l.cashiersEmpty, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600)),
         ]),
       ),
     );
@@ -177,7 +176,7 @@ class _CashiersScreenState extends State<CashiersScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.cashiersNew, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.cashiersNew, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: nameC, decoration: InputDecoration(labelText: l.cashiersFieldName)),
             const SizedBox(height: 14),
@@ -274,9 +273,9 @@ class _StatChip extends StatelessWidget {
           decoration: BoxDecoration(shape: BoxShape.circle, color: color),
         ),
         const SizedBox(width: 8),
-        Text(label, style: GoogleFonts.inter(fontSize: 12, color: cs.onSurfaceVariant)),
+        Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.onSurfaceVariant)),
         const SizedBox(width: 6),
-        Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700)),
       ]),
     );
   }
@@ -335,7 +334,7 @@ class _CashierRow extends StatelessWidget {
           child: Center(
             child: Text(
               name.isNotEmpty ? name[0].toUpperCase() : '?',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white),
             ),
           ),
         ),
@@ -344,7 +343,7 @@ class _CashierRow extends StatelessWidget {
         // Name
         Expanded(
           flex: 3,
-          child: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 15)),
+          child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 15)),
         ),
 
         // Role badge
@@ -364,7 +363,7 @@ class _CashierRow extends StatelessWidget {
                 ],
                 Text(
                   _roleLabel(role, l),
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'Inter', 
                     fontSize: 12,
                     fontWeight: FontWeight.w600,
                     color: isOwner ? pos.warningFg : cs.onSurfaceVariant,
@@ -430,11 +429,11 @@ class _CashierRow extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.cashiersResetPin, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.cashiersResetPin, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             Text(
               cashier['Name'] as String? ?? '',
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primary),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primary),
             ),
             const SizedBox(height: 16),
             TextField(
@@ -510,7 +509,7 @@ class _CashierRow extends StatelessWidget {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.cashiersEdit, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.cashiersEdit, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: nameC, decoration: InputDecoration(labelText: l.cashiersFieldName)),
             const SizedBox(height: 14),
@@ -563,9 +562,9 @@ class _CashierRow extends StatelessWidget {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.cashiersDeactivateConfirm, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(l.cashiersDeactivateConfirm, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(name, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primary)),
+          Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600, color: AppTheme.primary)),
           const SizedBox(height: 12),
           Container(
             padding: const EdgeInsets.all(12),
@@ -573,7 +572,7 @@ class _CashierRow extends StatelessWidget {
             child: Row(children: [
               Icon(Icons.warning_amber_rounded, size: 18, color: pos.errorFg),
               const SizedBox(width: 8),
-              Expanded(child: Text(l.cashiersDeactivateHint, style: GoogleFonts.inter(fontSize: 13, color: pos.errorFg))),
+              Expanded(child: Text(l.cashiersDeactivateHint, style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: pos.errorFg))),
             ]),
           ),
         ]),
@@ -624,8 +623,8 @@ class _RoleItem extends StatelessWidget {
       crossAxisAlignment: CrossAxisAlignment.start,
       mainAxisSize: MainAxisSize.min,
       children: [
-        Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
-        Text(description, style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF74777D))),
+        Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
+        Text(description, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF74777D))),
       ],
     );
   }

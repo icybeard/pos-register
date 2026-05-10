@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../bloc/auth_bloc.dart';
 
 /// Primary boot screen on the register: owner / admin email + password
@@ -87,7 +86,7 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                       children: [
                         Text(
                           'POS System',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'Inter', 
                             fontSize: 24,
                             fontWeight: FontWeight.w800,
                             color: cs.onSurface,
@@ -97,7 +96,7 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                         const SizedBox(height: 6),
                         Text(
                           'Вход для владельца / администратора',
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'Inter', 
                             fontSize: 13,
                             color: cs.onSurfaceVariant,
                           ),
@@ -173,7 +172,7 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                                 Expanded(
                                   child: Text(
                                     errorMsg,
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'Inter', 
                                         fontSize: 13, color: cs.onErrorContainer),
                                   ),
                                 ),
@@ -192,9 +191,9 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                                     width: 18,
                                     height: 18,
                                     child: CircularProgressIndicator(strokeWidth: 2))
-                                : Text(
+                                : const Text(
                                     'Войти',
-                                    style: GoogleFonts.inter(
+                                    style: TextStyle(fontFamily: 'Inter', 
                                         fontSize: 15, fontWeight: FontWeight.w600),
                                   ),
                           ),
@@ -203,7 +202,7 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                         Text(
                           'Регистрация выполняется в web-админке.\nКассиры входят по PIN после владельца.',
                           textAlign: TextAlign.center,
-                          style: GoogleFonts.inter(
+                          style: TextStyle(fontFamily: 'Inter', 
                               fontSize: 11, color: cs.onSurfaceVariant),
                         ),
                       ],

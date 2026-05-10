@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
 
@@ -182,9 +181,9 @@ class _SetupWizardState extends State<SetupWizard> {
                       child: const Icon(Icons.store_rounded, size: 34, color: Colors.white),
                     ),
                     const SizedBox(height: 16),
-                    Text(
+                    const Text(
                       'POS System Kazakhstan',
-                      style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.primary),
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w800, color: AppTheme.primary),
                     ),
                     const SizedBox(height: 8),
                     // Step indicator
@@ -204,7 +203,7 @@ class _SetupWizardState extends State<SetupWizard> {
                     // Step label
                     Text(
                       _stepLabel(),
-                      style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF9CA3AF)),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF9CA3AF)),
                     ),
                     const SizedBox(height: 24),
 
@@ -238,9 +237,9 @@ class _SetupWizardState extends State<SetupWizard> {
 
   Widget _buildLanguageStep() {
     return Column(children: [
-      Text(
+      const Text(
         'Тілді таңдаңыз / Выберите язык',
-        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 20),
       _LanguageOption(
@@ -269,7 +268,7 @@ class _SetupWizardState extends State<SetupWizard> {
           ),
           child: Text(
             _t('Далее', 'Келесі'),
-            style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600),
           ),
         ),
       ),
@@ -282,12 +281,12 @@ class _SetupWizardState extends State<SetupWizard> {
     return Column(children: [
       Text(
         _t('Создайте владельца', 'Иесін жасаңыз'),
-        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 6),
       Text(
         _t('Этот аккаунт будет иметь полный доступ', 'Бұл аккаунтта толық рұқсат болады'),
-        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
       ),
       const SizedBox(height: 20),
       TextField(
@@ -296,7 +295,7 @@ class _SetupWizardState extends State<SetupWizard> {
           labelText: _t('Имя', 'Аты'),
           prefixIcon: const Icon(Icons.person_outline),
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -305,7 +304,7 @@ class _SetupWizardState extends State<SetupWizard> {
           labelText: _t('PIN-код (4 цифры)', 'PIN-код (4 сан)'),
           prefixIcon: const Icon(Icons.lock_outline),
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
         keyboardType: TextInputType.number,
         maxLength: 4,
         obscureText: true,
@@ -318,7 +317,7 @@ class _SetupWizardState extends State<SetupWizard> {
           labelText: _t('Подтвердите PIN', 'PIN-ді растаңыз'),
           prefixIcon: const Icon(Icons.lock_outline),
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
         keyboardType: TextInputType.number,
         maxLength: 4,
         obscureText: true,
@@ -342,7 +341,7 @@ class _SetupWizardState extends State<SetupWizard> {
       const SizedBox(height: 12),
       Text(
         _t('Реквизиты магазина', 'Дүкен деректемелері'),
-        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 6),
       Text(
@@ -350,7 +349,7 @@ class _SetupWizardState extends State<SetupWizard> {
           'Эти данные будут печататься на чеках',
           'Бұл деректер чектерде басылады',
         ),
-        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
       ),
       const SizedBox(height: 20),
       TextField(
@@ -360,7 +359,7 @@ class _SetupWizardState extends State<SetupWizard> {
           prefixIcon: const Icon(Icons.store_outlined),
           hintText: _t('ИП Иванов / ТОО "Мой Магазин"', 'ЖК Иванов / ЖШС "Менің Дүкенім"'),
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -370,7 +369,7 @@ class _SetupWizardState extends State<SetupWizard> {
           prefixIcon: const Icon(Icons.badge_outlined),
           hintText: '123456789012',
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
         keyboardType: TextInputType.number,
         maxLength: 12,
         inputFormatters: [FilteringTextInputFormatter.digitsOnly],
@@ -383,7 +382,7 @@ class _SetupWizardState extends State<SetupWizard> {
           prefixIcon: const Icon(Icons.location_on_outlined),
           hintText: _t('г. Алматы, ул. Абая 1', 'Алматы қ., Абай к-сі 1'),
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
       ),
       const SizedBox(height: 12),
       TextField(
@@ -393,7 +392,7 @@ class _SetupWizardState extends State<SetupWizard> {
           prefixIcon: const Icon(Icons.phone_outlined),
           hintText: '+7 (7xx) xxx-xx-xx',
         ),
-        style: GoogleFonts.inter(),
+        style: const TextStyle(fontFamily: 'Inter', ),
         keyboardType: TextInputType.phone,
       ),
       _buildErrorBanner(),
@@ -414,7 +413,7 @@ class _SetupWizardState extends State<SetupWizard> {
       const SizedBox(height: 12),
       Text(
         _t('Оборудование', 'Жабдық'),
-        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600),
       ),
       const SizedBox(height: 6),
       Text(
@@ -422,7 +421,7 @@ class _SetupWizardState extends State<SetupWizard> {
           'Настройте подключённое оборудование',
           'Қосылған жабдықты баптаңыз',
         ),
-        style: GoogleFonts.inter(fontSize: 13, color: const Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
       ),
       const SizedBox(height: 20),
 
@@ -508,12 +507,12 @@ class _SetupWizardState extends State<SetupWizard> {
       const SizedBox(height: 12),
       Text(
         _t('Почти готово!', 'Дерлік дайын!'),
-        style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.primary),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w700, color: AppTheme.primary),
       ),
       const SizedBox(height: 6),
       Text(
         _t('Выберите, как наполнить каталог товаров', 'Тауар каталогін қалай толтыруды таңдаңыз'),
-        style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF74777D)),
       ),
       const SizedBox(height: 24),
 
@@ -533,7 +532,7 @@ class _SetupWizardState extends State<SetupWizard> {
           ),
           child: Text(
             _t('Скоро', 'Жақында'),
-            style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: const Color(0xFF856404)),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF856404)),
           ),
         ),
       ),
@@ -599,7 +598,7 @@ class _SetupWizardState extends State<SetupWizard> {
             Expanded(
               child: Text(
                 _error!,
-                style: GoogleFonts.inter(color: AppTheme.error, fontSize: 13),
+                style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13),
               ),
             ),
           ],
@@ -648,7 +647,7 @@ class _SetupWizardState extends State<SetupWizard> {
                       height: 20,
                       child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                     )
-                  : Text(nextLabel, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
+                  : Text(nextLabel, style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600)),
             ),
           ),
         ]),
@@ -656,7 +655,7 @@ class _SetupWizardState extends State<SetupWizard> {
           const SizedBox(height: 8),
           Text(
             skipHint,
-            style: GoogleFonts.inter(fontSize: 11, color: const Color(0xFF9CA3AF)),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF9CA3AF)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -708,13 +707,13 @@ class _LanguageOption extends StatelessWidget {
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'Inter', 
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
                   color: selected ? AppTheme.primary : const Color(0xFF374151),
                 ),
               ),
-              Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF74777D))),
+              Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D))),
             ]),
           ),
         ]),
@@ -733,7 +732,7 @@ class _SectionLabel extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         label,
-        style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600, color: const Color(0xFF374151)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
       ),
     );
   }
@@ -774,7 +773,7 @@ class _HardwareChip extends StatelessWidget {
               const SizedBox(height: 6),
               Text(
                 label,
-                style: GoogleFonts.inter(
+                style: TextStyle(fontFamily: 'Inter', 
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
                   color: selected ? AppTheme.primary : const Color(0xFF374151),
@@ -818,7 +817,7 @@ class _ToggleTile extends StatelessWidget {
         Expanded(
           child: Text(
             label,
-            style: GoogleFonts.inter(
+            style: TextStyle(fontFamily: 'Inter', 
               fontSize: 13,
               fontWeight: FontWeight.w500,
               color: value ? AppTheme.primary : const Color(0xFF374151),
@@ -886,7 +885,7 @@ class _DataOptionCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         title,
-                        style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600, color: const Color(0xFF1F2937)),
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
                       ),
                     ),
                     ?trailing,
@@ -895,7 +894,7 @@ class _DataOptionCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF74777D)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D)),
                 ),
                 if (actionLabel != null) ...[
                   const SizedBox(height: 10),
@@ -915,7 +914,7 @@ class _DataOptionCard extends StatelessWidget {
                               height: 18,
                               child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2),
                             )
-                          : Text(actionLabel!, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                          : Text(actionLabel!, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600)),
                     ),
                   ),
                 ],

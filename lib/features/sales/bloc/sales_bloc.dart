@@ -126,7 +126,7 @@ class SelectCategory extends SalesEvent {
 // Parked cart snapshot
 // ═══════════════════════════════════════════════════════════════
 
-class ParkedCart {
+class ParkedCart extends Equatable {
   final List<CartItem> items;
   final int discountTiyin;
   final DateTime parkedAt;
@@ -144,6 +144,14 @@ class ParkedCart {
   }
 
   int get itemCount => items.length;
+
+  // Without value equality, two SalesState objects holding the same parked
+  // carts compare unequal under Equatable's deep-list comparison and the
+  // _CartActionPanel's BlocBuilder rebuilds on every event. CartItem has
+  // value equality already; the parked-at timestamp is part of identity
+  // because two carts parked at distinct moments are conceptually distinct.
+  @override
+  List<Object?> get props => [items, discountTiyin, parkedAt];
 }
 
 // ═══════════════════════════════════════════════════════════════

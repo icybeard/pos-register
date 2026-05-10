@@ -1,6 +1,5 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Hi-fi design tokens + shared widgets for the "Variant C — Action-grid"
 /// direction locked in the design handoff (hifi/POS Register Hi-fi.html).
@@ -39,10 +38,10 @@ class Hifi {
 
   // Typography
   static TextStyle mono({double size = 13, FontWeight weight = FontWeight.w500, Color? color}) =>
-      GoogleFonts.jetBrainsMono(fontSize: size, fontWeight: weight, color: color);
+      TextStyle(fontFamily: 'JetBrainsMono', fontSize: size, fontWeight: weight, color: color);
 
   static TextStyle ui({double size = 13, FontWeight weight = FontWeight.w500, Color? color, double? height}) =>
-      GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color, height: height);
+      TextStyle(fontFamily: 'Inter', fontSize: size, fontWeight: weight, color: color, height: height);
 }
 
 /// Navy chrome bar — single source of truth for the app's top bar.

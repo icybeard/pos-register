@@ -12,7 +12,9 @@ import '../bloc/sales_bloc.dart';
 import '../models/cart_item.dart';
 import '../sales_guards.dart';
 import '../widgets/manager_override_dialog.dart';
+import '../../auth/bloc/auth_bloc.dart';
 import '../../clients/screens/debts_screen.dart';
+import '../../settings/screens/settings_screen.dart';
 import 'payment_screen.dart';
 import '../widgets/x_report_sheet.dart';
 import 'returns_screen.dart';
@@ -479,7 +481,9 @@ class _CartActionPanel extends StatelessWidget {
                 : 'ОПЛАТА · ${Money.formatTenge(state.total)}',
             hotkey: 'F2',
             variant: HifiTileVariant.pay,
-            onTap: disabled ? null : () => _openPayment(context, state),
+            onTap: disabled
+                ? null
+                : () => unawaited(_openPayment(context, state)),
           ),
         );
       },
@@ -536,13 +540,39 @@ class _CartActionPanel extends StatelessWidget {
       ActionTile(label: 'Внесение', onTap: shiftId == null ? null : () => _cashMove(context, deposit: true)),
       ActionTile(label: 'Изъятие', onTap: shiftId == null ? null : () => _cashMove(context, deposit: false)),
       ActionTile(label: 'Откр. ящик', onTap: () => _todo(context, 'Открыть денежный ящик')),
-      ActionTile(label: 'Настройки', onTap: () => Navigator.of(context).pushNamed('/settings')),
+      ActionTile(label: 'Настройки', onTap: () => _openSettings(context)),
       ActionTile(label: 'Коды ТРУ', onTap: () => _todo(context, 'Коды ТРУ')),
       ActionTile(label: 'Блокировать', onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
     ];
   }
 
-  void _openPayment(BuildContext context, SalesState state) async {
+  /// Open the SettingsScreen via a proper imperative push. Replaces an
+  /// earlier `Navigator.pushNamed('/settings')` that crashed at runtime —
+  /// the app's MaterialApp is configured with `home:` only, no named-route
+  /// table is registered. The cashier's only path to settings is this tile
+  /// (the sidebar in cashier mode shows only POS + Shift), so the route
+  /// must work for non-admin users too.
+  ///
+  /// `onLogout` dispatches [LogoutRequested]; the root BlocBuilder reacts
+  /// to the resulting state change and routes to PinScreen / OwnerLoginScreen.
+  /// `popUntil` clears any settings-tree pages so the navigator stack
+  /// doesn't end up with stale routes covering the new home widget.
+  void _openSettings(BuildContext context) {
+    Navigator.of(context).push(
+      MaterialPageRoute<void>(
+        builder: (_) => SettingsScreen(
+          api: context.read<ApiClient>(),
+          role: role,
+          onLogout: () {
+            context.read<AuthBloc>().add(LogoutRequested());
+            Navigator.of(context).popUntil((r) => r.isFirst);
+          },
+        ),
+      ),
+    );
+  }
+
+  Future<void> _openPayment(BuildContext context, SalesState state) async {
     if (shiftId == null || shiftId!.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
         SnackBar(

@@ -22,6 +22,11 @@ class LoggingHttpClient extends http.BaseClient {
     'access_token',
     'refresh_token',
     'token',
+    // Hardware fingerprint hash + device_id are PII-adjacent: a malicious
+    // log scraper could correlate sessions across tenants by these values.
+    // The server validates them; logs don't need them.
+    'device_fingerprint',
+    'device_id',
   };
 
   @override

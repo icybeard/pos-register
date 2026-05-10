@@ -11,7 +11,11 @@ dependencies:
     sdk: flutter
   flutter_localizations:
     sdk: flutter
-  intl: any
+  # Pinned to caret-^0.20.2: matches the resolution that flutter_localizations
+  # currently expects, prevents `flutter pub upgrade` from silently bumping
+  # across the next intl ICU-syntax break, and keeps Russian plural rules
+  # stable across builds. Bump deliberately when flutter_localizations does.
+  intl: ^0.20.2
   cupertino_icons: ^1.0.8
 
   # State management
@@ -72,12 +76,12 @@ dependencies:
   protobuf: ^3.1.0
 
   # UI bits
-  google_fonts: ^8.0.2
   window_manager: ^0.5.1
 
   # Receipt + Z-report PDF
   printing: ^5.14.0
   pdf: ^3.11.0
+  device_info_plus: ^12.4.0
 
 dev_dependencies:
   flutter_test:
@@ -96,6 +100,18 @@ dev_dependencies:
 flutter:
   generate: true
   uses-material-design: true
+
+  # Bundled fonts. Variable TTFs (single file, all weights via the wght axis)
+  # downloaded from github.com/google/fonts. Bundling avoids the runtime
+  # network fetch + visible font flash that the `google_fonts` package causes
+  # on every cold start. Total ~1 MB; cleared from the boot path.
+  fonts:
+    - family: Inter
+      fonts:
+        - asset: assets/fonts/Inter-Variable.ttf
+    - family: JetBrainsMono
+      fonts:
+        - asset: assets/fonts/JetBrainsMono-Variable.ttf
 
 # Tell the sqlite3 pub package's native-asset hook to compile SQLite3 Multiple
 # Ciphers (sqlite3mc) from the vendored amalgamation in third_party/sqlite3mc/

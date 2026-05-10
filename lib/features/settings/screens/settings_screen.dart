@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
@@ -63,7 +62,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
       context: context,
       builder: (ctx) => AlertDialog(
         title: Text(l.settingsWebkassa,
-            style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
         content: const Text(
           'Логин и пароль Webkassa настраиваются владельцем в web-админке. '
           'На кассе отображается только состояние интеграции.',
@@ -97,9 +96,9 @@ class _SettingsScreenState extends State<SettingsScreen> {
             child: Padding(
               padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
               child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(l.settingsTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                Text(l.settingsTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
-                Text(l.settingsSubtitle, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                Text(l.settingsSubtitle, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
               ]),
             ),
           ),
@@ -191,7 +190,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                               ),
                               child: Text(
                                 ok ? l.settingsServerConnected : l.settingsServerUnavailable,
-                                style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: ok ? pos.successFg : pos.errorFg),
+                                style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: ok ? pos.successFg : pos.errorFg),
                               ),
                             );
                           },
@@ -228,7 +227,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                      child: Text(l.settingsNotConnected, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
                     ),
                   ),
                   Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
@@ -250,7 +249,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                       ),
                       child: Text(
                         l.settingsNktConnected,
-                        style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.successFg),
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: pos.successFg),
                       ),
                     ),
                   ),
@@ -270,7 +269,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                      child: Text(l.settingsNotConnected, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
                     ),
                   ),
                   Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
@@ -283,7 +282,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text(l.settingsNotConnected, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                      child: Text(l.settingsNotConnected, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
                     ),
                   ),
                   Divider(height: 1, indent: 64, color: cs.outlineVariant.withValues(alpha: 0.15)),
@@ -295,7 +294,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                     trailing: Container(
                       padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 5),
                       decoration: BoxDecoration(color: pos.successBg, borderRadius: BorderRadius.circular(20)),
-                      child: Text('Симуляция', style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
+                      child: Text('Симуляция', style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
                     ),
                   ),
                 ]),
@@ -335,7 +334,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                           ),
                           child: Text(
                             unsynced > 0 ? '$unsynced' : 'OK',
-                            style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600,
+                            style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600,
                               color: unsynced > 0 ? pos.warningFg : pos.successFg),
                           ),
                         );
@@ -358,7 +357,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
                   child: OutlinedButton.icon(
                     onPressed: onLogout,
                     icon: const Icon(Icons.logout_rounded, size: 20),
-                    label: Text(l.logout, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                    label: Text(l.logout, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                     style: OutlinedButton.styleFrom(
                       foregroundColor: pos.errorFg,
                       side: BorderSide(color: pos.errorFg.withValues(alpha: 0.5)),
@@ -384,7 +383,7 @@ class _SectionLabel extends StatelessWidget {
     final cs = Theme.of(context).colorScheme;
     return Text(
       text.toUpperCase(),
-      style: GoogleFonts.inter(
+      style: TextStyle(fontFamily: 'Inter', 
         fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8,
       ),
     );
@@ -452,11 +451,11 @@ class _SettingsTile extends StatelessWidget {
             child: Column(
               crossAxisAlignment: CrossAxisAlignment.start,
               children: [
-                Text(title, style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w600)),
+                Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w600)),
                 if (subtitle != null)
                   Padding(
                     padding: const EdgeInsets.only(top: 3),
-                    child: Text(subtitle!, style: GoogleFonts.inter(fontSize: 13, color: cs.onSurfaceVariant)),
+                    child: Text(subtitle!, style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: cs.onSurfaceVariant)),
                   ),
               ],
             ),
@@ -518,7 +517,7 @@ class _NktSearchDialogState extends State<_NktSearchDialog> {
     final l = AppLocalizations.of(context)!;
     final pos = PosColors.of(context);
     return AlertDialog(
-      title: Text(l.settingsNktSearch, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+      title: Text(l.settingsNktSearch, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
       content: SizedBox(
         width: 420,
         child: Column(
@@ -561,14 +560,14 @@ class _NktSearchDialogState extends State<_NktSearchDialog> {
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: pos.errorBg, borderRadius: BorderRadius.circular(10)),
-                child: Text(_error!, style: GoogleFonts.inter(color: pos.errorFg, fontSize: 13)),
+                child: Text(_error!, style: TextStyle(fontFamily: 'Inter', color: pos.errorFg, fontSize: 13)),
               )
             else if (_results != null && _results!.isEmpty)
               Container(
                 width: double.infinity,
                 padding: const EdgeInsets.all(14),
                 decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(10)),
-                child: Text(l.settingsNktNotFound, style: GoogleFonts.inter(color: pos.warningFg, fontSize: 13)),
+                child: Text(l.settingsNktNotFound, style: TextStyle(fontFamily: 'Inter', color: pos.warningFg, fontSize: 13)),
               )
             else if (_results != null)
               Flexible(
@@ -582,7 +581,7 @@ class _NktSearchDialogState extends State<_NktSearchDialog> {
                       padding: const EdgeInsets.symmetric(vertical: 10),
                       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                         Text(p['name_ru']?.toString() ?? '-',
-                            style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+                            style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 14)),
                         const SizedBox(height: 6),
                         Row(children: [
                           _NktChip('GTIN', p['gtin']?.toString() ?? '-'),
@@ -594,7 +593,7 @@ class _NktSearchDialogState extends State<_NktSearchDialog> {
                               padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
                               decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(6)),
                               child: Text(l.settingsNktSocial,
-                                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                                  style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: pos.warningFg)),
                             ),
                           ],
                         ]),
@@ -624,7 +623,7 @@ class _NktChip extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
       decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(6)),
-      child: Text('$label: $value', style: GoogleFonts.inter(fontSize: 11, color: cs.outline)),
+      child: Text('$label: $value', style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.outline)),
     );
   }
 }

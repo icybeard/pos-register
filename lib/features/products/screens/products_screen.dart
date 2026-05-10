@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:printing/printing.dart';
 import '../../../core/constants/app_constants.dart';
 import '../../../core/l10n/app_localizations.dart';
@@ -126,10 +125,10 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                     child: Row(children: [
                       Expanded(
                         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                          Text(l.productsTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                          Text(l.productsTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                           const SizedBox(height: 4),
                           Text(l.productsCountLabel(_products.length),
-                              style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                              style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
                         ]),
                       ),
                       SizedBox(
@@ -137,7 +136,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                         child: ElevatedButton.icon(
                           onPressed: () => _showAddDialog(context),
                           icon: const Icon(Icons.add_rounded, size: 20),
-                          label: Text(l.add, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                          label: Text(l.add, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                         ),
                       ),
                     ]),
@@ -306,7 +305,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
     );
   }
 
-  TextStyle _headerStyle(ColorScheme cs) => GoogleFonts.inter(
+  TextStyle _headerStyle(ColorScheme cs) => TextStyle(fontFamily: 'Inter', 
         fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline,
         letterSpacing: 0.8,
       );
@@ -329,14 +328,14 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
           ),
           const SizedBox(height: 16),
           Text(_search.isNotEmpty ? l.productsNotFound : l.productsEmpty,
-              style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600)),
           const SizedBox(height: 6),
           Text(
             _search.isNotEmpty
                 ? l.productsTryAnother
                 : l.productsEmptyHint,
             textAlign: TextAlign.center,
-            style: GoogleFonts.inter(color: cs.outline, fontSize: 13),
+            style: TextStyle(fontFamily: 'Inter', color: cs.outline, fontSize: 13),
           ),
         ]),
       ),
@@ -407,7 +406,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.productsEdit, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.productsEdit, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               TextField(controller: nameC, decoration: InputDecoration(labelText: l.productsFieldName)),
@@ -440,8 +439,8 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                    Text(l.productsMargin, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
-                    Text('$margin%', style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700,
+                    Text(l.productsMargin, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600)),
+                    Text('$margin%', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700,
                       color: margin > 0 ? const Color(0xFF059669) : const Color(0xFFD97706))),
                   ]),
                 );
@@ -454,7 +453,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SwitchListTile(
-                  title: Text(l.productsWeighted, style: GoogleFonts.inter(fontSize: 14)),
+                  title: Text(l.productsWeighted, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
                   value: isWeighted,
                   onChanged: (v) => setDialogState(() => isWeighted = v),
                   contentPadding: EdgeInsets.zero,
@@ -522,7 +521,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.productsNew, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.productsNew, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(
             child: Column(mainAxisSize: MainAxisSize.min, children: [
               Row(children: [
@@ -596,7 +595,7 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                   ),
                   child: Text(
                     nktStatus!,
-                    style: GoogleFonts.inter(
+                    style: TextStyle(fontFamily: 'Inter', 
                       fontSize: 12,
                       fontWeight: FontWeight.w500,
                       color: ntin.isNotEmpty ? pos.successFg : pos.warningFg,
@@ -620,10 +619,10 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                   borderRadius: BorderRadius.circular(12),
                 ),
                 child: SwitchListTile(
-                  title: Text(l.productsWeighted, style: GoogleFonts.inter(fontSize: 14)),
+                  title: Text(l.productsWeighted, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
                   subtitle: Text(
                     isWeighted ? l.productsWeightedSubPriceKg : l.productsWeightedSubPricePcs,
-                    style: GoogleFonts.inter(fontSize: 12),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12),
                   ),
                   value: isWeighted,
                   onChanged: (v) => setDialogState(() => isWeighted = v),
@@ -717,9 +716,9 @@ class _BentoStatCard extends StatelessWidget {
           const Spacer(),
         ]),
         const SizedBox(height: 14),
-        Text(value, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+        Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.inter(
+        Text(label, style: TextStyle(fontFamily: 'Inter', 
           fontSize: 11, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8,
         )),
         const SizedBox(height: 8),
@@ -781,7 +780,7 @@ class _ProductRow extends StatelessWidget {
         Expanded(
           flex: 3,
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-            Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14), overflow: TextOverflow.ellipsis),
+            Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 14), overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
             Row(children: [
               Container(
@@ -792,7 +791,7 @@ class _ProductRow extends StatelessWidget {
                 ),
                 child: Text(
                   isWeighted ? l.productsTypeWeighted : l.productsTypePiece,
-                  style: GoogleFonts.inter(
+                  style: TextStyle(fontFamily: 'Inter', 
                     fontSize: 10, fontWeight: FontWeight.w600,
                     color: isWeighted ? pos.warningFg : pos.successFg,
                   ),
@@ -811,7 +810,7 @@ class _ProductRow extends StatelessWidget {
           flex: 2,
           child: Text(
             barcode.isNotEmpty ? barcode : '—',
-            style: GoogleFonts.robotoMono(fontSize: 12, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
+            style: TextStyle(fontFamily: 'JetBrainsMono', fontSize: 12, fontWeight: FontWeight.w500, color: cs.onSurfaceVariant),
             overflow: TextOverflow.ellipsis,
           ),
         ),
@@ -822,7 +821,7 @@ class _ProductRow extends StatelessWidget {
           child: Container(
             padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 3),
             decoration: BoxDecoration(color: cs.surfaceContainer, borderRadius: BorderRadius.circular(8)),
-            child: Text('$vatRate%', style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: cs.outline),
+            child: Text('$vatRate%', style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: cs.outline),
                 textAlign: TextAlign.center),
           ),
         ),
@@ -833,13 +832,13 @@ class _ProductRow extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
             Text(
               isWeighted ? '${Money.format(price)}/кг' : Money.format(price),
-              style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: cs.primary),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: cs.primary),
               textAlign: TextAlign.right,
             ),
             if (purchasePrice > 0)
               Text(
                 '+${((price - purchasePrice) / purchasePrice * 100).round()}%',
-                style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600,
+                style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600,
                   color: price > purchasePrice ? pos.successFg : pos.errorFg),
               ),
           ]),
@@ -851,11 +850,11 @@ class _ProductRow extends StatelessWidget {
           child: Column(children: [
             Text(
               stockQty >= 0 ? stockQty.toStringAsFixed(stockQty == stockQty.roundToDouble() ? 0 : 1) : '—',
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600,
+              style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600,
                 color: stockQty >= 0 && stockQty <= 5 ? pos.errorFg : cs.onSurfaceVariant),
               textAlign: TextAlign.center,
             ),
-            Text(l.productsStock, style: GoogleFonts.inter(fontSize: 8, color: cs.outline), textAlign: TextAlign.center),
+            Text(l.productsStock, style: TextStyle(fontFamily: 'Inter', fontSize: 8, color: cs.outline), textAlign: TextAlign.center),
           ]),
         ),
 

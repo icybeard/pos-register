@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
@@ -69,7 +68,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l.approvalApproved, style: GoogleFonts.inter()),
+            content: Text(l.approvalApproved, style: const TextStyle(fontFamily: 'Inter', )),
             backgroundColor: PosColors.of(context).successFg,
           ),
         );
@@ -104,7 +103,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l.approvalRejected, style: GoogleFonts.inter()),
+            content: Text(l.approvalRejected, style: const TextStyle(fontFamily: 'Inter', )),
             backgroundColor: PosColors.of(context).warningFg,
           ),
         );
@@ -125,9 +124,9 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
     final confirm = await showDialog<bool>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.approvalBatchApprove, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(l.approvalBatchApprove, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
-          Text(l.approvalBatchCount(_products.length), style: GoogleFonts.inter(fontSize: 14)),
+          Text(l.approvalBatchCount(_products.length), style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
           const SizedBox(height: 16),
           TextField(
             controller: markupCtrl,
@@ -191,10 +190,10 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(l.approvalTitle,
-                  style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
                 Text(l.approvalSubtitle,
-                  style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
               ])),
               IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
             ]),
@@ -211,7 +210,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                   icon: const Icon(Icons.done_all_rounded, size: 18),
                   label: Text(
                     l.approvalBatchCount(_products.length),
-                    style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+                    style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
                   ),
                   style: OutlinedButton.styleFrom(
                     foregroundColor: PosColors.of(context).successFg,
@@ -230,7 +229,7 @@ class _ApprovalScreenState extends State<ApprovalScreen> {
                 Icon(Icons.check_circle_outline_rounded, size: 64, color: PosColors.of(context).successFg),
                 const SizedBox(height: 16),
                 Text(l.approvalEmpty,
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600, color: cs.onSurfaceVariant)),
               ])),
             )
           else
@@ -286,13 +285,13 @@ class _PendingCard extends StatelessWidget {
                   color: pos.warningBg,
                   borderRadius: BorderRadius.circular(6),
                 ),
-                child: Text(l.approvalPending, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: pos.warningFg, letterSpacing: 0.8)),
+                child: Text(l.approvalPending, style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: pos.warningFg, letterSpacing: 0.8)),
               ),
               const Spacer(),
-              Text(l.approvalFrom(submittedBy), style: GoogleFonts.inter(fontSize: 12, color: cs.outline)),
+              Text(l.approvalFrom(submittedBy), style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
             ]),
             const SizedBox(height: 10),
-            Text(name, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
+            Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700)),
             const SizedBox(height: 6),
             _InfoRow(label: l.approvalBarcode, value: barcode),
             _InfoRow(label: l.approvalNtin, value: ntin),
@@ -302,14 +301,14 @@ class _PendingCard extends StatelessWidget {
               Expanded(child: OutlinedButton.icon(
                 onPressed: onReject,
                 icon: Icon(Icons.close_rounded, size: 16, color: pos.errorFg),
-                label: Text(l.approvalReject, style: GoogleFonts.inter(color: pos.errorFg, fontWeight: FontWeight.w600)),
+                label: Text(l.approvalReject, style: TextStyle(fontFamily: 'Inter', color: pos.errorFg, fontWeight: FontWeight.w600)),
                 style: OutlinedButton.styleFrom(side: BorderSide(color: pos.errorFg.withValues(alpha: 0.4))),
               )),
               const SizedBox(width: 10),
               Expanded(child: FilledButton.icon(
                 onPressed: onApprove,
                 icon: const Icon(Icons.check_rounded, size: 16),
-                label: Text(l.approvalApprove, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                label: Text(l.approvalApprove, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
               )),
             ]),
           ]),
@@ -331,8 +330,8 @@ class _InfoRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(vertical: 2),
       child: Row(children: [
-        SizedBox(width: 100, child: Text(label, style: GoogleFonts.inter(fontSize: 12, color: cs.outline))),
-        Expanded(child: Text(value, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600))),
+        SizedBox(width: 100, child: Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline))),
+        Expanded(child: Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600))),
       ]),
     );
   }
@@ -373,7 +372,7 @@ class _ApproveDialogState extends State<_ApproveDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: Text(l.approvalApproveTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+      title: Text(l.approvalApproveTitle, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
       content: Column(mainAxisSize: MainAxisSize.min, children: [
         TextField(
           controller: _nameCtrl,
@@ -431,9 +430,9 @@ class _RejectDialogState extends State<_RejectDialog> {
   Widget build(BuildContext context) {
     final l = AppLocalizations.of(context)!;
     return AlertDialog(
-      title: Text(l.approvalRejectTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+      title: Text(l.approvalRejectTitle, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
       content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
-        Text('«${widget.productName}»', style: GoogleFonts.inter(fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+        Text('«${widget.productName}»', style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: Theme.of(context).colorScheme.onSurfaceVariant)),
         const SizedBox(height: 12),
         TextField(
           controller: _noteCtrl,

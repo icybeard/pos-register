@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
@@ -63,10 +62,10 @@ class _AuditScreenState extends State<AuditScreen> {
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text(l.auditTitle,
-                  style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
                 Text(l.auditTotalLabel(_total),
-                  style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                  style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
               ])),
               IconButton(onPressed: _load, icon: const Icon(Icons.refresh_rounded)),
             ]),
@@ -76,7 +75,7 @@ class _AuditScreenState extends State<AuditScreen> {
             const SliverFillRemaining(child: Center(child: CircularProgressIndicator(strokeWidth: 2.5)))
           else if (_entries.isEmpty)
             SliverFillRemaining(
-              child: Center(child: Text(l.auditEmpty, style: GoogleFonts.inter(color: cs.outline))),
+              child: Center(child: Text(l.auditEmpty, style: TextStyle(fontFamily: 'Inter', color: cs.outline))),
             )
           else ...[
             SliverList(delegate: SliverChildBuilderDelegate(
@@ -88,7 +87,7 @@ class _AuditScreenState extends State<AuditScreen> {
                 padding: const EdgeInsets.all(16),
                 child: Center(child: TextButton(
                   onPressed: _loadMore,
-                  child: Text(l.loadMore, style: GoogleFonts.inter(fontWeight: FontWeight.w600)),
+                  child: Text(l.loadMore, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600)),
                 )),
               )),
           ],
@@ -127,7 +126,7 @@ class _AuditRow extends StatelessWidget {
             child: Icon(_actionIcon(action), size: 18, color: _actionColor(action, context)),
           ),
           const SizedBox(width: 12),
-          Expanded(child: Text(_actionLabel(action, context), style: GoogleFonts.inter(fontWeight: FontWeight.w700, fontSize: 16))),
+          Expanded(child: Text(_actionLabel(action, context), style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, fontSize: 16))),
         ]),
         content: Column(mainAxisSize: MainAxisSize.min, crossAxisAlignment: CrossAxisAlignment.start, children: [
           _DetailLine('Время', _formatDate(createdAt).replaceAll('\n', ' ')),
@@ -144,7 +143,7 @@ class _AuditRow extends StatelessWidget {
                 color: cs.surfaceContainerLow,
                 borderRadius: BorderRadius.circular(10),
               ),
-              child: Text(details, style: GoogleFonts.inter(fontSize: 13)),
+              child: Text(details, style: const TextStyle(fontFamily: 'Inter', fontSize: 13)),
             ),
           ],
         ]),
@@ -184,18 +183,18 @@ class _AuditRow extends StatelessWidget {
           ),
           title: Text(
             _actionLabel(action, context),
-            style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600),
           ),
           subtitle: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Text('$cashierName · $entityType',
-              style: GoogleFonts.inter(fontSize: 12, color: cs.onSurfaceVariant)),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.onSurfaceVariant)),
             if (details.isNotEmpty)
-              Text(details, style: GoogleFonts.inter(fontSize: 11, color: cs.outline),
+              Text(details, style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.outline),
                 maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
           trailing: Text(
             _formatDate(createdAt),
-            style: GoogleFonts.inter(fontSize: 11, color: cs.outline),
+            style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.outline),
           ),
         ),
       ),
@@ -276,8 +275,8 @@ class _DetailLine extends StatelessWidget {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Row(children: [
-      SizedBox(width: 80, child: Text(label, style: GoogleFonts.inter(fontSize: 13, color: cs.outline))),
-      Expanded(child: Text(value, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600))),
+      SizedBox(width: 80, child: Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 13, color: cs.outline))),
+      Expanded(child: Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600))),
     ]);
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
@@ -147,7 +146,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         final l = AppLocalizations.of(context)!;
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text(l.deliverySuccess, style: GoogleFonts.inter()),
+            content: Text(l.deliverySuccess, style: const TextStyle(fontFamily: 'Inter', )),
             backgroundColor: PosColors.of(context).successFg,
           ),
         );
@@ -171,7 +170,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
     showDialog<void>(
       context: context,
       builder: (ctx) => AlertDialog(
-        title: Text(l.deliveryAddSupplier, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+        title: Text(l.deliveryAddSupplier, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
         content: Column(mainAxisSize: MainAxisSize.min, children: [
           TextField(controller: nameC, decoration: InputDecoration(labelText: l.productsFieldName), autofocus: true),
           const SizedBox(height: 12),
@@ -206,7 +205,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       context: context,
       builder: (ctx) => StatefulBuilder(
         builder: (ctx, setDialogState) => AlertDialog(
-          title: Text(l.deliveryCreateProduct, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+          title: Text(l.deliveryCreateProduct, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
           content: SingleChildScrollView(child: Column(mainAxisSize: MainAxisSize.min, children: [
             TextField(controller: nameC, decoration: InputDecoration(labelText: l.productsFieldName)),
             const SizedBox(height: 12),
@@ -215,7 +214,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             TextField(controller: priceC, decoration: InputDecoration(labelText: l.productsPurchasePrice, suffixText: '₸'), keyboardType: TextInputType.number),
             const SizedBox(height: 12),
             SwitchListTile(
-              title: Text(l.productsWeighted, style: GoogleFonts.inter(fontSize: 14)),
+              title: Text(l.productsWeighted, style: const TextStyle(fontFamily: 'Inter', fontSize: 14)),
               value: isWeighted,
               onChanged: (v) => setDialogState(() => isWeighted = v),
               contentPadding: EdgeInsets.zero,
@@ -286,7 +285,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
         child: Row(children: [
-          Text(l.deliveryTitle, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          Text(l.deliveryTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
           const Spacer(),
           // History toggle
           TextButton.icon(
@@ -295,7 +294,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
               _loadHistory();
             },
             icon: const Icon(Icons.history_rounded, size: 18),
-            label: Text(l.deliveryHistory, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+            label: Text(l.deliveryHistory, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ]),
       ),
@@ -381,7 +380,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: OutlinedButton.icon(
               onPressed: _showCreateProductDialog,
               icon: const Icon(Icons.add_rounded, size: 18),
-              label: Text(l.deliveryCreateProduct, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+              label: Text(l.deliveryCreateProduct, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600)),
               style: OutlinedButton.styleFrom(
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
               ),
@@ -399,8 +398,8 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             final name = p['Name'] as String? ?? p['name'] as String? ?? '';
             final costPrice = (p['PurchasePrice'] as num?)?.toInt() ?? (p['purchase_price'] as num?)?.toInt() ?? (p['cost_price'] as num?)?.toInt() ?? 0;
             return ListTile(
-              title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-              subtitle: Text(l.deliveryCostLabel(Money.format(costPrice)), style: GoogleFonts.inter(fontSize: 12)),
+              title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+              subtitle: Text(l.deliveryCostLabel(Money.format(costPrice)), style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
               trailing: IconButton(icon: const Icon(Icons.add_circle_outline_rounded), onPressed: () => _addProduct(p)),
               onTap: () => _addProduct(p),
             );
@@ -416,12 +415,12 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(24, 24, 24, 12),
         child: Row(children: [
-          Text(l.deliveryHistory, style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+          Text(l.deliveryHistory, style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
           const Spacer(),
           TextButton.icon(
             onPressed: () => setState(() => _showHistory = false),
             icon: const Icon(Icons.arrow_back, size: 18),
-            label: Text(l.deliveryTitle, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600)),
+            label: Text(l.deliveryTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600)),
           ),
         ]),
       ),
@@ -429,7 +428,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
         child: _loadingHistory
             ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))
             : _history.isEmpty
-                ? Center(child: Text(l.deliveryNoHistory, style: GoogleFonts.inter(color: cs.outline)))
+                ? Center(child: Text(l.deliveryNoHistory, style: TextStyle(fontFamily: 'Inter', color: cs.outline)))
                 : ListView.builder(
                     padding: const EdgeInsets.symmetric(horizontal: 16),
                     itemCount: _history.length,
@@ -445,10 +444,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
                       } on FormatException catch (_) {}
                       return ListTile(
                         leading: Icon(Icons.inventory_rounded, color: cs.primary),
-                        title: Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w500)),
-                        subtitle: Text(dateStr, style: GoogleFonts.inter(fontSize: 12, color: cs.outline)),
+                        title: Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w500)),
+                        subtitle: Text(dateStr, style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
                         trailing: Text('+${qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1)}',
-                          style: GoogleFonts.inter(fontWeight: FontWeight.w700, color: PosColors.of(context).successFg)),
+                          style: TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700, color: PosColors.of(context).successFg)),
                       );
                     },
                   ),
@@ -468,10 +467,10 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
       Padding(
         padding: const EdgeInsets.fromLTRB(16, 16, 16, 8),
         child: Row(children: [
-          Text(l.deliveryLinesLabel(_lines.length), style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700)),
+          Text(l.deliveryLinesLabel(_lines.length), style: const TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700)),
           const Spacer(),
           if (_lines.isNotEmpty)
-            Text(Money.format(totalCost), style: GoogleFonts.inter(fontSize: 15, fontWeight: FontWeight.w700, color: cs.primary)),
+            Text(Money.format(totalCost), style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700, color: cs.primary)),
         ]),
       ),
 
@@ -485,14 +484,14 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             child: Row(children: [
               Icon(Icons.warning_amber_rounded, size: 16, color: pos.warningFg),
               const SizedBox(width: 8),
-              Text(l.deliveryDiscrepancy, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
+              Text(l.deliveryDiscrepancy, style: TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w600, color: pos.warningFg)),
             ]),
           ),
         ),
 
       Expanded(
         child: _lines.isEmpty
-            ? Center(child: Text(l.deliveryEmptyHint, style: GoogleFonts.inter(color: cs.outline)))
+            ? Center(child: Text(l.deliveryEmptyHint, style: TextStyle(fontFamily: 'Inter', color: cs.outline)))
             : ListView.builder(
                 padding: const EdgeInsets.symmetric(horizontal: 8),
                 itemCount: _lines.length,
@@ -512,7 +511,7 @@ class _DeliveryScreenState extends State<DeliveryScreen> {
             icon: _submitting
                 ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(strokeWidth: 2, color: Colors.white))
                 : const Icon(Icons.check_rounded),
-            label: Text(l.deliverySubmit, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+            label: Text(l.deliverySubmit, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w700)),
             style: FilledButton.styleFrom(padding: const EdgeInsets.symmetric(vertical: 16)),
           ),
         ),
@@ -604,11 +603,11 @@ class _LineCardState extends State<_LineCard> {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Row(children: [
             Expanded(child: Text(widget.line.name,
-              style: GoogleFonts.inter(fontWeight: FontWeight.w600),
+              style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600),
               maxLines: 1, overflow: TextOverflow.ellipsis)),
             // Line total
             Text(Money.format(widget.line.costPrice * widget.line.qty),
-              style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: cs.primary)),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700, color: cs.primary)),
             const SizedBox(width: 4),
             IconButton(icon: const Icon(Icons.close_rounded, size: 18), onPressed: widget.onRemove,
               style: IconButton.styleFrom(foregroundColor: cs.error)),
@@ -668,7 +667,7 @@ class _LineCardState extends State<_LineCard> {
               const SizedBox(width: 4),
               Text(
                 '${l.deliveryDiscrepancy}: ${widget.line.qty - widget.line.expectedQty > 0 ? "+" : ""}${widget.line.qty - widget.line.expectedQty}',
-                style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.warningFg),
+                style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: pos.warningFg),
               ),
             ]),
           ],

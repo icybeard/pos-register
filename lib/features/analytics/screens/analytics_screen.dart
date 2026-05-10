@@ -1,7 +1,6 @@
 import 'dart:async';
 import 'dart:io';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/utils/money.dart';
@@ -167,13 +166,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
             padding: const EdgeInsets.fromLTRB(24, 24, 24, 0),
             child: Row(children: [
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text(l.analyticsTitle, style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
+                Text(l.analyticsTitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, letterSpacing: -0.5)),
                 const SizedBox(height: 4),
-                Text(l.analyticsSubtitle, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                Text(l.analyticsSubtitle, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
               ])),
               // Auto-refresh toggle
               Row(mainAxisSize: MainAxisSize.min, children: [
-                Text(l.analyticsAutoRefresh, style: GoogleFonts.inter(fontSize: 11, color: cs.outline)),
+                Text(l.analyticsAutoRefresh, style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.outline)),
                 const SizedBox(width: 4),
                 SizedBox(
                   height: 28,
@@ -238,13 +237,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 ),
                 const SizedBox(width: 16),
                 Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                  Text(l.analyticsAvgReceipt, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.7), letterSpacing: 0.8)),
+                  Text(l.analyticsAvgReceipt, style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w700, color: Colors.white.withValues(alpha: 0.7), letterSpacing: 0.8)),
                   const SizedBox(height: 2),
-                  Text(Money.format(_avgReceiptTiyin), style: GoogleFonts.inter(fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
+                  Text(Money.format(_avgReceiptTiyin), style: const TextStyle(fontFamily: 'Inter', fontSize: 28, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: -0.5)),
                 ])),
                 Column(children: [
-                  Text('$_avgReceiptCount', style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
-                  Text(l.analyticsReceipts, style: GoogleFonts.inter(fontSize: 11, color: Colors.white.withValues(alpha: 0.7))),
+                  Text('$_avgReceiptCount', style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w800, color: Colors.white)),
+                  Text(l.analyticsReceipts, style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: Colors.white.withValues(alpha: 0.7))),
                 ]),
               ]),
             ),
@@ -264,13 +263,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 title: l.analyticsTopProducts,
                 child: _topProducts != null && _topProducts!.isNotEmpty
                     ? Column(children: _topProducts!.take(5).map((p) => _TopProductRow(product: p)).toList())
-                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: GoogleFonts.inter(color: cs.outline)))),
+                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: TextStyle(fontFamily: 'Inter', color: cs.outline)))),
               );
               final cashierCard = _SectionCard(
                 title: l.analyticsCashiers,
                 child: _cashiers != null && _cashiers!.isNotEmpty
                     ? Column(children: _cashiers!.take(5).map((c) => _CashierRow(cashier: c)).toList())
-                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: GoogleFonts.inter(color: cs.outline)))),
+                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: TextStyle(fontFamily: 'Inter', color: cs.outline)))),
               );
               if (constraints.maxWidth >= 700) {
                 return Row(crossAxisAlignment: CrossAxisAlignment.start, children: [
@@ -291,13 +290,13 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
               Row(children: [
                 Icon(Icons.date_range_rounded, size: 18, color: cs.outline),
                 const SizedBox(width: 8),
-                Text(l.analyticsDateRange, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w600)),
+                Text(l.analyticsDateRange, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600)),
                 const SizedBox(width: 12),
                 ActionChip(
                   label: Text(_dateRange != null
                     ? '${_dateRange!.start.day.toString().padLeft(2, '0')}.${_dateRange!.start.month.toString().padLeft(2, '0')} — ${_dateRange!.end.day.toString().padLeft(2, '0')}.${_dateRange!.end.month.toString().padLeft(2, '0')}'
                     : l.analyticsAllTime,
-                    style: GoogleFonts.inter(fontSize: 12)),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12)),
                   onPressed: () async {
                     final range = await showDateRangePicker(
                       context: context,
@@ -330,15 +329,15 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                         Padding(
                           padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 4),
                           child: Row(children: [
-                            Expanded(flex: 3, child: Text(l.analyticsProductName, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline))),
-                            Expanded(flex: 1, child: Text(l.analyticsQty, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline), textAlign: TextAlign.right)),
-                            Expanded(flex: 2, child: Text(l.analyticsRevenue, style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline), textAlign: TextAlign.right)),
+                            Expanded(flex: 3, child: Text(l.analyticsProductName, style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline))),
+                            Expanded(flex: 1, child: Text(l.analyticsQty, style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline), textAlign: TextAlign.right)),
+                            Expanded(flex: 2, child: Text(l.analyticsRevenue, style: TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: cs.outline), textAlign: TextAlign.right)),
                           ]),
                         ),
                         const Divider(height: 1),
                         ..._revenueByProduct!.take(15).map((p) => _RevenueProductRow(product: p)),
                       ])
-                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: GoogleFonts.inter(color: cs.outline)))),
+                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: TextStyle(fontFamily: 'Inter', color: cs.outline)))),
               ),
             ]),
           )),
@@ -351,7 +350,7 @@ class _AnalyticsScreenState extends State<AnalyticsScreen> {
                 title: l.analyticsLowStock,
                 child: _alerts != null && _alerts!.isNotEmpty
                     ? Column(children: _alerts!.take(8).map((a) => _AlertRow(alert: a)).toList())
-                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.analyticsAllNormal, style: GoogleFonts.inter(color: pos.successFg)))),
+                    : Center(child: Padding(padding: const EdgeInsets.all(16), child: Text(l.analyticsAllNormal, style: TextStyle(fontFamily: 'Inter', color: pos.successFg)))),
               );
               final debtCard = _SectionCard(
                 title: l.analyticsDebts,
@@ -405,11 +404,11 @@ class _StatCard extends StatelessWidget {
           child: Icon(Icons.trending_up_rounded, size: 17, color: color),
         ),
         const SizedBox(height: 12),
-        Text(value, style: GoogleFonts.inter(fontSize: 20, fontWeight: FontWeight.w800)),
+        Text(value, style: const TextStyle(fontFamily: 'Inter', fontSize: 20, fontWeight: FontWeight.w800)),
         const SizedBox(height: 2),
-        Text(sub, style: GoogleFonts.inter(fontSize: 11, color: cs.onSurfaceVariant)),
+        Text(sub, style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: cs.onSurfaceVariant)),
         const SizedBox(height: 4),
-        Text(label, style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8)),
+        Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: cs.outline, letterSpacing: 0.8)),
       ]),
     );
   }
@@ -432,7 +431,7 @@ class _SectionCard extends StatelessWidget {
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
         Padding(
           padding: const EdgeInsets.fromLTRB(18, 16, 18, 8),
-          child: Text(title, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700)),
+          child: Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700)),
         ),
         child,
         const SizedBox(height: 8),
@@ -453,7 +452,7 @@ class _PaymentBars extends StatelessWidget {
     final card = (payments['card'] as num?)?.toInt() ?? 0;
     final qr = (payments['qr'] as num?)?.toInt() ?? 0;
     final total = cash + card + qr;
-    if (total == 0) return Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: GoogleFonts.inter(color: Theme.of(context).colorScheme.outline)));
+    if (total == 0) return Padding(padding: const EdgeInsets.all(16), child: Text(l.noData, style: TextStyle(fontFamily: 'Inter', color: Theme.of(context).colorScheme.outline)));
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 8),
       child: Column(children: [
@@ -477,7 +476,7 @@ class _PaymentBar extends StatelessWidget {
   Widget build(BuildContext context) {
     final pct = total > 0 ? value / total : 0.0;
     return Row(children: [
-      SizedBox(width: 80, child: Text(label, style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500))),
+      SizedBox(width: 80, child: Text(label, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500))),
       Expanded(child: Container(
         height: 20, decoration: BoxDecoration(color: color.withValues(alpha: 0.1), borderRadius: BorderRadius.circular(6)),
         child: FractionallySizedBox(
@@ -486,7 +485,7 @@ class _PaymentBar extends StatelessWidget {
         ),
       )),
       const SizedBox(width: 8),
-      SizedBox(width: 90, child: Text(Money.format(value), style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
+      SizedBox(width: 90, child: Text(Money.format(value), style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
     ]);
   }
 }
@@ -502,8 +501,8 @@ class _TopProductRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       child: Row(children: [
-        Expanded(child: Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
-        Text(Money.format(revenue), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+        Expanded(child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        Text(Money.format(revenue), style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700)),
       ]),
     );
   }
@@ -521,10 +520,10 @@ class _CashierRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 6),
       child: Row(children: [
-        Expanded(child: Text(name, style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500))),
-        Text('$count ${AppLocalizations.of(context)!.analyticsReceipts}', style: GoogleFonts.inter(fontSize: 11, color: Theme.of(context).colorScheme.outline)),
+        Expanded(child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500))),
+        Text('$count ${AppLocalizations.of(context)!.analyticsReceipts}', style: TextStyle(fontFamily: 'Inter', fontSize: 11, color: Theme.of(context).colorScheme.outline)),
         const SizedBox(width: 12),
-        Text(Money.format(total), style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700)),
+        Text(Money.format(total), style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700)),
       ]),
     );
   }
@@ -545,9 +544,9 @@ class _AlertRow extends StatelessWidget {
       child: Row(children: [
         Icon(isZero ? Icons.error_rounded : Icons.warning_rounded, size: 16, color: isZero ? pos.errorFg : pos.warningFg),
         const SizedBox(width: 8),
-        Expanded(child: Text(name, style: GoogleFonts.inter(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        Expanded(child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
         Text(qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1),
-          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700, color: isZero ? pos.errorFg : pos.warningFg)),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700, color: isZero ? pos.errorFg : pos.warningFg)),
       ]),
     );
   }
@@ -565,11 +564,11 @@ class _RevenueProductRow extends StatelessWidget {
     return Padding(
       padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 5),
       child: Row(children: [
-        Expanded(flex: 3, child: Text(name, style: GoogleFonts.inter(fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
+        Expanded(flex: 3, child: Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 13), maxLines: 1, overflow: TextOverflow.ellipsis)),
         Expanded(flex: 1, child: Text(qty.toStringAsFixed(qty == qty.roundToDouble() ? 0 : 1),
-          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w500), textAlign: TextAlign.right)),
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w500), textAlign: TextAlign.right)),
         Expanded(flex: 2, child: Text(Money.format(revenue),
-          style: GoogleFonts.inter(fontSize: 13, fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
+          style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w700), textAlign: TextAlign.right)),
       ]),
     );
   }
@@ -583,8 +582,8 @@ class _DebtLine extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: GoogleFonts.inter(fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
-      Text(value, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: color)),
+      Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: Theme.of(context).colorScheme.onSurfaceVariant)),
+      Text(value, style: TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w700, color: color)),
     ]);
   }
 }

@@ -1,5 +1,4 @@
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 
 /// Экранная цифровая клавиатура для POS-терминалов без физической клавиатуры.
 class NumPad extends StatelessWidget {
@@ -97,7 +96,7 @@ class NumPad extends StatelessWidget {
                           ? Icon(Icons.backspace_outlined, size: 22, color: cs.onSurfaceVariant)
                           : Text(
                               key,
-                              style: GoogleFonts.inter(
+                              style: TextStyle(fontFamily: 'Inter', 
                                 fontSize: key == 'C' || key == '.' ? 18 : 26,
                                 fontWeight: FontWeight.w500,
                                 color: isAction ? cs.onSurfaceVariant : cs.onSurface,
@@ -144,7 +143,7 @@ class QuickAmountButtons extends StatelessWidget {
               shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
               padding: const EdgeInsets.symmetric(horizontal: 18),
             ),
-            child: Text('$label ₸', style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14)),
+            child: Text('$label ₸', style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 14)),
           ),
         );
       }).toList(),

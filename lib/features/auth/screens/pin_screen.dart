@@ -2,7 +2,6 @@ import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
@@ -45,10 +44,25 @@ class _PinScreenState extends State<PinScreen> {
     return Scaffold(
       backgroundColor: Hifi.canvas,
       body: Column(children: [
-        const HifiChrome(
-          shiftNumber: 'магазин «Береке» #3',
-          storeLabel: 'терминал #001',
-        ),
+        // Real store + terminal binding from the activation payload. The
+        // bloc keeps `_activeWorkstation` populated for the lifetime of the
+        // process once activation/hydrate completes, so the chip values are
+        // stable across rebuilds (no flicker on PIN keystrokes). Falls back
+        // to an empty chrome if the bloc is somehow not yet hydrated.
+        Builder(builder: (context) {
+          final ws = context.read<AuthBloc>().activeWorkstation;
+          if (ws == null) return const HifiChrome();
+          // workstationId is a UUID v4; surface only the leading 8 chars so
+          // operators can disambiguate registers in the same store without
+          // displaying the full GUID.
+          final shortId = ws.workstationId.length >= 8
+              ? ws.workstationId.substring(0, 8)
+              : ws.workstationId;
+          return HifiChrome(
+            shiftNumber: ws.storeName.isNotEmpty ? ws.storeName : null,
+            storeLabel: 'Терминал $shortId',
+          );
+        }),
         Expanded(
           // BlocConsumer (not BlocBuilder): on a successful PIN login the
           // bloc emits AuthAuthenticated and main.dart's root BlocBuilder
@@ -147,7 +161,7 @@ Widget _buildAvatar(String name, {double size = 44, double fontSize = 18}) {
     child: Center(
       child: Text(
         initials,
-        style: GoogleFonts.inter(
+        style: TextStyle(fontFamily: 'Inter', 
           color: Colors.white,
           fontSize: fontSize,
           fontWeight: FontWeight.w700,
@@ -195,16 +209,16 @@ class _LiveClockState extends State<_LiveClock> {
       children: [
         Text(
           time,
-          style: GoogleFonts.inter(
+          style: const TextStyle(fontFamily: 'Inter', 
             fontSize: 28,
             fontWeight: FontWeight.w300,
-            color: const Color(0xFF74777D),
+            color: Color(0xFF74777D),
             letterSpacing: 2,
           ),
         ),
         Text(
           date,
-          style: GoogleFonts.inter(
+          style: TextStyle(fontFamily: 'Inter', 
             fontSize: 12,
             fontWeight: FontWeight.w500,
             color: const Color(0xFF74777D).withValues(alpha: 0.7),
@@ -254,20 +268,20 @@ class _WidePinLayout extends StatelessWidget {
                       child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
                     ),
                     const SizedBox(width: 12),
-                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                       Text('POS SYSTEM',
-                        style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.3)),
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.3)),
                       Text('KAZAKHSTAN',
-                        style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, color: const Color(0xFF74777D), letterSpacing: 2)),
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF74777D), letterSpacing: 2)),
                     ]),
                   ]),
                   const SizedBox(height: 8),
                   Text(l.pinTerminal,
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: const Color(0xFF74777D))),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
 
                   const SizedBox(height: 32),
                   Text(l.pinSelectProfile,
-                    style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: const Color(0xFF74777D), letterSpacing: 1.5)),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF74777D), letterSpacing: 1.5)),
                   const SizedBox(height: 12),
 
                   // Cashier profiles from server
@@ -327,10 +341,10 @@ class _WidePinLayout extends StatelessWidget {
                   mainAxisSize: MainAxisSize.min,
                   children: [
                     Text(l.pinWelcome,
-                      style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.primary)),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.primary)),
                     const SizedBox(height: 6),
                     Text(l.pinEnterCode,
-                      style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF74777D))),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
                     const SizedBox(height: 28),
                     _PinDotsAndError(),
                     const SizedBox(height: 28),
@@ -340,7 +354,7 @@ class _WidePinLayout extends StatelessWidget {
                       const Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFFC4C6CD)),
                       const SizedBox(width: 6),
                       Text(l.pinEncryptedAccess,
-                        style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, color: const Color(0xFFC4C6CD), letterSpacing: 1.5)),
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFC4C6CD), letterSpacing: 1.5)),
                     ]),
                   ],
                 ),
@@ -381,14 +395,14 @@ class _NarrowPinLayout extends StatelessWidget {
             // Clock on mobile
             const _LiveClock(),
             const SizedBox(height: 16),
-            Text('POS System',
-              style: GoogleFonts.inter(fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
+            const Text('POS System',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
             const SizedBox(height: 4),
-            Text('KAZAKHSTAN',
-              style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF74777D), letterSpacing: 3)),
+            const Text('KAZAKHSTAN',
+              style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF74777D), letterSpacing: 3)),
             const SizedBox(height: 32),
             Text(l.pinEnterCode,
-              style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w500, color: const Color(0xFF74777D))),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
             const SizedBox(height: 24),
             _PinDotsAndError(),
             _PinLoadingIndicator(),
@@ -451,9 +465,9 @@ class _ProfileCard extends StatelessWidget {
         _buildAvatar(name),
         const SizedBox(width: 12),
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-          Text(name, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.primary)),
+          Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.primary)),
           const SizedBox(height: 2),
-          Text(subtitle, style: GoogleFonts.inter(fontSize: 12, color: const Color(0xFF74777D))),
+          Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D))),
           if (hasShift) ...[
             const SizedBox(height: 4),
             Container(
@@ -470,7 +484,7 @@ class _ProfileCard extends StatelessWidget {
                 const SizedBox(width: 4),
                 Text(
                   'Смена с $shiftTime',
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w600, color: const Color(0xFF059669)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
                 ),
               ]),
             ),
@@ -538,7 +552,7 @@ class _PinDotsAndError extends StatelessWidget {
                           ),
                           child: Text(
                             error,
-                            style: GoogleFonts.inter(color: AppTheme.error, fontSize: 13, fontWeight: FontWeight.w500),
+                            style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13, fontWeight: FontWeight.w500),
                           ),
                         ),
                       )
@@ -599,7 +613,7 @@ class _LockoutCountdownState extends State<_LockoutCountdown> {
           const SizedBox(width: 8),
           Text(
             AppLocalizations.of(context)!.pinLockedMessage(display),
-            style: GoogleFonts.inter(color: AppTheme.error, fontSize: 13, fontWeight: FontWeight.w600),
+            style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13, fontWeight: FontWeight.w600),
           ),
         ]),
       ),
@@ -685,7 +699,7 @@ class _PinKeypad extends StatelessWidget {
                     ? const Icon(Icons.login_rounded, size: 22, color: Colors.white)
                     : Text(
                         label,
-                        style: GoogleFonts.inter(
+                        style: const TextStyle(fontFamily: 'Inter', 
                           fontSize: 24,
                           fontWeight: FontWeight.w600,
                           color: AppTheme.primary,
@@ -1105,22 +1119,22 @@ class _FirstRunSetupState extends State<_FirstRunSetup> {
               ),
               const SizedBox(height: 20),
               Text(l.pinFirstRunTitle,
-                style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
               const SizedBox(height: 6),
               Text(l.pinFirstRunSubtitle,
-                style: GoogleFonts.inter(fontSize: 14, color: const Color(0xFF74777D))),
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF74777D))),
               const SizedBox(height: 32),
 
               TextField(
                 controller: _nameController,
                 decoration: InputDecoration(labelText: l.pinFieldName, prefixIcon: const Icon(Icons.person_outline)),
-                style: GoogleFonts.inter(),
+                style: const TextStyle(fontFamily: 'Inter', ),
               ),
               const SizedBox(height: 14),
               TextField(
                 controller: _pinController,
                 decoration: InputDecoration(labelText: l.pinFieldPin, prefixIcon: const Icon(Icons.lock_outline)),
-                style: GoogleFonts.inter(),
+                style: const TextStyle(fontFamily: 'Inter', ),
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 obscureText: true,
@@ -1130,7 +1144,7 @@ class _FirstRunSetupState extends State<_FirstRunSetup> {
               TextField(
                 controller: _confirmController,
                 decoration: InputDecoration(labelText: l.pinFieldConfirm, prefixIcon: const Icon(Icons.lock_outline)),
-                style: GoogleFonts.inter(),
+                style: const TextStyle(fontFamily: 'Inter', ),
                 keyboardType: TextInputType.number,
                 maxLength: 4,
                 obscureText: true,
@@ -1151,7 +1165,7 @@ class _FirstRunSetupState extends State<_FirstRunSetup> {
                             color: const Color(0xFFFFDAD6),
                             borderRadius: BorderRadius.circular(10),
                           ),
-                          child: Text(error, style: GoogleFonts.inter(color: AppTheme.error, fontSize: 13)),
+                          child: Text(error, style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13)),
                         ),
                       ),
                     SizedBox(
@@ -1183,7 +1197,7 @@ class _FirstRunSetupState extends State<_FirstRunSetup> {
                         ),
                         child: state is AuthLoading
                             ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                            : Text(l.pinCreateAndLogin, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600)),
+                            : Text(l.pinCreateAndLogin, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600)),
                       ),
                     ),
                   ]);

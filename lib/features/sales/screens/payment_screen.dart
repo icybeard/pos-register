@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
@@ -285,13 +284,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                   ],
                                 ),
                                 child: Column(children: [
-                                  Text(l.paymentToPay, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+                                  Text(l.paymentToPay, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
                                   const SizedBox(height: 6),
                                   Text(Money.format(widget.totalTiyin),
-                                    style: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.5)),
+                                    style: const TextStyle(fontFamily: 'Inter', fontSize: 36, fontWeight: FontWeight.w800, letterSpacing: -1.5)),
                                   const SizedBox(height: 4),
                                   Text(l.paymentVatLine(Money.format(widget.vatAmount)),
-                                    style: GoogleFonts.inter(fontSize: 12, color: cs.outline)),
+                                    style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
                                 ]),
                               ),
                               const SizedBox(height: 16),
@@ -325,8 +324,8 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                     padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 14),
                                     decoration: BoxDecoration(color: pos.warningBg, borderRadius: BorderRadius.circular(14)),
                                     child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-                                      Text(l.paymentChange, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w600, color: pos.warningFg)),
-                                      Text(Money.format(_changeTiyin), style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: pos.warningFg)),
+                                      Text(l.paymentChange, style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600, color: pos.warningFg)),
+                                      Text(Money.format(_changeTiyin), style: TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, color: pos.warningFg)),
                                     ]),
                                   ),
                                 ],
@@ -368,9 +367,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       decoration: BoxDecoration(color: pos.accentBg, borderRadius: BorderRadius.circular(18)),
                                       child: Icon(Icons.contactless_outlined, color: pos.accentFg, size: 36)),
                                     const SizedBox(height: 20),
-                                    Text(l.paymentCardHint, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    Text(l.paymentCardHint, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 16)),
                                     const SizedBox(height: 6),
-                                    Text('${l.paymentToPay}: ${Money.format(widget.totalTiyin)}', style: GoogleFonts.inter(color: cs.outline, fontSize: 14)),
+                                    Text('${l.paymentToPay}: ${Money.format(widget.totalTiyin)}', style: TextStyle(fontFamily: 'Inter', color: cs.outline, fontSize: 14)),
                                   ]),
                                 ),
 
@@ -385,9 +384,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                                       decoration: BoxDecoration(color: cs.surfaceContainerLow, borderRadius: BorderRadius.circular(16)),
                                       child: Icon(Icons.qr_code_2, size: 64, color: pos.accentFg)),
                                     const SizedBox(height: 18),
-                                    Text(l.paymentQRHint, style: GoogleFonts.inter(fontWeight: FontWeight.w600, fontSize: 16)),
+                                    Text(l.paymentQRHint, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 16)),
                                     const SizedBox(height: 6),
-                                    Text('${l.paymentToPay}: ${Money.format(widget.totalTiyin)}', style: GoogleFonts.inter(color: cs.onSurfaceVariant, fontSize: 14)),
+                                    Text('${l.paymentToPay}: ${Money.format(widget.totalTiyin)}', style: TextStyle(fontFamily: 'Inter', color: cs.onSurfaceVariant, fontSize: 14)),
                                   ]),
                                 ),
 
@@ -419,7 +418,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                             : _canPay
                                 ? l.paymentPayButton(Money.format(widget.totalTiyin))
                                 : l.paymentPendingButton(Money.format(widget.totalTiyin - _cashTiyin - _cardTiyin - _qrTiyin)),
-                        style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w700),
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w700),
                       ),
                     )),
                   ),
@@ -445,7 +444,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         Row(children: [
           Icon(Icons.account_balance_wallet_outlined, size: 22, color: pos.warningFg),
           const SizedBox(width: 10),
-          Text(l.paymentDebtHint, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+          Text(l.paymentDebtHint, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
         ]),
         const SizedBox(height: 16),
 
@@ -457,7 +456,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
         else if (_clients.isEmpty)
           Center(child: Padding(
             padding: const EdgeInsets.all(20),
-            child: Text(l.paymentSelectClient, style: GoogleFonts.inter(color: cs.outline)),
+            child: Text(l.paymentSelectClient, style: TextStyle(fontFamily: 'Inter', color: cs.outline)),
           ))
         else
           ...List.generate(_clients.length, (i) {
@@ -489,9 +488,9 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     ),
                     const SizedBox(width: 12),
                     Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(name, style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w600)),
+                      Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
                       if (phone.isNotEmpty)
-                        Text(phone, style: GoogleFonts.inter(fontSize: 12, color: cs.outline)),
+                        Text(phone, style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
                     ])),
                   ]),
                 ),
@@ -509,11 +508,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
       child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
         const SizedBox(width: 48, height: 48, child: CircularProgressIndicator(strokeWidth: 3)),
         const SizedBox(height: 24),
-        Text(l.paymentProcessing, style: GoogleFonts.inter(fontSize: 18, fontWeight: FontWeight.w600)),
+        Text(l.paymentProcessing, style: const TextStyle(fontFamily: 'Inter', fontSize: 18, fontWeight: FontWeight.w600)),
         const SizedBox(height: 8),
         Text(
           '${_timeoutSeconds}s',
-          style: GoogleFonts.inter(fontSize: 36, fontWeight: FontWeight.w800, color: cs.outline),
+          style: TextStyle(fontFamily: 'Inter', fontSize: 36, fontWeight: FontWeight.w800, color: cs.outline),
         ),
         const SizedBox(height: 24),
         TextButton.icon(
@@ -579,12 +578,12 @@ class _PaymentConfirmation extends StatelessWidget {
                     const SizedBox(height: 24),
                     Text(
                       l.paymentSuccess,
-                      style: GoogleFonts.inter(fontSize: 24, fontWeight: FontWeight.w800, color: pos.successFg),
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, color: pos.successFg),
                     ),
                     const SizedBox(height: 8),
                     Text(
                       l.paymentReceiptNumber(receiptNumber),
-                      style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant),
+                      style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant),
                     ),
                     const SizedBox(height: 32),
 
@@ -625,7 +624,7 @@ class _PaymentConfirmation extends StatelessWidget {
                           Navigator.pop(context, result);
                         },
                         icon: const Icon(Icons.receipt_long_rounded),
-                        label: Text(l.paymentNewReceipt, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700)),
+                        label: Text(l.paymentNewReceipt, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700)),
                         style: ElevatedButton.styleFrom(
                           backgroundColor: AppTheme.primary,
                           foregroundColor: Colors.white,
@@ -669,8 +668,8 @@ class _ConfirmRow extends StatelessWidget {
   Widget build(BuildContext context) {
     final c = color ?? Theme.of(context).colorScheme.onSurface;
     return Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-      Text(label, style: GoogleFonts.inter(fontSize: 14, color: c)),
-      Text(value, style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: c)),
+      Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: c)),
+      Text(value, style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w700, color: c)),
     ]);
   }
 }
@@ -709,10 +708,10 @@ class _AmountDisplay extends StatelessWidget {
         child: Row(children: [
           Icon(icon, size: 22, color: isActive ? cs.primary : cs.onSurfaceVariant),
           const SizedBox(width: 14),
-          Text(label, style: GoogleFonts.inter(fontSize: 14, color: cs.onSurfaceVariant)),
+          Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 14, color: cs.onSurfaceVariant)),
           const Spacer(),
           Text(value.isEmpty ? '0' : '$value ₸',
-            style: GoogleFonts.inter(fontSize: 22, fontWeight: FontWeight.w700,
+            style: TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700,
               color: isActive ? cs.onSurface : cs.onSurfaceVariant)),
           if (isActive) ...[
             const SizedBox(width: 6),
@@ -745,9 +744,9 @@ class _MixedSummary extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(isEnough ? l.paymentChange : 'Осталось', style: GoogleFonts.inter(
+        Text(isEnough ? l.paymentChange : 'Осталось', style: TextStyle(fontFamily: 'Inter', 
           fontSize: 14, fontWeight: FontWeight.w600, color: isEnough ? pos.successFg : pos.warningFg)),
-        Text(Money.format(isEnough ? paid - total : remaining), style: GoogleFonts.inter(
+        Text(Money.format(isEnough ? paid - total : remaining), style: TextStyle(fontFamily: 'Inter', 
           fontSize: 20, fontWeight: FontWeight.w800, color: isEnough ? pos.successFg : pos.warningFg)),
       ]),
     );
@@ -779,7 +778,7 @@ class _MethodButton extends StatelessWidget {
           child: Column(children: [
             Icon(icon, size: 24, color: selected ? cs.primary : cs.onSurfaceVariant),
             const SizedBox(height: 4),
-            Text(label, style: GoogleFonts.inter(fontSize: 10,
+            Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 10,
               fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
               color: selected ? cs.primary : cs.onSurfaceVariant),
               textAlign: TextAlign.center,

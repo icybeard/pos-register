@@ -52,6 +52,7 @@ class MockApiClient extends ApiClient {
   Future<Map<String, dynamic>> ownerLogin({
     required String email,
     required String password,
+    String? deviceFingerprint,
   }) async {
     if (onOwnerLogin != null) {
       return onOwnerLogin!(email: email, password: password);
@@ -65,6 +66,7 @@ class MockApiClient extends ApiClient {
     required String login,
     required String pin,
     String? deviceId,
+    String? deviceFingerprint,
   }) async {
     if (onCashierLogin != null) {
       return onCashierLogin!(
@@ -78,6 +80,7 @@ class MockApiClient extends ApiClient {
     required String code,
     required String deviceId,
     required String deviceName,
+    String? deviceFingerprint,
   }) async {
     if (onActivateRegister != null) {
       return onActivateRegister!(

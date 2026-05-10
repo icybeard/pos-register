@@ -1,4 +1,4 @@
-import 'dart:async' show Timer;
+import 'dart:async' show Timer, runZonedGuarded, unawaited;
 import 'dart:io' show Platform;
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
@@ -7,7 +7,6 @@ import 'package:flutter/foundation.dart'
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
-import 'package:google_fonts/google_fonts.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/constants/app_constants.dart';
 import 'core/l10n/app_localizations.dart';
@@ -17,8 +16,11 @@ import 'core/widgets/sync_status_chip.dart';
 import 'core/feature_flags.dart';
 import 'data/database.dart';
 import 'services/api_client.dart';
+import 'package:http/http.dart' as http;
+import 'services/auth/auth_session.dart';
 import 'services/auth/auth_token_store.dart';
 import 'services/auth/database_key_store.dart';
+import 'services/auth/device_fingerprint.dart';
 import 'services/auth/device_id_store.dart';
 import 'services/auth/lockout_store.dart';
 import 'services/auth/workstation_store.dart';
@@ -50,45 +52,81 @@ import 'features/audit/screens/audit_screen.dart';
 bool get _isDesktop =>
     !kIsWeb && (Platform.isWindows || Platform.isLinux || Platform.isMacOS);
 
-void main() async {
-  WidgetsFlutterBinding.ensureInitialized();
+void main() {
+  // runZonedGuarded catches async errors that escape both
+  // FlutterError.onError (framework lifecycle) and
+  // PlatformDispatcher.instance.onError (engine-level). Stream subscriptions
+  // and Timer callbacks that throw without an explicit handler land here —
+  // without this wrapper they would silently disappear in release builds.
+  // WidgetsFlutterBinding.ensureInitialized() must run inside the same zone
+  // as runApp so hot-reload state survives across reloads.
+  runZonedGuarded<Future<void>>(() async {
+    WidgetsFlutterBinding.ensureInitialized();
 
-  // Refuse to boot a release build that was compiled with a cleartext host
-  // (POS_API_HOST=http://...). The register would otherwise silently send
-  // JWTs, PINs, and full sync payloads in the clear on a production network.
-  AppConstants.assertApiHostIsSecure(isReleaseMode: kReleaseMode);
+    // Refuse to boot a release build that was compiled with a cleartext host
+    // (POS_API_HOST=http://...). The register would otherwise silently send
+    // JWTs, PINs, and full sync payloads in the clear on a production network.
+    AppConstants.assertApiHostIsSecure(isReleaseMode: kReleaseMode);
 
-  // Global error plumbing. Without these, uncaught Flutter framework errors
-  // either paint a red screen (debug) or a blank grey screen (release) and
-  // never surface to operators / support. For a fiscal device that swallows
-  // sale-path failures silently, that is unacceptable.
-  FlutterError.onError = (FlutterErrorDetails details) {
-    FlutterError.presentError(details);
-    // TODO: wire to Sentry / Crashlytics here once enabled.
-    assert(() {
-      debugPrint('[FlutterError] ${details.exceptionAsString()}');
-      return true;
-    }());
-  };
-  PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-    assert(() {
-      debugPrint('[PlatformError] $error');
-      return true;
-    }());
-    return true; // swallow — UI error screen shown via ErrorWidget.builder
-  };
-  ErrorWidget.builder = (FlutterErrorDetails details) {
-    if (kReleaseMode) {
-      return const _FatalErrorScreen();
+    // Global error plumbing. Without these, uncaught Flutter framework errors
+    // either paint a red screen (debug) or a blank grey screen (release) and
+    // never surface to operators / support. For a fiscal device that swallows
+    // sale-path failures silently, that is unacceptable.
+    FlutterError.onError = (FlutterErrorDetails details) {
+      FlutterError.presentError(details);
+      // TODO: wire to Sentry / Crashlytics here once enabled.
+      assert(() {
+        debugPrint('[FlutterError] ${details.exceptionAsString()}');
+        return true;
+      }());
+    };
+    PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
+      assert(() {
+        debugPrint('[PlatformError] $error');
+        return true;
+      }());
+      return true; // swallow — UI error screen shown via ErrorWidget.builder
+    };
+    ErrorWidget.builder = (FlutterErrorDetails details) {
+      if (kReleaseMode) {
+        return const _FatalErrorScreen();
+      }
+      return ErrorWidget(details.exception);
+    };
+
+    // BLoC-level error observer. Without this, exceptions thrown inside an
+    // event handler land in the default BlocObserver.onError which only
+    // prints in debug — production loses bloc errors entirely. Forward to
+    // Sentry / Crashlytics here once enabled.
+    Bloc.observer = _AppBlocObserver();
+
+    if (_isDesktop) {
+      await windowManager.ensureInitialized();
+      await windowManager.setFullScreen(true);
     }
-    return ErrorWidget(details.exception);
-  };
+    runApp(const PosApp());
+  }, (Object error, StackTrace stack) {
+    // TODO: forward to Sentry / Crashlytics here once enabled.
+    assert(() {
+      debugPrint('[ZoneError] $error');
+      return true;
+    }());
+  });
+}
 
-  if (_isDesktop) {
-    await windowManager.ensureInitialized();
-    await windowManager.setFullScreen(true);
+/// Forwards every bloc-level exception to the same crash-reporting pipeline
+/// as the framework / async error hooks above. Kept private — registered
+/// once via `Bloc.observer` in [main].
+class _AppBlocObserver extends BlocObserver {
+  @override
+  void onError(BlocBase<Object?> bloc, Object error, StackTrace stackTrace) {
+    super.onError(bloc, error, stackTrace);
+    // TODO: forward to Sentry / Crashlytics here once enabled.
+    assert(() {
+      debugPrint('[BlocError] ${bloc.runtimeType}: $error');
+      return true;
+    }());
   }
-  runApp(const PosApp());
 }
 
 /// Branded last-resort screen when the widget tree itself fails to build in
@@ -123,6 +161,7 @@ class PosApp extends StatefulWidget {
 
 class _PosAppState extends State<PosApp> {
   late final ApiClient _apiClient;
+  late final AuthSession _authSession;
   late final AppDatabase _db;
   late final AuthTokenStore _tokenStore;
   /// Separate AuthTokenStore instance keyed under [AuthTokenStore.deviceKey].
@@ -160,12 +199,35 @@ class _PosAppState extends State<PosApp> {
   @override
   void initState() {
     super.initState();
-    _apiClient = ApiClient();
     _tokenStore = AuthTokenStore();
     _deviceTokenStore = AuthTokenStore(key: AuthTokenStore.deviceKey);
     _workstationStore = WorkstationStore();
     _deviceIdStore = DeviceIdStore();
     _lockoutStore = LockoutStore();
+
+    // Single AuthSession owns both token slots (device + user) and the
+    // refresh-on-401 mutex. ApiClient consults it for headers + retry; the
+    // bloc writes through it on activation/login/logout. Bootstrap loads
+    // both persisted slots into memory before the first authenticated
+    // request — fired-and-forgotten here because secure storage reads are
+    // fast and the cashier-grid CheckFirstRun comes after a Material build.
+    _authSession = AuthSession(
+      baseUrl: AppConstants.defaultApiHost,
+      // Unwrapped http.Client for the refresh round-trip — keeps refresh
+      // traffic out of the LoggingHttpClient noise on the main client.
+      httpClient: http.Client(),
+      loadDevice: _deviceTokenStore.load,
+      saveDevice: _deviceTokenStore.save,
+      clearDevicePersisted: _deviceTokenStore.clear,
+      loadUser: _tokenStore.load,
+      saveUser: _tokenStore.save,
+      clearUserPersisted: _tokenStore.clear,
+      fingerprint: DeviceFingerprint(),
+    );
+    unawaited(_authSession.bootstrap());
+
+    _apiClient = ApiClient(session: _authSession);
+
     // Single shared key store — the AppDatabase takes it as an argument
     // so tests can inject a deterministic key. In production each device
     // mints a fresh 256-bit key on first boot and keeps it in the
@@ -781,7 +843,7 @@ class _MainShellState extends State<_MainShell> {
                 Expanded(
                   child: Text(
                     _currentShiftId != null ? l.shiftOpened : l.shiftClosed,
-                    style: GoogleFonts.inter(fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.sidebarText),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.sidebarText),
                   ),
                 ),
               ]),
@@ -810,7 +872,7 @@ class _MainShellState extends State<_MainShell> {
                     const SizedBox(width: 10),
                     Text(
                       l.switchCashier,
-                      style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.sidebarText),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.sidebarText),
                     ),
                   ]),
                 ),
@@ -838,7 +900,7 @@ class _MainShellState extends State<_MainShell> {
                   child: Center(
                     child: Text(
                       widget.cashierName.isNotEmpty ? widget.cashierName[0].toUpperCase() : '?',
-                      style: GoogleFonts.inter(color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
+                      style: const TextStyle(fontFamily: 'Inter', color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
                     ),
                   ),
                 ),
@@ -848,12 +910,12 @@ class _MainShellState extends State<_MainShell> {
                   children: [
                     Text(
                       widget.cashierName,
-                      style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
+                      style: const TextStyle(fontFamily: 'Inter', color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
                       overflow: TextOverflow.ellipsis,
                     ),
                     Text(
                       _roleLabel(widget.role),
-                      style: GoogleFonts.inter(color: AppTheme.sidebarText, fontSize: 10, fontWeight: FontWeight.w500),
+                      style: const TextStyle(fontFamily: 'Inter', color: AppTheme.sidebarText, fontSize: 10, fontWeight: FontWeight.w500),
                     ),
                   ],
                 )),
@@ -1053,7 +1115,7 @@ class _ToggleBtn extends StatelessWidget {
           child: Center(
             child: Text(
               label,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'Inter', 
                 fontSize: 10,
                 fontWeight: FontWeight.w700,
                 color: selected ? Colors.white : AppTheme.sidebarText,
@@ -1106,7 +1168,7 @@ class _SidebarNavItem extends StatelessWidget {
               color: selected ? AppTheme.sidebarActiveText : AppTheme.sidebarText),
             const SizedBox(width: 14),
             Expanded(child: Text(label,
-              style: GoogleFonts.inter(
+              style: TextStyle(fontFamily: 'Inter', 
                 fontSize: 11, fontWeight: FontWeight.w700, letterSpacing: 1.2,
                 color: selected ? Colors.white : AppTheme.sidebarText,
               ),
@@ -1120,7 +1182,7 @@ class _SidebarNavItem extends StatelessWidget {
                 ),
                 child: Text(
                   '$badge',
-                  style: GoogleFonts.inter(fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: Colors.white),
                 ),
               ),
           ]),
@@ -1171,20 +1233,33 @@ class _ChromeNotificationBell extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return InkWell(
-      onTap: onTap,
-      borderRadius: BorderRadius.circular(8),
-      child: SizedBox(
-        width: 28,
-        height: 28,
-        child: Stack(clipBehavior: Clip.none, children: [
-          Center(
-            child: Icon(
-              Icons.notifications_none_rounded,
-              size: 18,
-              color: Colors.white.withValues(alpha: 0.85),
-            ),
-          ),
+    final l = AppLocalizations.of(context)!;
+    // Tooltip + Semantics so the icon-only bell is reachable to keyboard
+    // and screen-reader users. Without these the only thing announced is
+    // an unlabelled button. The pendingCount is folded into the announce
+    // text when nonzero so screen-reader users learn the badge state too.
+    final tooltip = pendingCount > 0
+        ? '${l.shellNoNotifications} ($pendingCount)'
+        : l.shellNoNotifications;
+    return Tooltip(
+      message: tooltip,
+      child: Semantics(
+        label: tooltip,
+        button: true,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(8),
+          child: SizedBox(
+            width: 28,
+            height: 28,
+            child: Stack(clipBehavior: Clip.none, children: [
+              Center(
+                child: Icon(
+                  Icons.notifications_none_rounded,
+                  size: 18,
+                  color: Colors.white.withValues(alpha: 0.85),
+                ),
+              ),
           if (pendingCount > 0)
             Positioned(
               right: 0,
@@ -1204,6 +1279,8 @@ class _ChromeNotificationBell extends StatelessWidget {
               ),
             ),
         ]),
+          ),
+        ),
       ),
     );
   }

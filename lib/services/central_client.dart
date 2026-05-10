@@ -8,6 +8,18 @@ import 'auth/auth_token_store.dart';
 /// Single-source-of-truth HTTP client for talking to the .NET central server.
 /// Every repository that needs to sync / write-through to central uses this.
 ///
+/// TODO(auth-session): when `SyncWorker` / `SyncPuller` / `SettingsService` are
+/// wired into `main.dart`, migrate `_AuthInterceptor` and `_runRefresh` to
+/// delegate to the shared `AuthSession` (lib/services/auth/auth_session.dart).
+/// Today CentralClient is scaffolded but not constructed at runtime, so this
+/// duplicate refresh state machine causes no harm — but the moment a second
+/// instantiation lands it will race with `ApiClient` over the same secure
+/// storage row. Plan: pass `AuthSession` into the constructor; replace
+/// `_runRefresh`/`refreshTokens()` with `session.refresh(flavor)`; flavor read
+/// from `RequestOptions.extra['auth_flavor']`. Also fix the device-flavour
+/// refresh endpoint mismatch (current code hardcodes `/api/auth/refresh`,
+/// device tokens want `/api/register/refresh`).
+///
 /// Features:
 ///   - Base URL configurable (dev: http://localhost:8090, prod: https://api.pos.kz)
 ///   - Automatic `Authorization: Bearer <access_token>` injection on every request
