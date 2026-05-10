@@ -48,6 +48,16 @@ class _ActivationScreenState extends State<ActivationScreen> {
 
   void _submit() {
     if (!_canSubmit) return;
+    // Belt-and-braces re-entry guard. The Enter key on the TextField fires
+    // before the BlocBuilder rebuild has propagated `busy=true` back to
+    // disable the action button, so a fast double-Enter would otherwise
+    // post two activate calls — the second one lands after the code is
+    // consumed and shows a misleading "уже использован" on a successful
+    // first try. The bloc has its own guard too; this one keeps the UI
+    // from even trying.
+    final s = context.read<AuthBloc>().state;
+    if (s is RegisterNotActivated && s.busy) return;
+    if (s is RegisterActivated) return;
     context.read<AuthBloc>().add(ActivateRegisterRequested(_normalised));
   }
 

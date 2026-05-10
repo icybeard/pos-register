@@ -1,6 +1,7 @@
 import 'dart:async';
 
 import 'package:dio/dio.dart';
+import 'package:flutter/foundation.dart';
 
 import 'auth/auth_token_store.dart';
 
@@ -38,6 +39,17 @@ class CentralClient {
               headers: {'Accept': 'application/json'},
             )) {
     _dio.interceptors.add(_AuthInterceptor(_tokenStore, this));
+    if (kDebugMode) {
+      _dio.interceptors.add(LogInterceptor(
+        request: true,
+        requestHeader: false,
+        requestBody: true,
+        responseHeader: false,
+        responseBody: false,
+        error: true,
+        logPrint: (obj) => debugPrint('[Dio] $obj'),
+      ));
+    }
   }
 
   final Dio _dio;

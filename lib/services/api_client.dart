@@ -2,6 +2,7 @@ import 'dart:convert';
 import 'package:flutter/foundation.dart';
 import 'package:http/http.dart' as http;
 import '../core/constants/app_constants.dart';
+import 'logging_http_client.dart';
 
 /// HTTP клиент для .NET central. Адрес читается из
 /// [AppConstants.defaultApiHost] (по умолчанию `http://localhost:5080`).
@@ -20,7 +21,7 @@ class ApiClient {
 
   ApiClient({String? baseUrl})
       : baseUrl = baseUrl ?? AppConstants.defaultApiHost,
-        _client = http.Client();
+        _client = LoggingHttpClient(http.Client());
 
   /// Установить bearer-токен, который будет добавляться к каждому запросу.
   /// Передайте `null`, чтобы очистить (после logout).
@@ -450,7 +451,7 @@ class ApiClient {
     final uri = Uri.parse('$baseUrl/api/products/import');
     final request = http.MultipartRequest('POST', uri)
       ..files.add(http.MultipartFile.fromBytes('file', bytes, filename: filename));
-    final streamedResponse = await request.send().timeout(AppConstants.apiTimeout);
+    final streamedResponse = await _client.send(request).timeout(AppConstants.apiTimeout);
     final response = await http.Response.fromStream(streamedResponse);
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;
@@ -588,11 +589,9 @@ class ApiClient {
 
   Future<Map<String, dynamic>> _get(String path, [Map<String, String>? params]) async {
     final uri = Uri.parse('$baseUrl$path').replace(queryParameters: params);
-    assert(() { debugPrint('[API GET] $uri'); return true; }());
     final response = await _client
         .get(uri, headers: _authHeaders())
         .timeout(AppConstants.apiTimeout);
-    assert(() { debugPrint('[API GET] $uri → ${response.statusCode}'); return true; }());
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;
@@ -602,7 +601,6 @@ class ApiClient {
 
   Future<Map<String, dynamic>> _post(String path, Map<String, dynamic> body) async {
     final uri = Uri.parse('$baseUrl$path');
-    assert(() { debugPrint('[API POST] $uri'); return true; }());
     final response = await _client
         .post(
           uri,
@@ -610,7 +608,6 @@ class ApiClient {
           body: json.encode(body),
         )
         .timeout(AppConstants.apiTimeout);
-    assert(() { debugPrint('[API POST] $uri → ${response.statusCode}'); return true; }());
 
     if (response.statusCode >= 200 && response.statusCode < 300) {
       return json.decode(response.body) as Map<String, dynamic>;

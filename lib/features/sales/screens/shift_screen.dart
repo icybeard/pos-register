@@ -97,13 +97,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
       backgroundColor: Hifi.canvas,
       body: _loading
           ? const Center(child: CircularProgressIndicator())
-          : Column(children: [
-              HifiChrome(
-                shiftNumber: _shift == null ? null : 'Смена №$_shiftNumber',
-                cashierName: widget.cashierName,
-              ),
-              Expanded(child: _shift == null ? _buildOpen(context) : _buildOpenedInfo(context)),
-            ]),
+          // Chrome is rendered by the shell (_MainShell._buildShellChrome);
+          // ShiftScreen body fills the remainder.
+          : (_shift == null ? _buildOpen(context) : _buildOpenedInfo(context)),
     );
   }
 

@@ -83,7 +83,9 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
     return Scaffold(
       backgroundColor: Hifi.canvas,
       body: Column(children: [
+        // Push-routed flow — see shift_close_screen for the same pattern.
         HifiChrome(
+          leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
           shiftNumber: 'Возврат',
           cashierName: widget.cashierName,
         ),

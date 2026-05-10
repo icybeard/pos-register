@@ -70,18 +70,32 @@ typedef DateTimeTokenTime = DateTime;
 
 /// Secure-storage-backed persistence for [AuthTokens]. Singleton in DI.
 /// Thread-safe: flutter_secure_storage serialises internally per-instance.
+///
+/// Two namespaces share this implementation, distinguished only by storage key:
+///   - user tokens (default [userKey]) — issued by /api/auth/login or
+///     /api/auth/cashier-login, cleared on logout
+///   - device tokens ([deviceKey]) — issued by /api/register/activate,
+///     survive cashier logout (workstation binding is a property of the machine)
 class AuthTokenStore {
-  AuthTokenStore({FlutterSecureStorage? storage})
-      : _storage = storage ??
+  AuthTokenStore({
+    FlutterSecureStorage? storage,
+    String key = userKey,
+  })  : _storage = storage ??
             const FlutterSecureStorage(
               aOptions: AndroidOptions(encryptedSharedPreferences: true),
               iOptions: IOSOptions(
                 accessibility: KeychainAccessibility.first_unlock_this_device,
               ),
-            );
+            ),
+        _key = key;
 
-  static const _key = 'pos.auth.tokens.v1';
+  /// Secure-storage key for the human-user token namespace (cashier / owner login).
+  static const String userKey = 'pos.auth.tokens.v1';
+  /// Secure-storage key for the device-JWT namespace (issued at register activation).
+  static const String deviceKey = 'pos.device.tokens.v1';
+
   final FlutterSecureStorage _storage;
+  final String _key;
 
   Future<AuthTokens?> load() async {
     try {

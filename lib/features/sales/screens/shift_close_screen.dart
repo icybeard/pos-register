@@ -74,7 +74,11 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
     return Scaffold(
       backgroundColor: Hifi.canvas,
       body: Column(children: [
+        // Push-routed full-screen flow — outside _MainShell, so this screen
+        // renders its own chrome with a back button. The shell's chrome
+        // covers in-shell pages only (POS / shift / products / etc.).
         HifiChrome(
+          leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
           shiftNumber: _shift == null ? 'Смена' : 'Смена №${_shift!['ShiftNumber'] ?? '—'}',
           cashierName: widget.cashierName,
         ),

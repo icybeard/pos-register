@@ -2,6 +2,8 @@ import 'dart:async';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pos_system/features/auth/bloc/auth_bloc.dart';
 import 'package:pos_system/services/api_client.dart';
+import 'package:pos_system/services/auth/auth_token_store.dart';
+import 'package:pos_system/services/auth/workstation_store.dart';
 import '../../../mocks/mock_api_client.dart';
 
 void main() {
@@ -252,4 +254,130 @@ void main() {
   // Pos.Infrastructure.Auth.PinLockoutService and is covered by the .NET
   // integration tests (attempt counters and 423 responses from
   // /api/auth/cashier-login).
+
+  // -------------------------------------------------------------------------
+  // HydrateSession — activation invariant
+  // -------------------------------------------------------------------------
+  //
+  // A workstation row without a usable device JWT pair is NOT really
+  // activated. Without this guard, a register that was activated under the
+  // pre-JWT anonymous flow (or whose tokens have fully expired) would land
+  // on PinScreen, hit 401 on listCashiers, and show an empty cashier grid
+  // with no way out. The hydrate handler must clear the stale binding and
+  // route to ActivationScreen instead.
+  group('HydrateSession', () {
+    test('workstation present but device tokens missing → RegisterNotActivated + clears stores', () async {
+      final wsInfo = WorkstationInfo(
+        workstationId: 'ws-1',
+        tenantId: 'tn-1',
+        storeId: 'st-1',
+        storeName: 'Test',
+        activatedAt: DateTime.now().toUtc(),
+      );
+      final wsStore = _FakeWorkstationStore(initial: wsInfo);
+      final userTokens = _FakeAuthTokenStore();
+      final deviceTokens = _FakeAuthTokenStore(); // load() returns null
+
+      final hydrateBloc = AuthBloc(
+        mockApi,
+        workstation: wsStore,
+        tokens: userTokens,
+        deviceTokens: deviceTokens,
+      );
+      addTearDown(hydrateBloc.close);
+
+      final states = await collectStates(hydrateBloc, HydrateSession());
+
+      expect(states.last, isA<RegisterNotActivated>(),
+          reason: 'no device tokens ⇒ register is not really activated');
+      expect(wsStore.clearCalls, 1, reason: 'stale workstation must be wiped');
+      expect(userTokens.clearCalls, 1);
+      expect(deviceTokens.clearCalls, 1);
+    });
+
+    test('workstation present with valid device tokens → RegisterActivated', () async {
+      final wsInfo = WorkstationInfo(
+        workstationId: 'ws-1',
+        tenantId: 'tn-1',
+        storeId: 'st-1',
+        storeName: 'Test',
+        activatedAt: DateTime.now().toUtc(),
+      );
+      final future = DateTime.now().toUtc().add(const Duration(hours: 23));
+      final wsStore = _FakeWorkstationStore(initial: wsInfo);
+      final userTokens = _FakeAuthTokenStore();
+      final deviceTokens = _FakeAuthTokenStore(
+        initial: AuthTokens(
+          accessToken: 'access-jwt',
+          refreshToken: 'refresh-secret',
+          accessExpiresAt: future,
+          refreshExpiresAt: future.add(const Duration(days: 90)),
+          tenantId: 'tn-1',
+          role: 'device',
+          storeId: 'st-1',
+          workstationId: 'ws-1',
+        ),
+      );
+
+      final hydrateBloc = AuthBloc(
+        mockApi,
+        workstation: wsStore,
+        tokens: userTokens,
+        deviceTokens: deviceTokens,
+      );
+      addTearDown(hydrateBloc.close);
+
+      final states = await collectStates(hydrateBloc, HydrateSession());
+
+      expect(states.last, isA<RegisterActivated>(),
+          reason: 'valid device tokens ⇒ register is activated');
+      expect(wsStore.clearCalls, 0, reason: 'must NOT wipe a healthy binding');
+      expect(deviceTokens.clearCalls, 0);
+    });
+  });
+}
+
+// In-test fakes. We subclass the real stores rather than mocking the
+// FlutterSecureStorage they hold, because the storage field is initialised
+// in the const default constructor and never touched once we override the
+// three public methods (load / save / clear).
+
+class _FakeWorkstationStore extends WorkstationStore {
+  _FakeWorkstationStore({WorkstationInfo? initial}) : _info = initial;
+  WorkstationInfo? _info;
+  int clearCalls = 0;
+
+  @override
+  Future<WorkstationInfo?> load() async => _info;
+
+  @override
+  Future<void> save(WorkstationInfo info) async {
+    _info = info;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCalls++;
+    _info = null;
+  }
+}
+
+class _FakeAuthTokenStore extends AuthTokenStore {
+  _FakeAuthTokenStore({AuthTokens? initial}) : _tokens = initial;
+  AuthTokens? _tokens;
+  int clearCalls = 0;
+
+  @override
+  Future<AuthTokens?> load() async => _tokens;
+
+  @override
+  Future<void> save(AuthTokens tokens) async {
+    _tokens = tokens;
+  }
+
+  @override
+  Future<void> clear() async {
+    clearCalls++;
+    _tokens = null;
+  }
 }

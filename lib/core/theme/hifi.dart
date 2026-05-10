@@ -45,13 +45,32 @@ class Hifi {
       GoogleFonts.inter(fontSize: size, fontWeight: weight, color: color, height: height);
 }
 
-/// Navy chrome bar rendered at the top of every full-screen hi-fi screen.
-/// Matches `GridChrome` in the design.
+/// Navy chrome bar — single source of truth for the app's top bar.
+///
+/// Lives at 44 px, rendered by `_MainShell` in main.dart for in-shell pages
+/// and by individual screens that exist outside the shell (pre-login,
+/// push-routed full-screen flows like payment/cashier-login). Page screens
+/// inside the shell DO NOT render this themselves any more — the shell
+/// owns one instance and populates it from current state.
+///
+/// Slot layout, left → right:
+///   `[leading?] [appName] [title?] [shiftNumber chip?] [cashierName chip?]`
+///   `[extras...]  <Spacer>  [online chip?]`
+///   `[timestamp?] [storeLabel?] [locale chip?]`
+///
+/// `online` is opt-in (nullable) — passing null hides the legacy chip; the
+/// shell populates `extras` with a live `SyncStatusChip` instead. Keeping
+/// the parameter (instead of removing) preserves test fixtures.
 class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
   final String appName;
+  /// Page-level breadcrumb. Rendered between `appName` and the cashier/shift
+  /// chips in slightly larger weight. Replaces `_buildTopBar`'s breadcrumb.
+  final String? title;
   final String? shiftNumber;
   final String? cashierName;
-  final bool online;
+  /// Opt-in legacy online chip. Default null → no chip rendered (shell ships
+  /// `SyncStatusChip` via [extras] instead, which carries richer signal).
+  final bool? online;
   final VoidCallback? onToggleOnline;
   final String locale;
   final VoidCallback? onToggleLocale;
@@ -63,9 +82,10 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
   const HifiChrome({
     super.key,
     this.appName = 'pos-register',
+    this.title,
     this.shiftNumber,
     this.cashierName,
-    this.online = true,
+    this.online,
     this.onToggleOnline,
     this.locale = 'ru',
     this.onToggleLocale,
@@ -75,29 +95,59 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
     this.extras = const [],
   });
 
+  /// Visual height of the chrome bar itself (excludes the device's top
+  /// safe-area inset, which is added at build time inside [build]).
+  static const double _barHeight = 44;
+
+  /// Returned size ignores the safe-area inset because the MediaQuery
+  /// isn't reachable here. This is fine: HifiChrome is used as a regular
+  /// Column child on every screen we ship, never as an AppBar, so no
+  /// consumer reads this. Kept implementing the interface so existing
+  /// test fixtures that pass a HifiChrome to `Scaffold(appBar: ...)` keep
+  /// compiling.
   @override
-  Size get preferredSize => const Size.fromHeight(44);
+  Size get preferredSize => const Size.fromHeight(_barHeight);
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      height: 44,
-      color: Hifi.chrome,
-      padding: const EdgeInsets.symmetric(horizontal: 12),
-      child: Row(children: [
+    // SafeArea(top: true) so the chrome doesn't sit under the iPad / iPhone
+    // status bar (or Android system bar). bottom: false because we're at
+    // the top edge of the screen and the body below handles its own
+    // bottom inset.
+    return SafeArea(
+      top: true,
+      bottom: false,
+      child: Container(
+        height: _barHeight,
+        color: Hifi.chrome,
+        padding: const EdgeInsets.symmetric(horizontal: 12),
+        child: Row(children: [
         if (leading != null) ...[leading!, const SizedBox(width: 12)],
         Text(
           appName,
           style: Hifi.ui(size: 13, weight: FontWeight.w700, color: Colors.white)
               .copyWith(letterSpacing: 0.3),
         ),
+        if (title != null) ...[
+          const SizedBox(width: 12),
+          Text(
+            '· $title',
+            style: Hifi.ui(
+              size: 13,
+              weight: FontWeight.w500,
+              color: Colors.white.withValues(alpha: 0.85),
+            ).copyWith(letterSpacing: 0.2),
+          ),
+        ],
         const SizedBox(width: 12),
         if (shiftNumber != null) ...[_chip(shiftNumber!), const SizedBox(width: 8)],
         if (cashierName != null) _chip('Кассир: $cashierName'),
         for (final w in extras) ...[const SizedBox(width: 8), w],
         const Spacer(),
-        _OnlineChip(online: online, onTap: onToggleOnline),
-        const SizedBox(width: 10),
+        if (online != null) ...[
+          _OnlineChip(online: online!, onTap: onToggleOnline),
+          const SizedBox(width: 10),
+        ],
         if (timestamp != null)
           Text(
             timestamp!,
@@ -114,7 +164,8 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
           const SizedBox(width: 10),
           _LocaleChip(locale: locale, onTap: onToggleLocale!),
         ],
-      ]),
+        ]),
+      ),
     );
   }
 

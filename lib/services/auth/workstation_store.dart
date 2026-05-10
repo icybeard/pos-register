@@ -98,12 +98,13 @@ class WorkstationStore {
     }
   }
 
+  /// Persist the workstation binding. Rethrows on platform-level failures
+  /// (e.g. macOS Keychain Sharing entitlement missing) so the caller can
+  /// decide whether to warn the operator. Previously this swallowed errors
+  /// silently and the next cold boot demanded a fresh activation code with
+  /// no warning — a footgun when the original code was already consumed.
   Future<void> save(WorkstationInfo info) async {
-    try {
-      await _storage.write(key: _key, value: jsonEncode(info.toJson()));
-    } on Object {
-      // Persistence is best-effort; in-memory state keeps the session.
-    }
+    await _storage.write(key: _key, value: jsonEncode(info.toJson()));
   }
 
   /// Hard-reset: device becomes un-activated again. Only the owner should

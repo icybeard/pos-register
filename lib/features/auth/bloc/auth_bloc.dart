@@ -200,8 +200,18 @@ class RegisterActivated extends AuthState {
 class AuthBloc extends Bloc<AuthEvent, AuthState> {
   final ApiClient _api;
   final AuthTokenStore? _tokens;
+  /// Device JWT store. Persists the access + refresh pair issued by
+  /// /api/register/activate so that authenticated calls (cashier list,
+  /// cashier-login) work immediately on next boot without re-activation.
+  /// Distinct from [_tokens] (user session) — survives cashier logout.
+  final AuthTokenStore? _deviceTokens;
   final WorkstationStore? _workstation;
-  final DeviceIdStore? _deviceIdStore;
+  // Non-nullable: a real DeviceIdStore (or one supplied by the test) is
+  // always present so we never have to fall back to a literal device id.
+  // Two registers sharing a fixed string would collide on the server's
+  // uniqueness checks and either reject the second activation or silently
+  // overwrite the first.
+  final DeviceIdStore _deviceIdStore;
   final LockoutStore? _lockoutStore;
   final BiometricAuthService _biometric;
 
@@ -238,16 +248,32 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// session — null until the owner logs in.
   String? _ownerTenantId;
 
+  /// User-id of the cashier whose session is currently persisted in
+  /// [AuthTokenStore] (the "last logged-in cashier" on this device). Drives
+  /// the per-tile Face ID badge in the cashier grid: only the matching
+  /// tile renders the bio shortcut, since `BiometricLoginRequested` unlocks
+  /// the saved session — not an arbitrary cashier's session.
+  String? _savedCashierUserId;
+  String? get savedCashierUserId => _savedCashierUserId;
+
+  /// Whether the platform reports an enrolled biometric (Face ID / Touch ID
+  /// / fingerprint). Probed once during hydrate; cached here so the grid
+  /// doesn't have to pay a platform-channel round-trip per tile build.
+  bool _biometricAvailable = false;
+  bool get isBiometricAvailable => _biometricAvailable;
+
   AuthBloc(
     this._api, {
     AuthTokenStore? tokens,
+    AuthTokenStore? deviceTokens,
     WorkstationStore? workstation,
     DeviceIdStore? deviceIdStore,
     LockoutStore? lockoutStore,
     BiometricAuthService? biometric,
   })  : _tokens = tokens,
+        _deviceTokens = deviceTokens,
         _workstation = workstation,
-        _deviceIdStore = deviceIdStore,
+        _deviceIdStore = deviceIdStore ?? DeviceIdStore(),
         _lockoutStore = lockoutStore,
         _biometric = biometric ?? BiometricAuthService(),
         super(AuthInitial()) {
@@ -293,7 +319,10 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   String _mapActivationError(int status, String? serverMsg) {
     final lc = (serverMsg ?? '').toLowerCase();
     if (lc.contains('already used')) {
-      return 'Код уже использован. Получите новый в веб-админке.';
+      // The cross-register race lands here too: if the same code was typed
+      // into two devices, only one wins and the loser sees this. Hint at
+      // that so the operator doesn't assume they're holding a stale code.
+      return 'Код уже использован — возможно, на другой кассе. Получите новый в веб-админке.';
     }
     if (lc.contains('expired') || lc.contains('истёк') || lc.contains('истек')) {
       return 'Код истёк. Получите новый в веб-админке.';
@@ -319,24 +348,74 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onActivateRegister(
       ActivateRegisterRequested event, Emitter<AuthState> emit) async {
+    // Re-entry guard. The TextField's Enter key bypasses the disabled-button
+    // path, so two ActivateRegisterRequested events can land back-to-back.
+    // Without this, the second call posts the now-consumed code and
+    // surfaces a misleading "уже использован" on top of the just-succeeded
+    // first call.
+    final current = state;
+    if (current is RegisterActivated) return;
+    if (current is RegisterNotActivated && current.busy) return;
+
     final store = _workstation;
+    // No `dev-unknown` fallback — _deviceIdStore is non-nullable now, so
+    // every activation carries a unique UUID. A literal fallback would
+    // collide across registers on the tenant and the server's uniqueness
+    // checks would either reject the second activation or silently
+    // overwrite the first.
+
     emit(RegisterNotActivated(busy: true));
     WorkstationInfo? info;
+    // Device JWT pair returned by the server. Lifted out of the try-block so
+    // the persistence section below can see them without restructuring.
+    String? accessToken;
+    String? refreshToken;
+    String? accessExpiresAt;
+    String? refreshExpiresAt;
     try {
       // Device fingerprint — stable UUID v4 held in platform secure storage.
       // The prior timestamp-based id was predictable to the ms and enabled
       // activation-code replay within the code's validity window.
-      final deviceId = await (_deviceIdStore?.getOrCreate() ??
-          Future.value('dev-unknown'));
+      final deviceId = await _deviceIdStore.getOrCreate();
       final resp = await _api.activateRegister(
         code: event.code.trim().toUpperCase(),
         deviceId: deviceId,
         deviceName: _platformDeviceName(),
       );
+      // Safe casts — if the server ever drops a field or returns null, fall
+      // into a clear "bad response" path instead of letting a TypeError get
+      // caught by the network branch and shown as "Нет связи с сервером".
+      final wsId = resp['workstation_id'] as String?;
+      final tnId = resp['tenant_id'] as String?;
+      final stId = resp['store_id'] as String?;
+      if (wsId == null || tnId == null || stId == null) {
+        emit(RegisterNotActivated(
+            error: 'Сервер вернул неполный ответ — обратитесь к администратору'));
+        return;
+      }
+      // Tokens are mandatory in the new flow — without them the register
+      // can't authenticate ANY follow-up call (cashier list, cashier-login).
+      // Letting activation "succeed" without them lands the operator on a
+      // dead PinScreen with an empty cashier list and a 401 in the logs.
+      // The most common cause: the api container is running pre-device-JWT
+      // code and didn't include the tokens in the response. Reject loudly
+      // so the operator knows the server is stale.
+      accessToken = resp['access_token'] as String?;
+      refreshToken = resp['refresh_token'] as String?;
+      accessExpiresAt = resp['access_expires_at'] as String?;
+      refreshExpiresAt = resp['refresh_expires_at'] as String?;
+      if (accessToken == null || accessToken.isEmpty
+          || refreshToken == null || refreshToken.isEmpty
+          || accessExpiresAt == null || refreshExpiresAt == null) {
+        emit(RegisterNotActivated(
+            error: 'Сервер не выдал токены устройства — '
+                'возможно нужно обновить серверную часть.'));
+        return;
+      }
       info = WorkstationInfo(
-        workstationId: resp['workstation_id'] as String,
-        tenantId: resp['tenant_id'] as String,
-        storeId: resp['store_id'] as String,
+        workstationId: wsId,
+        tenantId: tnId,
+        storeId: stId,
         storeName: (resp['store_name'] as String?) ?? '',
         activatedAt: DateTime.now().toUtc(),
       );
@@ -354,21 +433,54 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(RegisterNotActivated(error: 'Нет связи с сервером'));
       return;
     }
-    // Wire succeeded — the rest (secure-storage save) is best-effort.
-    // Keychain writes can fail on macOS without the Keychain Sharing
-    // entitlement; we don't want to force the operator to re-type the
-    // code just because persistence is off. In-memory state is valid for
-    // the current session; next cold boot will re-prompt if keychain
-    // actually stayed unwritten.
+
+    // Wire succeeded. Persistence is best-effort but the operator must be
+    // told if it failed: the activation code on the server is now consumed,
+    // so a cold-boot before we re-activate means they're stuck calling the
+    // owner. Keychain writes fail on macOS without the Keychain Sharing
+    // entitlement — that's the most common path here.
     _activeWorkstation = info;
+
+    // Apply device JWT to the in-memory ApiClient immediately so the next call
+    // (PinScreen → CheckFirstRun → listCashiers) carries Authorization. The
+    // top-of-try guard already rejected empty/null tokens, so this is safe.
+    _api.setAccessToken(accessToken);
+
+    String? persistWarning;
     try {
       await store?.save(info);
-    } on Object catch (_) {
-      // Non-fatal — log-only would be ideal but we don't have a sink yet.
-      // The user stays on the current session; if they restart before
-      // we fix persistence, they'll re-activate with a fresh code.
+    } on Object {
+      persistWarning =
+          'Активация выполнена, но не сохранена на устройстве — '
+          'не перезагружайте кассу до входа сотрудника.';
     }
-    emit(RegisterActivated(info));
+
+    // Persist device tokens too. Failure isn't fatal for the current session
+    // (the in-memory token still works) but it does mean the next cold boot
+    // will require a fresh activation code — same recovery story as the
+    // workstation save above, so we fold the warning into the same message
+    // rather than emitting two.
+    final deviceStore = _deviceTokens;
+    if (deviceStore != null) {
+      try {
+        await deviceStore.save(AuthTokens(
+          accessToken: accessToken,
+          refreshToken: refreshToken,
+          accessExpiresAt: DateTime.parse(accessExpiresAt).toUtc(),
+          refreshExpiresAt: DateTime.parse(refreshExpiresAt).toUtc(),
+          tenantId: info.tenantId,
+          role: 'device',
+          storeId: info.storeId,
+          workstationId: info.workstationId,
+        ));
+      } on Object {
+        persistWarning ??=
+            'Активация выполнена, но не сохранена на устройстве — '
+            'не перезагружайте кассу до входа сотрудника.';
+      }
+    }
+
+    emit(RegisterActivated(info, error: persistWarning));
   }
 
   // --- Biometric login (reuse saved session) ----------------------------
@@ -446,12 +558,13 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
 
   Future<void> _onDeactivateRegister(
       DeactivateRegisterRequested event, Emitter<AuthState> emit) async {
-    // Nuclear option — wipes workstation AND any user session.
+    // Nuclear option — wipes workstation, device JWT, and any user session.
     _api.setAccessToken(null);
     _ownerTenantId = null;
     _activeWorkstation = null;
     await _workstation?.clear();
     await _tokens?.clear();
+    await _deviceTokens?.clear();
     emit(RegisterNotActivated());
   }
 
@@ -479,6 +592,9 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       }
       _api.setAccessToken(token);
       _ownerTenantId = ws.tenantId;
+      // Remember which cashier "owns" the saved session so the grid's
+      // Face ID badge lands on the right tile next time.
+      _savedCashierUserId = resp['user_id'] as String?;
       try {
         await _tokens?.save(AuthTokens.fromJson(resp));
       } on Object catch (_) {
@@ -537,7 +653,40 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       emit(RegisterNotActivated());
       return;
     }
+
+    // Activation invariant: a workstation binding without a usable device
+    // JWT pair is NOT really activated — every authenticated call (cashier
+    // list, cashier-login) would 401. This case shows up in two ways:
+    //   1. The device was activated under the pre-JWT anonymous flow, so
+    //      no device tokens were ever saved.
+    //   2. Both access + refresh tokens have expired (device offline for
+    //      longer than the refresh window).
+    // Either way the recovery is the same: wipe the stale binding and route
+    // to ActivationScreen so the operator enters a fresh code. Without this
+    // the register would show PinScreen with an empty cashier grid and no
+    // way out.
+    final savedDevice = await _deviceTokens?.load();
+    final deviceTokensUnusable = savedDevice == null
+        || (savedDevice.isAccessExpired && savedDevice.isRefreshExpired);
+    if (deviceTokensUnusable) {
+      await _workstation?.clear();
+      await _tokens?.clear();
+      await _deviceTokens?.clear();
+      _activeWorkstation = null;
+      emit(RegisterNotActivated());
+      return;
+    }
+
     _activeWorkstation = wsInfo;
+
+    // Apply persisted device JWT so authenticated calls (cashier list,
+    // cashier-login) work immediately. If only the access token has
+    // expired (refresh still valid), leave the header unset — the first
+    // 401 will trigger the refresh path. Boot stays fast and offline-
+    // tolerant.
+    if (!savedDevice.isAccessExpired) {
+      _api.setAccessToken(savedDevice.accessToken);
+    }
 
     // Cold-boot policy: ALWAYS require a PIN / password. Even if a valid
     // access token is persisted, a stolen device must not auto-authenticate
@@ -552,6 +701,21 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
     if (saved != null && !saved.isAccessExpired) {
       _ownerTenantId = saved.tenantId;
     }
+    // Remember the last-logged-in cashier even if the access token is now
+    // expired — the refresh token may still be valid, and we want the Face
+    // ID badge to point at the right tile so they can re-unlock without
+    // typing their PIN.
+    _savedCashierUserId = saved?.userId;
+
+    // Probe biometric availability once at boot. The result is cached in
+    // [_biometricAvailable] for the rest of the session — the platform
+    // value doesn't change at runtime in any way that matters for a POS.
+    try {
+      _biometricAvailable = await _biometric.isAvailable();
+    } on Object {
+      _biometricAvailable = false;
+    }
+
     emit(RegisterActivated(wsInfo));
   }
 
@@ -681,7 +845,26 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       await _loadOpenShifts();
 
       emit(AuthInitial(cashiers: typed, openShifts: _openShifts));
-    } on Exception catch (_) {}
+    } on ApiException catch (e) {
+      // Don't swallow auth / server failures silently — without this the
+      // grid renders empty (just admin + "+ new cashier") and the operator
+      // has no idea why.
+      final ws = _activeWorkstation;
+      if (ws == null) return;
+      final msg = e.statusCode == 401
+          // Most common: device JWT missing / expired. Easiest recovery is
+          // owner mints a fresh activation code and the register re-binds.
+          ? 'Сессия устройства недействительна. Активируйте кассу заново.'
+          : e.statusCode >= 500
+              ? 'Ошибка сервера — список кассиров недоступен'
+              : 'Не удалось загрузить кассиров (${e.statusCode})';
+      emit(RegisterActivated(ws, error: msg));
+    } on Exception catch (_) {
+      final ws = _activeWorkstation;
+      if (ws == null) return;
+      emit(RegisterActivated(ws,
+          error: 'Нет связи с сервером — список кассиров недоступен'));
+    }
   }
 
   Future<void> _loadOpenShifts() async {
@@ -772,16 +955,19 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   /// path and from the explicit PinSubmitPressed (OK key) path.
   Future<void> _attemptPinLogin(
       String pin, AuthInitial current, Emitter<AuthState> emit) async {
-    // TODO(P2): wire to /api/auth/cashier-login {tenant_id, login, pin}.
-    // For now the boot path doesn't reach here (we go owner-first via
-    // OwnerLoginScreen), so the PIN screen is dormant. Surface a clear
-    // message if anyone hits it.
+    // PIN-flavor cashier login (digit-4 auto-submit + OK keypad path).
+    // Pulls tenant_id from the activated workstation rather than from
+    // _ownerTenantId — the latter is cleared on LogoutRequested, so
+    // "Сменить кассира" (which logs out first) would otherwise fail
+    // with "войдите как владелец". An activated register always has
+    // _activeWorkstation set; fall back to the owner-driven path for
+    // legacy callers that haven't activated.
     emit(AuthLoading());
     try {
-      final tenantId = _ownerTenantId;
+      final tenantId = _activeWorkstation?.tenantId ?? _ownerTenantId;
       if (tenantId == null) {
         throw ApiException(
-            401, 'Войдите как владелец, затем выберите кассира из списка');
+            401, 'Касса не активирована. Используйте код активации.');
       }
       final selectedLogin = current.selectedCashierName ?? '';
       final response = await _api.cashierLogin(
@@ -883,14 +1069,18 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
   }
 
   void _onLogout(LogoutRequested event, Emitter<AuthState> emit) {
-    // Drop in-memory + on-wire credentials. Activation stays — the user
-    // is just signing out, not un-activating the register. Persisted
-    // tokens get cleared best-effort (fire-and-forget; failure here just
-    // means the next boot will hydrate stale tokens that the server then
-    // rejects, kicking the user back to the login screen anyway).
-    _api.setAccessToken(null);
+    // Drop the cashier / owner session but keep the device activated. The
+    // device JWT must remain in force so the cashier-grid load on the next
+    // PinScreen mount can hit the now-authenticated /api/cashiers and
+    // /api/auth/cashier-login. Failing to swap back to the device token
+    // would leave the API client unauthenticated and the grid would 401.
     _ownerTenantId = null;
     _tokens?.clear();
+    // Fire-and-forget device-token reload: re-applies the persisted device
+    // JWT to the in-memory client so subsequent calls re-authenticate.
+    // No await — the read is from local secure storage, fast enough that
+    // PinScreen's CheckFirstRun won't lose the race in practice.
+    unawaited(_swapToDeviceToken());
 
     final ws = _activeWorkstation;
     if (ws != null) {
@@ -901,5 +1091,20 @@ class AuthBloc extends Bloc<AuthEvent, AuthState> {
       // un-activated and let the boot flow re-hydrate.
       emit(RegisterNotActivated());
     }
+  }
+
+  /// Re-applies the persisted device JWT to the in-memory ApiClient. Used
+  /// after cashier / owner logout so the register can continue calling
+  /// authenticated endpoints (cashier list, cashier-login) via its device
+  /// identity. Falls back to clearing the token if no device JWT is saved
+  /// or the saved access token has expired — the caller will see 401 and
+  /// can either refresh or re-activate.
+  Future<void> _swapToDeviceToken() async {
+    final saved = await _deviceTokens?.load();
+    if (saved == null || saved.isAccessExpired) {
+      _api.setAccessToken(null);
+      return;
+    }
+    _api.setAccessToken(saved.accessToken);
   }
 }

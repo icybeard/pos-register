@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/hifi.dart';
 import '../../../core/utils/money.dart';
 import '../../../core/widgets/num_pad.dart';
 import '../../../services/api_client.dart';
@@ -251,7 +252,14 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final l = AppLocalizations.of(context)!;
 
     return Scaffold(
-      appBar: AppBar(title: Text(l.paymentTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700))),
+      backgroundColor: Hifi.canvas,
+      // Push-routed flow from POS — outside _MainShell. Use the navy
+      // chrome with a back-button instead of a Material AppBar so the
+      // visual language stays consistent with the rest of the app.
+      appBar: HifiChrome(
+        leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
+        title: l.paymentTitle,
+      ),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(

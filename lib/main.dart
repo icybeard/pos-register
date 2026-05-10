@@ -12,6 +12,8 @@ import 'package:window_manager/window_manager.dart';
 import 'core/constants/app_constants.dart';
 import 'core/l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
+import 'core/theme/hifi.dart';
+import 'core/widgets/sync_status_chip.dart';
 import 'core/feature_flags.dart';
 import 'data/database.dart';
 import 'services/api_client.dart';
@@ -32,8 +34,7 @@ import 'features/sales/sales_guards.dart';
 import 'features/auth/bloc/auth_bloc.dart';
 import 'features/auth/screens/owner_login_screen.dart';
 import 'features/auth/screens/activation_screen.dart';
-import 'features/auth/screens/login_chooser_screen.dart';
-import 'features/auth/screens/cashier_login_screen.dart';
+import 'features/auth/screens/pin_screen.dart';
 import 'features/sales/bloc/sales_bloc.dart';
 import 'features/sales/screens/pos_screen.dart';
 import 'features/products/screens/products_screen.dart';
@@ -124,6 +125,10 @@ class _PosAppState extends State<PosApp> {
   late final ApiClient _apiClient;
   late final AppDatabase _db;
   late final AuthTokenStore _tokenStore;
+  /// Separate AuthTokenStore instance keyed under [AuthTokenStore.deviceKey].
+  /// Holds the device JWT issued by /api/register/activate so authenticated
+  /// calls (cashier list, cashier-login) work across cashier-logout boundaries.
+  late final AuthTokenStore _deviceTokenStore;
   late final WorkstationStore _workstationStore;
   late final DeviceIdStore _deviceIdStore;
   late final LockoutStore _lockoutStore;
@@ -157,6 +162,7 @@ class _PosAppState extends State<PosApp> {
     super.initState();
     _apiClient = ApiClient();
     _tokenStore = AuthTokenStore();
+    _deviceTokenStore = AuthTokenStore(key: AuthTokenStore.deviceKey);
     _workstationStore = WorkstationStore();
     _deviceIdStore = DeviceIdStore();
     _lockoutStore = LockoutStore();
@@ -244,6 +250,7 @@ class _PosAppState extends State<PosApp> {
             create: (_) => AuthBloc(
               _apiClient,
               tokens: _tokenStore,
+              deviceTokens: _deviceTokenStore,
               workstation: _workstationStore,
               deviceIdStore: _deviceIdStore,
               lockoutStore: _lockoutStore,
@@ -313,7 +320,7 @@ class _PosAppState extends State<PosApp> {
           // Device registration happens on the web admin; the register
           // itself only activates against a one-time code. Decision tree:
           //   RegisterNotActivated  → ActivationScreen (enter code)
-          //   RegisterActivated     → LoginChooserScreen (cashier | admin)
+          //   RegisterActivated     → PinScreen (cashier grid + admin tile)
           //   AuthAuthenticated     → main shell
           //   AuthLoading           → spinner
           //   AuthInitial (legacy)  → OwnerLoginScreen as a fallback
@@ -345,26 +352,41 @@ class _PosAppState extends State<PosApp> {
                     );
                   },
                   // "Сменить кассира" — clear the session and route
-                  // straight to the PIN flow. Workstation + store stay;
-                  // next cashier just has to type login + PIN.
+                  // straight to PinScreen, which shows the cashier grid
+                  // (with admin tile) by default. Workstation + store
+                  // bindings stay; next cashier just taps their face
+                  // and enters PIN. Replaces the legacy CashierLoginScreen
+                  // text-form.
                   onSwitchCashier: () {
                     context.read<AuthBloc>().add(LogoutRequested());
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
-                        builder: (_) => const CashierLoginScreen(),
+                        builder: (_) => const PinScreen(),
                       ),
                     );
                   },
                 );
               }
               if (state is RegisterActivated) {
-                return const LoginChooserScreen();
+                // Activated device, no user logged in — show the cashier
+                // grid (PinScreen) directly. Per user decision: replace
+                // the LoginChooserScreen 2-tile chooser with a single
+                // grid where admin is just one of the tiles.
+                return const PinScreen();
               }
               if (state is RegisterNotActivated) {
                 return const ActivationScreen();
               }
-              // Fallback for the legacy AuthInitial (shouldn't be reached
-              // in the new flow, but harmless — shows owner login).
+              if (state is AuthInitial) {
+                // PinScreen also owns the AuthInitial state — it's what
+                // _onCheckFirstRun emits after the cashier list loads
+                // (state.cashiers / state.isFirstRun / lockout fields).
+                // Without this branch the BlocBuilder would fall through
+                // to OwnerLoginScreen and the user would land on
+                // email + password right after activation succeeds.
+                return const PinScreen();
+              }
+              // Truly unreachable now, but keep as a safety net.
               return const OwnerLoginScreen();
             },
           ),
@@ -472,6 +494,15 @@ class _MainShellState extends State<_MainShell> {
 
   bool get _isOwner => widget.role == 'owner' || widget.role == 'admin';
 
+  /// Cashiers (including senior cashiers) are the only roles that ever
+  /// have an open shift. Owners/admins/managers must NOT hit
+  /// `/api/shifts/current/{id}` on boot — they don't have one and the
+  /// endpoint isn't implemented server-side anyway, so the call always
+  /// 404s. The exception is silently caught downstream, but the noisy
+  /// log line confused real testing sessions.
+  bool get _isCashier =>
+      widget.role == 'cashier' || widget.role == 'senior_cashier';
+
   ProductCatalogService _buildCatalogService() {
     if (widget.tenantId == null) {
       return LegacyApiProductCatalogService(widget.api);
@@ -489,7 +520,9 @@ class _MainShellState extends State<_MainShell> {
     super.initState();
     _viewMode = _isOwner ? ViewMode.owner : ViewMode.cashier;
     _catalogService = _buildCatalogService();
-    _loadShift();
+    // Only cashiers have shifts. Owners/admins/managers don't poll
+    // `/api/shifts/current/{id}` — see [_isCashier] for rationale.
+    if (_isCashier) _loadShift();
     // Pending-products count is no longer polled eagerly on login. The
     // Approval screen refreshes its own count via the onCountChanged
     // callback when the owner actually opens that tab. Keeping the poll
@@ -629,7 +662,7 @@ class _MainShellState extends State<_MainShell> {
                   body: Row(children: [
                     _buildSidebar(context),
                     Expanded(child: Column(children: [
-                      _buildTopBar(context),
+                      _buildShellChrome(context),
                       Expanded(child: _buildPage(_currentPage)),
                     ])),
                   ]),
@@ -665,7 +698,12 @@ class _MainShellState extends State<_MainShell> {
     final items = _navItems(l);
     return Container(
       width: 240,
-      color: AppTheme.sidebarBg,
+      // Sidebar reskinned to Hifi.chrome (the same navy as the top chrome
+      // bar) so the two pieces of the shell share one visual language.
+      // `AppTheme.sidebarText` is intentionally kept as the muted-grey
+      // foreground; over Hifi.chrome it gives the same WCAG contrast as
+      // it did over the slate AppTheme.sidebarBg.
+      color: Hifi.chrome,
       child: Column(
         children: [
           // Branding header
@@ -675,7 +713,10 @@ class _MainShellState extends State<_MainShell> {
               Container(
                 width: 40, height: 40,
                 decoration: BoxDecoration(
-                  color: AppTheme.primaryContainer,
+                  // Slightly lighter navy for the logo tile, derived from
+                  // the chrome color rather than the now-defunct slate
+                  // primaryContainer.
+                  color: Colors.white.withValues(alpha: 0.12),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
@@ -683,9 +724,11 @@ class _MainShellState extends State<_MainShell> {
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('POS System',
-                  style: GoogleFonts.inter(fontSize: 16, fontWeight: FontWeight.w700, color: Colors.white, letterSpacing: -0.3)),
+                  style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Colors.white)
+                      .copyWith(letterSpacing: -0.3)),
                 Text('KAZAKHSTAN',
-                  style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w600, color: AppTheme.sidebarText, letterSpacing: 2)),
+                  style: Hifi.ui(size: 9, weight: FontWeight.w600, color: AppTheme.sidebarText)
+                      .copyWith(letterSpacing: 2)),
               ])),
             ]),
           ),
@@ -836,74 +879,46 @@ class _MainShellState extends State<_MainShell> {
     _PageId.settings  => l.navSettings,
   };
 
-  Widget _buildTopBar(BuildContext context) {
-    final cs = Theme.of(context).colorScheme;
-    final pos = PosColors.of(context);
+  /// Single chrome bar rendered above every in-shell page. Replaces the
+  /// older Material `_buildTopBar` — see "Unify shell chrome" appendix
+  /// in the deploy plan for the rationale (two stacked top bars on POS,
+  /// SyncStatusChip only visible on hi-fi screens, etc.).
+  ///
+  /// Owns: page-title breadcrumb, sync-status chip, notification bell +
+  /// pendingCount badge, live clock, locale toggle (deferred). Per-page
+  /// extras can later be threaded in via a `_PageId` → `Widget[]` map.
+  Widget _buildShellChrome(BuildContext context) {
     final l = AppLocalizations.of(context)!;
-    return Container(
-      height: 56,
-      padding: const EdgeInsets.symmetric(horizontal: 24),
-      decoration: BoxDecoration(color: cs.surface.withValues(alpha: 0.85)),
-      child: Row(children: [
-        // Breadcrumb: current page title
-        Text(
-          _pageTitle(_currentPage, l),
-          style: GoogleFonts.inter(fontSize: 14, fontWeight: FontWeight.w700, color: cs.onSurface, letterSpacing: 0.5),
+    final syncStatus = context.read<SyncStatusService>();
+    final shiftLabel = _currentShiftId != null
+        ? l.shiftOpened // existing localised string; chrome shows it as a chip
+        : null;
+
+    return HifiChrome(
+      title: _pageTitle(_currentPage, l),
+      cashierName: widget.cashierName.isNotEmpty ? widget.cashierName : null,
+      shiftNumber: shiftLabel,
+      extras: [
+        // Live aggregated sync indicator (server reachability + outbox depth
+        // + master-data freshness). Replaces the Material "system online"
+        // pill that used to live in _buildTopBar — that was a static green
+        // chip with no real signal.
+        SyncStatusChip(service: syncStatus),
+        // Notification bell with the approval-queue badge. The bell is a
+        // stub (no notification list yet) but the badge is real:
+        // _pendingCount comes from /api/products/pending/count via the
+        // Approval screen's onCountChanged callback.
+        _ChromeNotificationBell(
+          pendingCount: _pendingCount,
+          onTap: () {
+            ScaffoldMessenger.of(context).showSnackBar(
+              SnackBar(content: Text(l.shellNoNotifications)),
+            );
+          },
         ),
-        const Spacer(),
-        // Online status
-        Container(
-          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-          decoration: BoxDecoration(color: pos.successBg, borderRadius: BorderRadius.circular(20)),
-          child: Row(mainAxisSize: MainAxisSize.min, children: [
-            Icon(Icons.cloud_done_rounded, size: 14, color: pos.successFg),
-            const SizedBox(width: 6),
-            Text(l.systemOnline,
-              style: GoogleFonts.inter(fontSize: 11, fontWeight: FontWeight.w600, color: pos.successFg)),
-          ]),
-        ),
-        const SizedBox(width: 12),
-        // Notification bell with badge
-        Stack(
-          children: [
-            IconButton(
-              onPressed: () {
-                ScaffoldMessenger.of(context).showSnackBar(
-                  SnackBar(content: Text(l.shellNoNotifications)),
-                );
-              },
-              icon: Icon(Icons.notifications_none_rounded, size: 20, color: cs.onSurfaceVariant),
-              style: IconButton.styleFrom(
-                fixedSize: const Size(40, 40),
-                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(10)),
-              ),
-            ),
-            if (_pendingCount > 0)
-              Positioned(
-                right: 4, top: 4,
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 5, vertical: 1),
-                  decoration: BoxDecoration(color: const Color(0xFFEF4444), borderRadius: BorderRadius.circular(8)),
-                  child: Text('$_pendingCount', style: GoogleFonts.inter(fontSize: 9, fontWeight: FontWeight.w700, color: Colors.white)),
-                ),
-              ),
-          ],
-        ),
-        const SizedBox(width: 4),
-        Container(
-          width: 34, height: 34,
-          decoration: BoxDecoration(
-            gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
-            borderRadius: BorderRadius.circular(10),
-          ),
-          child: Center(
-            child: Text(
-              widget.cashierName.isNotEmpty ? widget.cashierName[0].toUpperCase() : '?',
-              style: GoogleFonts.inter(color: Colors.white, fontSize: 13, fontWeight: FontWeight.w700),
-            ),
-          ),
-        ),
-      ]),
+      ],
+      timestamp: null, // HifiLiveClock goes in extras when needed; the chip
+                      // alongside the bell is enough density on iPad.
     );
   }
 
@@ -1138,6 +1153,58 @@ class _BottomSheetItem extends StatelessWidget {
       onTap: onTap,
       shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
       contentPadding: const EdgeInsets.symmetric(horizontal: 24, vertical: 2),
+    );
+  }
+}
+
+/// Compact notification bell with red badge — chrome `extras` slot widget.
+/// Visual style matches the navy chrome (white icon, white-tinted hover).
+/// The badge count is the pending-products approval queue (`_pendingCount`).
+class _ChromeNotificationBell extends StatelessWidget {
+  const _ChromeNotificationBell({
+    required this.pendingCount,
+    required this.onTap,
+  });
+
+  final int pendingCount;
+  final VoidCallback onTap;
+
+  @override
+  Widget build(BuildContext context) {
+    return InkWell(
+      onTap: onTap,
+      borderRadius: BorderRadius.circular(8),
+      child: SizedBox(
+        width: 28,
+        height: 28,
+        child: Stack(clipBehavior: Clip.none, children: [
+          Center(
+            child: Icon(
+              Icons.notifications_none_rounded,
+              size: 18,
+              color: Colors.white.withValues(alpha: 0.85),
+            ),
+          ),
+          if (pendingCount > 0)
+            Positioned(
+              right: 0,
+              top: 0,
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
+                constraints: const BoxConstraints(minWidth: 14),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFEF4444),
+                  borderRadius: BorderRadius.circular(999),
+                ),
+                child: Text(
+                  '$pendingCount',
+                  textAlign: TextAlign.center,
+                  style: Hifi.ui(size: 9, weight: FontWeight.w700, color: Colors.white),
+                ),
+              ),
+            ),
+        ]),
+      ),
     );
   }
 }

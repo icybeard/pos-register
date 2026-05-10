@@ -6,10 +6,8 @@ import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
 import '../../../core/utils/money.dart';
-import '../../../core/widgets/sync_status_chip.dart';
 import '../../../services/api_client.dart';
 import '../../../services/sales/sales_service.dart';
-import '../../../services/sync/sync_status_service.dart';
 import '../bloc/sales_bloc.dart';
 import '../models/cart_item.dart';
 import '../sales_guards.dart';
@@ -53,84 +51,19 @@ class PosScreen extends StatelessWidget {
           );
         }
       },
+      // No more local chrome — the shell (`_MainShell._buildShellChrome`)
+      // renders the navy top bar above this body. PosScreen returns just
+      // the cart + action-grid layout; LayoutBuilder picks monobloc vs
+      // tablet based on remaining width.
       child: Scaffold(
         backgroundColor: Hifi.canvas,
         body: LayoutBuilder(builder: (context, c) {
           final isTablet = c.maxWidth < 1024;
-          return Column(children: [
-            _PosChrome(cashierId: cashierId),
-            Expanded(
-              child: isTablet
-                  ? _TabletLayout(shiftId: shiftId, cashierId: cashierId, role: role)
-                  : _MonoblocLayout(shiftId: shiftId, cashierId: cashierId, role: role),
-            ),
-          ]);
+          return isTablet
+              ? _TabletLayout(shiftId: shiftId, cashierId: cashierId, role: role)
+              : _MonoblocLayout(shiftId: shiftId, cashierId: cashierId, role: role);
         }),
       ),
-    );
-  }
-}
-
-// ════════════════════════════════════════════════════════════════════════════
-// Chrome
-// ════════════════════════════════════════════════════════════════════════════
-
-class _PosChrome extends StatefulWidget {
-  final String? cashierId;
-  const _PosChrome({this.cashierId});
-
-  @override
-  State<_PosChrome> createState() => _PosChromeState();
-}
-
-class _PosChromeState extends State<_PosChrome> {
-  // _online removed: the live SyncStatusChip below replaces the stub toggle.
-  String _locale = 'ru';
-  Timer? _ticker;
-  DateTime _now = DateTime.now();
-
-  @override
-  void initState() {
-    super.initState();
-    _ticker = Timer.periodic(const Duration(seconds: 30), (_) {
-      if (mounted) setState(() => _now = DateTime.now());
-    });
-  }
-
-  @override
-  void dispose() {
-    _ticker?.cancel();
-    super.dispose();
-  }
-
-  String get _ts {
-    final d = _now;
-    String p(int n) => n.toString().padLeft(2, '0');
-    return '${p(d.day)}.${p(d.month)}.${d.year} ${p(d.hour)}:${p(d.minute)}';
-  }
-
-  @override
-  Widget build(BuildContext context) {
-    // Pull the shared SyncStatusService from the app-root RepositoryProvider
-    // (see main.dart). The chip replaces the old manual `online:` toggle —
-    // the signal is now authoritative (live probe of server + outbox +
-    // pull freshness) instead of a dev-only UI mock.
-    final syncStatus = context.read<SyncStatusService>();
-    return HifiChrome(
-      shiftNumber: 'Смена №42',
-      cashierName: widget.cashierId ?? 'Айжан К.',
-      // Keep the existing `online: _online` default chip suppressed —
-      // we're replacing it with a richer, live indicator in `extras`.
-      // HifiChrome still renders the default chip when `online` is
-      // explicitly set, so hiding it cleanly means passing an empty
-      // trailing slot. Simpler: pass `online: true` so the default
-      // chip is green (neutral) and put the real one in extras where
-      // it paints on top in the Row order.
-      online: true,
-      locale: _locale,
-      onToggleLocale: () => setState(() => _locale = _locale == 'ru' ? 'kk' : 'ru'),
-      timestamp: _ts,
-      extras: [SyncStatusChip(service: syncStatus)],
     );
   }
 }

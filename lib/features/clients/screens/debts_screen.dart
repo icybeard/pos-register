@@ -107,7 +107,10 @@ class _DebtsScreenState extends State<DebtsScreen> {
     return Scaffold(
       backgroundColor: Hifi.canvas,
       body: Column(children: [
+        // Push-routed flow from POS — outside _MainShell, so the chrome
+        // is rendered locally with a back button.
         HifiChrome(
+          leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
           shiftNumber: 'Долги',
           cashierName: widget.cashierId,
         ),

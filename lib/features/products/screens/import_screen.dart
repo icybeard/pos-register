@@ -3,6 +3,7 @@ import 'package:flutter/material.dart';
 import 'package:google_fonts/google_fonts.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
+import '../../../core/theme/hifi.dart';
 import '../../../core/utils/money.dart';
 import '../../../services/api_client.dart';
 
@@ -132,8 +133,12 @@ class _ImportScreenState extends State<ImportScreen> {
     final pos = PosColors.of(context);
 
     return Scaffold(
-      appBar: AppBar(
-        title: Text(l.importTitle, style: GoogleFonts.inter(fontWeight: FontWeight.w700)),
+      backgroundColor: Hifi.canvas,
+      // Push-routed flow (Navigator.push from ProductsScreen). Outside
+      // the shell, so render the navy chrome locally with a back button.
+      appBar: HifiChrome(
+        leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
+        title: l.importTitle,
       ),
       body: _loading
           ? const Center(child: CircularProgressIndicator(strokeWidth: 2.5))

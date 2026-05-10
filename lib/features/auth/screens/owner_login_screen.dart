@@ -43,10 +43,34 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
     return Scaffold(
-      body: BlocBuilder<AuthBloc, AuthState>(
+      // BlocConsumer (not BlocBuilder): we need to BOTH rebuild on state
+      // changes AND react to AuthAuthenticated by dismissing this screen.
+      // Without the listener, a successful login would emit
+      // AuthAuthenticated and main.dart's root BlocBuilder would re-render
+      // `home:` as _MainShell underneath — but THIS screen stays on top
+      // of the Navigator stack (it was pushed by LoginChooserScreen), so
+      // the user sees a frozen login form despite a 200 response.
+      // maybePop() is safe whether we were pushed (canPop=true → pops)
+      // or rendered as home (canPop=false → no-ops, BlocBuilder above
+      // handles the rerender to _MainShell on its own).
+      body: BlocConsumer<AuthBloc, AuthState>(
+        listener: (context, state) {
+          if (state is AuthAuthenticated) {
+            Navigator.of(context).maybePop();
+          }
+        },
         builder: (context, state) {
           final isLoading = state is AuthLoading;
-          final errorMsg = state is AuthInitial ? state.error : null;
+          // Login failures land in different state slots depending on
+          // whether the device is activated. _emitLoginFailure in
+          // AuthBloc routes the error to RegisterActivated(error: …) on
+          // activated devices and AuthInitial(error: …) otherwise.
+          // Read both so the user sees the message either way.
+          final errorMsg = switch (state) {
+            AuthInitial(:final error) => error,
+            RegisterActivated(:final error) => error,
+            _ => null,
+          };
           return Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
