@@ -668,5 +668,54 @@
         "type": "String"
       }
     }
-  }
+  },
+  "paymentTerminalUnavailable": "Терминал оплаты не подключён",
+  "pinSelectCashier": "Выберите кассира",
+  "pinCashierCountLabel": "{count, plural, one{{count} профиль} few{{count} профиля} many{{count} профилей} other{{count} профилей}}",
+  "@pinCashierCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinSelectedPrefix": "Выбран: ",
+  "pinProceedToPin": "Далее → PIN",
+  "pinLastBadge": "ПОСЛЕДНИЙ",
+  "pinAdminTile": "Администратор",
+  "pinAdminTileSubtitle": "Email + пароль",
+  "pinNewCashier": "Новый кассир",
+  "posActionHistory": "История",
+  "posActionPrintReceipt": "Печать чека",
+  "posActionReportX": "Отчёт X",
+  "posActionReportZ": "Отчёт Z",
+  "posActionDeposit": "Внесение",
+  "posActionWithdraw": "Изъятие",
+  "posActionOpenDrawer": "Откр. ящик",
+  "posActionGoodsCodes": "Коды ТРУ",
+  "posActionLock": "Блокировать",
+  "shellSwitchCashierTitle": "Сменить кассира?",
+  "shellSwitchCashierMessage": "В корзине есть товары. Смена кассира отменит текущую продажу. Вы уверены, что хотите продолжить?",
+  "shellSwitchCashierConfirm": "Сменить",
+  "managerOverrideTitle": "Требуется подтверждение менеджера",
+  "managerOverrideActionLabel": "ДЕЙСТВИЕ",
+  "managerOverrideLoginLabel": "Логин менеджера",
+  "managerOverridePinLabel": "PIN менеджера",
+  "managerOverrideConfirm": "Подтвердить",
+  "managerOverrideCancel": "Отмена",
+  "managerOverrideLocked": "Заблокировано на 30 сек после 3 неверных попыток",
+  "managerOverrideNotFound": "Логин не найден",
+  "managerOverrideWrongPin": "Неверный PIN",
+  "managerOverrideThisUser": "Этот пользователь",
+  "managerOverrideInsufficientRole": "{name} не может авторизовать эту операцию",
+  "@managerOverrideInsufficientRole": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "managerOverrideInactive": "Учётная запись отключена",
+  "paymentRemaining": "Осталось",
+  "posSearchHint": "Поиск / штрих-код / SKU",
+  "posScanPrompt": "Отсканируйте товар",
+  "posScanPromptHint": "последний добавленный товар появится здесь",
+  "posCartEmpty": "Корзина пуста",
+  "posCartEmptyHint": "Отсканируйте первый товар"
 }

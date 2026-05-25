@@ -1,5 +1,8 @@
 import 'dart:async';
+import 'package:flutter/foundation.dart' show kDebugMode;
 import 'package:flutter/material.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../core/feature_flags.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
@@ -147,6 +150,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
       );
       return;
     }
+    // Defensive guard: even if a card / Kaspi QR tile somehow becomes
+    // selectable while [FeatureFlags.cardTerminalEnabled] is off (e.g.
+    // race between flag hydration and the user tapping), refuse to
+    // proceed. Without this the 2-second Future.delayed stub fires and
+    // we'd record a successful card sale against a declined transaction.
+    final flags = context.read<FeatureFlags>();
+    if (!flags.cardTerminalEnabled &&
+        (_method == PaymentMethod.card || _method == PaymentMethod.kaspiQR)) {
+      ScaffoldMessenger.of(context).showSnackBar(
+        SnackBar(
+          content: Text(AppLocalizations.of(context)!.paymentTerminalUnavailable),
+          backgroundColor: PosColors.of(context).warningFg,
+        ),
+      );
+      return;
+    }
 
     if (_method == PaymentMethod.debt) {
       _payDebt();
@@ -181,13 +200,20 @@ class _PaymentScreenState extends State<PaymentScreen> {
       }
     });
 
-    // Simulate terminal response after 2 seconds (in production, this would be real terminal callback)
-    Future.delayed(const Duration(seconds: 2), () {
-      if (mounted && _processing) {
-        _timeoutTimer?.cancel();
-        _completePayment();
-      }
-    });
+    // Card / Kaspi QR terminal stub — debug builds only. The real
+    // integration is a callback from a TerminalService that observes the
+    // hardware terminal (or Kaspi QR webhook). In a release build the
+    // operator must complete the sale manually (or the real integration
+    // must be wired) — auto-approving without a confirmation is a
+    // mis-charge waiting to happen on a live device.
+    if (kDebugMode) {
+      Future.delayed(const Duration(seconds: 2), () {
+        if (mounted && _processing) {
+          _timeoutTimer?.cancel();
+          _completePayment();
+        }
+      });
+    }
   }
 
   void _cancelTimeout() {
@@ -212,7 +238,13 @@ class _PaymentScreenState extends State<PaymentScreen> {
           totalTiyin: widget.totalTiyin,
           changeTiyin: _changeTiyin,
           method: _method,
-          receiptNumber: '#${DateTime.now().millisecondsSinceEpoch % 100000}',
+          // TODO(receipt-id): CompleteSale's response should carry the
+          // server-assigned receipt id (with shift sequence number) and
+          // get plumbed through to this screen. The "—" below makes it
+          // obvious that no real number is shown yet, instead of the
+          // previous `millisecondsSinceEpoch % 100000` which looked like
+          // a legitimate receipt number while being a wall-clock dice roll.
+          receiptNumber: '—',
           onNewReceipt: () {
             Navigator.pop(context);
           },
@@ -249,6 +281,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
     final cs = Theme.of(context).colorScheme;
     final pos = PosColors.of(context);
     final l = AppLocalizations.of(context)!;
+    final cardEnabled = context.read<FeatureFlags>().cardTerminalEnabled;
 
     return Scaffold(
       backgroundColor: Hifi.canvas,
@@ -295,16 +328,22 @@ class _PaymentScreenState extends State<PaymentScreen> {
                               ),
                               const SizedBox(height: 16),
 
-                              // Method buttons (5 methods now)
+                              // Method buttons (5 methods now). Card +
+                              // Kaspi QR render disabled (null onTap) when
+                              // [FeatureFlags.cardTerminalEnabled] is off
+                              // — see the flag comment for why the path is
+                              // gated until a real PED is wired in.
                               Row(children: [
                                 Expanded(child: _MethodButton(icon: Icons.payments_outlined, label: l.paymentCash,
                                   selected: _method == PaymentMethod.cash, onTap: () => _selectMethod(PaymentMethod.cash))),
                                 const SizedBox(width: 6),
                                 Expanded(child: _MethodButton(icon: Icons.credit_card_outlined, label: l.paymentCard,
-                                  selected: _method == PaymentMethod.card, onTap: () => _selectMethod(PaymentMethod.card))),
+                                  selected: _method == PaymentMethod.card,
+                                  onTap: cardEnabled ? () => _selectMethod(PaymentMethod.card) : null)),
                                 const SizedBox(width: 6),
                                 Expanded(child: _MethodButton(icon: Icons.qr_code_rounded, label: l.paymentKaspiQR,
-                                  selected: _method == PaymentMethod.kaspiQR, onTap: () => _selectMethod(PaymentMethod.kaspiQR))),
+                                  selected: _method == PaymentMethod.kaspiQR,
+                                  onTap: cardEnabled ? () => _selectMethod(PaymentMethod.kaspiQR) : null)),
                                 const SizedBox(width: 6),
                                 Expanded(child: _MethodButton(icon: Icons.swap_horiz_rounded, label: l.paymentMix,
                                   selected: _method == PaymentMethod.mixed, onTap: () => _selectMethod(PaymentMethod.mixed))),
@@ -459,44 +498,11 @@ class _PaymentScreenState extends State<PaymentScreen> {
             child: Text(l.paymentSelectClient, style: TextStyle(fontFamily: 'Inter', color: cs.outline)),
           ))
         else
-          ...List.generate(_clients.length, (i) {
-            final client = _clients[i];
-            final name = client['Name'] as String? ?? '';
-            final phone = client['Phone'] as String? ?? '';
-            final isSelected = _selectedClient != null &&
-                (_selectedClient!['ID'] as String?) == (client['ID'] as String?);
-            return Padding(
-              padding: EdgeInsets.only(bottom: i < _clients.length - 1 ? 8 : 0),
-              child: GestureDetector(
-                onTap: () => setState(() => _selectedClient = client),
-                child: AnimatedContainer(
-                  duration: const Duration(milliseconds: 180),
-                  padding: const EdgeInsets.all(14),
-                  decoration: BoxDecoration(
-                    color: isSelected ? pos.warningBg : cs.surfaceContainerLow,
-                    borderRadius: BorderRadius.circular(12),
-                    border: Border.all(
-                      color: isSelected ? pos.warningFg : cs.outlineVariant,
-                      width: isSelected ? 2 : 1,
-                    ),
-                  ),
-                  child: Row(children: [
-                    Icon(
-                      isSelected ? Icons.check_circle : Icons.person_outline,
-                      size: 20,
-                      color: isSelected ? pos.warningFg : cs.outline,
-                    ),
-                    const SizedBox(width: 12),
-                    Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text(name, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
-                      if (phone.isNotEmpty)
-                        Text(phone, style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
-                    ])),
-                  ]),
-                ),
-              ),
-            );
-          }),
+          _DebtClientList(
+            clients: _clients,
+            selectedId: _selectedClient?['ID'] as String?,
+            onSelect: (Map<String, dynamic> client) => setState(() => _selectedClient = client),
+          ),
       ]),
     );
   }
@@ -744,7 +750,7 @@ class _MixedSummary extends StatelessWidget {
         borderRadius: BorderRadius.circular(12),
       ),
       child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
-        Text(isEnough ? l.paymentChange : 'Осталось', style: TextStyle(fontFamily: 'Inter', 
+        Text(isEnough ? l.paymentChange : l.paymentRemaining, style: TextStyle(fontFamily: 'Inter',
           fontSize: 14, fontWeight: FontWeight.w600, color: isEnough ? pos.successFg : pos.warningFg)),
         Text(Money.format(isEnough ? paid - total : remaining), style: TextStyle(fontFamily: 'Inter', 
           fontSize: 20, fontWeight: FontWeight.w800, color: isEnough ? pos.successFg : pos.warningFg)),
@@ -757,35 +763,108 @@ class _MethodButton extends StatelessWidget {
   final IconData icon;
   final String label;
   final bool selected;
-  final VoidCallback onTap;
+  /// Null = disabled (greyed, non-tappable). Used for the card and Kaspi
+  /// QR tiles when [FeatureFlags.cardTerminalEnabled] is off.
+  final VoidCallback? onTap;
   const _MethodButton({required this.icon, required this.label, required this.selected, required this.onTap});
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
-    return Material(
-      color: selected ? cs.primaryContainer : cs.surface,
-      borderRadius: BorderRadius.circular(14),
-      child: InkWell(
-        onTap: onTap, borderRadius: BorderRadius.circular(14),
-        child: AnimatedContainer(
-          duration: const Duration(milliseconds: 200),
-          padding: const EdgeInsets.symmetric(vertical: 14),
-          decoration: BoxDecoration(
-            borderRadius: BorderRadius.circular(14),
-            border: Border.all(color: selected ? cs.primary : cs.outlineVariant, width: selected ? 2 : 1),
-          ),
-          child: Column(children: [
-            Icon(icon, size: 24, color: selected ? cs.primary : cs.onSurfaceVariant),
-            const SizedBox(height: 4),
-            Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 10,
-              fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              color: selected ? cs.primary : cs.onSurfaceVariant),
-              textAlign: TextAlign.center,
+    final disabled = onTap == null;
+    return Opacity(
+      opacity: disabled ? 0.5 : 1.0,
+      child: Material(
+        color: selected ? cs.primaryContainer : cs.surface,
+        borderRadius: BorderRadius.circular(14),
+        child: InkWell(
+          onTap: onTap, borderRadius: BorderRadius.circular(14),
+          child: AnimatedContainer(
+            duration: const Duration(milliseconds: 200),
+            padding: const EdgeInsets.symmetric(vertical: 14),
+            decoration: BoxDecoration(
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: selected ? cs.primary : cs.outlineVariant, width: selected ? 2 : 1),
             ),
-          ]),
+            child: Column(children: [
+              Icon(icon, size: 24, color: selected ? cs.primary : cs.onSurfaceVariant),
+              const SizedBox(height: 4),
+              Text(label, style: TextStyle(fontFamily: 'Inter', fontSize: 10,
+                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
+                color: selected ? cs.primary : cs.onSurfaceVariant),
+                textAlign: TextAlign.center,
+              ),
+            ]),
+          ),
         ),
       ),
+    );
+  }
+}
+
+/// Renders the selectable client list inside the debt payment section.
+/// Extracted from `_PaymentScreenState._buildDebtSection` so a `setState`
+/// up in the parent (timeout countdown tick, method change, etc.) doesn't
+/// rebuild the full client list — Flutter can reuse this element subtree
+/// when only the parent state changes.
+class _DebtClientList extends StatelessWidget {
+  const _DebtClientList({
+    required this.clients,
+    required this.selectedId,
+    required this.onSelect,
+  });
+
+  final List<Map<String, dynamic>> clients;
+  final String? selectedId;
+  final ValueChanged<Map<String, dynamic>> onSelect;
+
+  @override
+  Widget build(BuildContext context) {
+    final cs = Theme.of(context).colorScheme;
+    final pos = PosColors.of(context);
+    return Column(
+      children: List.generate(clients.length, (i) {
+        final client = clients[i];
+        final name = client['Name'] as String? ?? '';
+        final phone = client['Phone'] as String? ?? '';
+        final isSelected = selectedId != null && selectedId == (client['ID'] as String?);
+        return Padding(
+          padding: EdgeInsets.only(bottom: i < clients.length - 1 ? 8 : 0),
+          child: GestureDetector(
+            onTap: () => onSelect(client),
+            child: AnimatedContainer(
+              duration: const Duration(milliseconds: 180),
+              padding: const EdgeInsets.all(14),
+              decoration: BoxDecoration(
+                color: isSelected ? pos.warningBg : cs.surfaceContainerLow,
+                borderRadius: BorderRadius.circular(12),
+                border: Border.all(
+                  color: isSelected ? pos.warningFg : cs.outlineVariant,
+                  width: isSelected ? 2 : 1,
+                ),
+              ),
+              child: Row(children: [
+                Icon(
+                  isSelected ? Icons.check_circle : Icons.person_outline,
+                  size: 20,
+                  color: isSelected ? pos.warningFg : cs.outline,
+                ),
+                const SizedBox(width: 12),
+                Expanded(
+                  child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                    Text(name,
+                        style: const TextStyle(
+                            fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
+                    if (phone.isNotEmpty)
+                      Text(phone,
+                          style: TextStyle(fontFamily: 'Inter', fontSize: 12, color: cs.outline)),
+                  ]),
+                ),
+              ]),
+            ),
+          ),
+        );
+      }),
     );
   }
 }

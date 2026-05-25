@@ -466,5 +466,54 @@
         "type": "String"
       }
     }
-  }
+  },
+  "paymentTerminalUnavailable": "Төлем терминалы қосылмаған",
+  "pinSelectCashier": "Кассирді таңдаңыз",
+  "pinCashierCountLabel": "{count, plural, one{{count} профиль} other{{count} профиль}}",
+  "@pinCashierCountLabel": {
+    "placeholders": {
+      "count": {
+        "type": "int"
+      }
+    }
+  },
+  "pinSelectedPrefix": "Таңдалды: ",
+  "pinProceedToPin": "Әрі қарай → PIN",
+  "pinLastBadge": "СОҢҒЫ",
+  "pinAdminTile": "Әкімші",
+  "pinAdminTileSubtitle": "Email + құпиясөз",
+  "pinNewCashier": "Жаңа кассир",
+  "posActionHistory": "Тарих",
+  "posActionPrintReceipt": "Чек басып шығару",
+  "posActionReportX": "X есебі",
+  "posActionReportZ": "Z есебі",
+  "posActionDeposit": "Енгізу",
+  "posActionWithdraw": "Алу",
+  "posActionOpenDrawer": "Жәшікті ашу",
+  "posActionGoodsCodes": "Тауар кодтары",
+  "posActionLock": "Бұғаттау",
+  "shellSwitchCashierTitle": "Кассирді ауыстыру?",
+  "shellSwitchCashierMessage": "Себетте тауарлар бар. Кассирді ауыстыру ағымдағы сатылымды болдырмайды. Жалғастырғыңыз келе ме?",
+  "shellSwitchCashierConfirm": "Ауыстыру",
+  "managerOverrideTitle": "Менеджердің растауы қажет",
+  "managerOverrideActionLabel": "ӘРЕКЕТ",
+  "managerOverrideLoginLabel": "Менеджер логині",
+  "managerOverridePinLabel": "Менеджер PIN-коды",
+  "managerOverrideConfirm": "Растау",
+  "managerOverrideCancel": "Бас тарту",
+  "managerOverrideLocked": "3 қате әрекеттен кейін 30 сек. бұғатталды",
+  "managerOverrideNotFound": "Логин табылмады",
+  "managerOverrideWrongPin": "PIN дұрыс емес",
+  "managerOverrideThisUser": "Бұл пайдаланушы",
+  "managerOverrideInsufficientRole": "{name} бұл операцияны растай алмайды",
+  "@managerOverrideInsufficientRole": {
+    "placeholders": { "name": { "type": "String" } }
+  },
+  "managerOverrideInactive": "Тіркелгі өшірілген",
+  "paymentRemaining": "Қалды",
+  "posSearchHint": "Іздеу / штрих-код / SKU",
+  "posScanPrompt": "Тауарды сканерлеңіз",
+  "posScanPromptHint": "соңғы қосылған тауар осында пайда болады",
+  "posCartEmpty": "Себет бос",
+  "posCartEmptyHint": "Алғашқы тауарды сканерлеңіз"
 }

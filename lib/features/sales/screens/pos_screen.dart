@@ -1,6 +1,5 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
-import 'package:flutter/services.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
@@ -152,6 +151,7 @@ class _CartPaneState extends State<_CartPane> {
   Widget build(BuildContext context) {
     return BlocBuilder<SalesBloc, SalesState>(
       builder: (context, state) {
+        final l = AppLocalizations.of(context)!;
         final lastItem = state.items.isEmpty ? null : state.items.last;
         return Container(
           color: Hifi.paneBg,
@@ -161,7 +161,7 @@ class _CartPaneState extends State<_CartPane> {
               controller: _scanCtrl,
               focusNode: _scanFocus,
               autofocus: true,
-              hint: 'Поиск / штрих-код / SKU',
+              hint: l.posSearchHint,
               onSubmitted: _onSubmitted,
               onChanged: _onChanged,
               trailing: Text('⏎ Enter', style: Hifi.mono(size: 10, color: const Color(0xFF888888))),
@@ -171,9 +171,9 @@ class _CartPaneState extends State<_CartPane> {
               iconData: lastItem == null
                   ? Icons.qr_code_scanner_outlined
                   : (lastItem.isWeighted ? Icons.scale_outlined : Icons.inventory_2_outlined),
-              title: lastItem?.name ?? 'Отсканируйте товар',
+              title: lastItem?.name ?? l.posScanPrompt,
               subtitle: lastItem == null
-                  ? 'последний добавленный товар появится здесь'
+                  ? l.posScanPromptHint
                   : '${lastItem.isWeighted ? "${lastItem.weightGrams}г" : "${lastItem.quantity.toStringAsFixed(0)} шт"} · ${Money.format(lastItem.basePrice)}${lastItem.isWeighted ? "/кг" : ""}',
               price: lastItem == null ? '—' : Money.format(lastItem.total),
               empty: lastItem == null,
@@ -264,6 +264,7 @@ class _CartTable extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
     if (items.isEmpty) {
       return Container(
         decoration: BoxDecoration(
@@ -274,9 +275,9 @@ class _CartTable extends StatelessWidget {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.shopping_cart_outlined, size: 36, color: Hifi.border),
             const SizedBox(height: 8),
-            Text('Корзина пуста', style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
+            Text(l.posCartEmpty, style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
             const SizedBox(height: 2),
-            Text('Отсканируйте первый товар', style: Hifi.ui(size: 11, color: const Color(0xFFAAAAAA))),
+            Text(l.posCartEmptyHint, style: Hifi.ui(size: 11, color: const Color(0xFFAAAAAA))),
           ]),
         ),
       );
@@ -491,6 +492,7 @@ class _CartActionPanel extends StatelessWidget {
   }
 
   List<ActionTile> _buildTiles(BuildContext context, SalesState state) {
+    final l = AppLocalizations.of(context)!;
     return [
       ActionTile(
         label: '＋ Новый',
@@ -523,10 +525,10 @@ class _CartActionPanel extends StatelessWidget {
         hotkey: 'F8',
         onTap: () => _openDebts(context),
       ),
-      ActionTile(label: 'История', onTap: () => _todo(context, 'История чеков')),
-      ActionTile(label: 'Печать чека', hotkey: 'F11', onTap: () => _todo(context, 'Печать копии')),
+      ActionTile(label: l.posActionHistory, onTap: () => _todo(context, 'История чеков')),
+      ActionTile(label: l.posActionPrintReceipt, hotkey: 'F11', onTap: () => _todo(context, 'Печать копии')),
       ActionTile(
-        label: 'Отчёт X',
+        label: l.posActionReportX,
         onTap: shiftId == null
             ? null
             : () => XReportSheet.show(
@@ -536,13 +538,13 @@ class _CartActionPanel extends StatelessWidget {
                   cashierName: cashierId ?? 'Кассир',
                 ),
       ),
-      ActionTile(label: 'Отчёт Z', onTap: shiftId == null ? null : () => _openShiftClose(context)),
-      ActionTile(label: 'Внесение', onTap: shiftId == null ? null : () => _cashMove(context, deposit: true)),
-      ActionTile(label: 'Изъятие', onTap: shiftId == null ? null : () => _cashMove(context, deposit: false)),
-      ActionTile(label: 'Откр. ящик', onTap: () => _todo(context, 'Открыть денежный ящик')),
-      ActionTile(label: 'Настройки', onTap: () => _openSettings(context)),
-      ActionTile(label: 'Коды ТРУ', onTap: () => _todo(context, 'Коды ТРУ')),
-      ActionTile(label: 'Блокировать', onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
+      ActionTile(label: l.posActionReportZ, onTap: shiftId == null ? null : () => _openShiftClose(context)),
+      ActionTile(label: l.posActionDeposit, onTap: shiftId == null ? null : () => _cashMove(context, deposit: true)),
+      ActionTile(label: l.posActionWithdraw, onTap: shiftId == null ? null : () => _cashMove(context, deposit: false)),
+      ActionTile(label: l.posActionOpenDrawer, onTap: () => _todo(context, 'Открыть денежный ящик')),
+      ActionTile(label: l.navSettingsShort, onTap: () => _openSettings(context)),
+      ActionTile(label: l.posActionGoodsCodes, onTap: () => _todo(context, 'Коды ТРУ')),
+      ActionTile(label: l.posActionLock, onTap: () => Navigator.of(context).popUntil((r) => r.isFirst)),
     ];
   }
 
@@ -897,7 +899,3 @@ class _TabletActionStrip extends StatelessWidget {
   }
 }
 
-// silence unused import warning when running analyzer if none of the SystemChannels
-// helpers are referenced; kept for FilteringTextInputFormatter usage above.
-// ignore: unused_element
-void _unused() => FilteringTextInputFormatter.digitsOnly;

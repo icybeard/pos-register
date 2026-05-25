@@ -39,6 +39,20 @@ void main() {
       expect(t.shouldPromptForQuantity('BBB'), isFalse);
     });
 
+    test('clock skew (backward `now`) treated as in-window via .abs()', () {
+      // Guards against a future refactor that drops the .abs() — if it does,
+      // an NTP sync that briefly walks the wall clock backward would
+      // mis-classify two distinct scans as a single repeated one.
+      final t = MultiQtyTracker(window: const Duration(seconds: 2));
+      final t0 = DateTime(2026, 5, 25, 12, 0, 0);
+      t.shouldPromptForQuantity('AAA', now: t0);
+      expect(
+        t.shouldPromptForQuantity('AAA',
+            now: t0.subtract(const Duration(milliseconds: 500))),
+        isTrue,
+      );
+    });
+
     test('reset clears state', () {
       final t = MultiQtyTracker();
       t.shouldPromptForQuantity('AAA');

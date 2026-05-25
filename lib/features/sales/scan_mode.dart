@@ -1,11 +1,14 @@
 // warehouse/11 — Register scanner flow modes.
 //
-// Defines the three scan behaviours called out in the spec plus a
-// debouncer helper for multi-quantity detection. Decoupled from the
-// SalesBloc so it can be unit-tested independently, then wired in
-// through a future SalesEvent (ScanModeChanged) + state field.
+// ⚠️ SCAFFOLD ONLY — not wired into SalesBloc yet. Production sale
+// flow today still uses the single-shot _onScan handler in
+// sales_bloc.dart; nothing in this file is observable to a cashier
+// until the integration listed below lands.
 //
-// Integration steps for a follow-up session:
+// Decoupled from the SalesBloc on purpose so it can be unit-tested
+// independently. Tests live at test/features/sales/scan_mode_test.dart.
+//
+// Integration steps for the follow-up Flutter session:
 //   1. Add `scanMode` field to SalesState (default: ScanMode.single).
 //   2. Add ScanModeChanged event + emitter.
 //   3. In _onScan, branch on state.scanMode:
@@ -70,15 +73,16 @@ class MultiQtyTracker {
   }
 }
 
-/// Localised display label for the scan-mode chip on the cashier
-/// topbar. Keep in sync with the l10n ARB files when adding to UI.
-String scanModeLabel(ScanMode mode) {
-  switch (mode) {
-    case ScanMode.single:
-      return 'один';
-    case ScanMode.continuous:
-      return 'непрерывный';
-    case ScanMode.multiQty:
-      return 'количество';
-  }
-}
+/// Display label for the scan-mode chip on the cashier topbar.
+///
+/// ⚠️ Returns a raw Russian literal — this is fine ONLY while this
+/// helper isn't wired into the UI. Once the chip lands in the cashier
+/// screen, swap to `AppLocalizations.of(context)!.scanMode<Single|Continuous|MultiQty>`
+/// at the call site and delete this function (or keep it pure-Dart
+/// and pass the localisation in from outside).
+// ignore: untranslated_string
+String scanModeLabel(ScanMode mode) => switch (mode) {
+      ScanMode.single => 'один',
+      ScanMode.continuous => 'непрерывный',
+      ScanMode.multiQty => 'количество',
+    };

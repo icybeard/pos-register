@@ -46,23 +46,26 @@ class _PinScreenState extends State<PinScreen> {
       body: Column(children: [
         // Real store + terminal binding from the activation payload. The
         // bloc keeps `_activeWorkstation` populated for the lifetime of the
-        // process once activation/hydrate completes, so the chip values are
-        // stable across rebuilds (no flicker on PIN keystrokes). Falls back
-        // to an empty chrome if the bloc is somehow not yet hydrated.
-        Builder(builder: (context) {
-          final ws = context.read<AuthBloc>().activeWorkstation;
-          if (ws == null) return const HifiChrome();
-          // workstationId is a UUID v4; surface only the leading 8 chars so
-          // operators can disambiguate registers in the same store without
-          // displaying the full GUID.
-          final shortId = ws.workstationId.length >= 8
-              ? ws.workstationId.substring(0, 8)
-              : ws.workstationId;
-          return HifiChrome(
-            shiftNumber: ws.storeName.isNotEmpty ? ws.storeName : null,
-            storeLabel: 'Терминал $shortId',
-          );
-        }),
+        // process once activation/hydrate completes. We subscribe via
+        // BlocBuilder so post-mount hydration (which can complete after
+        // the screen first paints) refreshes the chip — using
+        // `context.read` here would freeze the chip at first-build value.
+        BlocBuilder<AuthBloc, AuthState>(
+          builder: (context, _) {
+            final ws = context.read<AuthBloc>().activeWorkstation;
+            if (ws == null) return const HifiChrome();
+            // workstationId is a UUID v4; surface only the leading 8 chars
+            // so operators can disambiguate registers in the same store
+            // without displaying the full GUID.
+            final shortId = ws.workstationId.length >= 8
+                ? ws.workstationId.substring(0, 8)
+                : ws.workstationId;
+            return HifiChrome(
+              shiftNumber: ws.storeName.isNotEmpty ? ws.storeName : null,
+              storeLabel: 'Терминал $shortId',
+            );
+          },
+        ),
         Expanded(
           // BlocConsumer (not BlocBuilder): on a successful PIN login the
           // bloc emits AuthAuthenticated and main.dart's root BlocBuilder
@@ -172,6 +175,14 @@ Widget _buildAvatar(String name, {double size = 44, double fontSize = 18}) {
 }
 
 // ─── Live clock widget ───────────────────────────────────────
+//
+// This is the BIG clock that sits above the cashier grid on the login
+// screen. NOT a duplicate of `HifiLiveClock` in `lib/core/widgets/
+// live_clock.dart` — that one is the small chrome-corner clock with a
+// different format (`dd.mm.yyyy HH:MM`, 30s tick) and styling. Keep
+// both: the big display here needs 1s tick + the "D MMM YYYY" date
+// format to match the Variant C login mock; HifiLiveClock's compact
+// format would look wrong at 28pt.
 
 class _LiveClock extends StatefulWidget {
   const _LiveClock();
@@ -734,10 +745,10 @@ class _GridFlavor extends StatelessWidget {
           padding: const EdgeInsets.all(24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
-              Text('Выберите кассира', style: Hifi.ui(size: 22, weight: FontWeight.w700, color: Hifi.chrome)),
+              Text(l.pinSelectCashier, style: Hifi.ui(size: 22, weight: FontWeight.w700, color: Hifi.chrome)),
               const SizedBox(width: 10),
               Text(
-                '${cashiers.length} ${cashiers.length == 1 ? "профиль" : "профилей"}',
+                l.pinCashierCountLabel(cashiers.length),
                 style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
               ),
             ]),
@@ -778,7 +789,15 @@ class _GridFlavor extends StatelessWidget {
                     final role = c['Role'] as String? ?? 'cashier';
                     final id = c['ID'] as String? ?? '';
                     final isSelected = selected == name;
-                    final isLast = i == 0; // first returned = most recent
+                    // "ПОСЛЕДНИЙ" badge marks the most-recently-active cashier.
+                    // Server contract: GET /api/cashiers returns the list sorted
+                    // by last_active_at DESC, so index 0 is "the cashier whose
+                    // shift just closed or whose session is current". If the
+                    // backend ever changes that ordering, the badge migrates to
+                    // a random tile — when touching the cashiers endpoint,
+                    // re-verify this invariant or move the marker server-side
+                    // (e.g. an explicit `is_last_active` flag on the row).
+                    final isLast = i == 0;
                     // Face ID badge only on the cashier whose session is
                     // currently saved AND only if the device has biometrics.
                     // BiometricLoginRequested unlocks "the saved session" —
@@ -808,7 +827,7 @@ class _GridFlavor extends StatelessWidget {
               if (selected != null)
                 Text.rich(
                   TextSpan(style: Hifi.ui(size: 12, color: const Color(0xFF666666)), children: [
-                    const TextSpan(text: 'Выбран: '),
+                    TextSpan(text: l.pinSelectedPrefix),
                     TextSpan(text: selected, style: Hifi.ui(size: 12, weight: FontWeight.w700, color: Hifi.chrome)),
                   ]),
                 ),
@@ -819,9 +838,9 @@ class _GridFlavor extends StatelessWidget {
                   backgroundColor: Hifi.chrome,
                   shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(6)),
                 ),
-                child: const Padding(
-                  padding: EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  child: Text('Далее → PIN'),
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
+                  child: Text(l.pinProceedToPin),
                 ),
               ),
             ]),
@@ -892,7 +911,7 @@ class _CashierGridTile extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 7, vertical: 2),
                 decoration: BoxDecoration(color: Hifi.chrome, borderRadius: BorderRadius.circular(999)),
                 child: Text(
-                  'ПОСЛЕДНИЙ',
+                  AppLocalizations.of(context)!.pinLastBadge,
                   style: Hifi.ui(size: 9, weight: FontWeight.w700, color: Colors.white).copyWith(letterSpacing: 0.3),
                 ),
               ),
@@ -969,12 +988,12 @@ class _AdminLoginTile extends StatelessWidget {
               mainAxisSize: MainAxisSize.min,
               children: [
                 Text(
-                  'Администратор',
+                  AppLocalizations.of(context)!.pinAdminTile,
                   style: Hifi.ui(size: 14, weight: FontWeight.w700, color: Colors.white),
                 ),
                 const SizedBox(height: 2),
                 Text(
-                  'Email + пароль',
+                  AppLocalizations.of(context)!.pinAdminTileSubtitle,
                   style: Hifi.ui(size: 11, color: Colors.white.withValues(alpha: 0.7)),
                 ),
               ],
@@ -991,12 +1010,20 @@ class _AddCashierTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return InkWell(
-      onTap: () {},
+      // Intentionally disabled until the admin "add cashier" flow lands —
+      // tapping was a no-op which confused cashiers. The dotted-border tile
+      // still hints at the upcoming feature without claiming to be live.
+      // TODO(add-cashier): route to admin cashier-create screen + role-gate
+      // so only manager+ can open it.
+      onTap: null,
       child: DottedBorderBox(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           Text('＋', style: Hifi.ui(size: 26, color: const Color(0xFF666666))),
           const SizedBox(height: 4),
-          Text('Новый кассир', style: Hifi.ui(size: 12, color: const Color(0xFF666666))),
+          Text(
+            AppLocalizations.of(context)!.pinNewCashier,
+            style: Hifi.ui(size: 12, color: const Color(0xFF666666)),
+          ),
         ]),
       ),
     );

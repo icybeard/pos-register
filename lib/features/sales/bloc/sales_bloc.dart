@@ -155,6 +155,51 @@ class ParkedCart extends Equatable {
 }
 
 // ═══════════════════════════════════════════════════════════════
+// State machines (replace boolean-flag-soup loading flags)
+// ═══════════════════════════════════════════════════════════════
+
+/// Discriminated union for search/scan progress. Replaces the prior
+/// `isSearching` + `isNktSearching` pair: those two booleans could in
+/// principle co-exist (an impossible state) and forced consumers to
+/// AND/OR them. Search and the NKT fallback are mutually exclusive in
+/// the actual flow — the bloc transitions [Searching] → [NktSearching]
+/// → [SearchIdle], never holding both simultaneously.
+sealed class SearchStatus extends Equatable {
+  const SearchStatus();
+  @override
+  List<Object?> get props => const [];
+}
+
+class SearchIdle extends SearchStatus {
+  const SearchIdle();
+}
+
+class Searching extends SearchStatus {
+  const Searching();
+}
+
+class NktSearching extends SearchStatus {
+  const NktSearching();
+}
+
+/// Discriminated union for the payment-completion handshake. Replaces
+/// `isProcessingPayment` so a future `PaymentRefunding` / `PaymentVoid`
+/// state can be added without sprouting more booleans.
+sealed class PaymentStatus extends Equatable {
+  const PaymentStatus();
+  @override
+  List<Object?> get props => const [];
+}
+
+class PaymentIdle extends PaymentStatus {
+  const PaymentIdle();
+}
+
+class PaymentProcessing extends PaymentStatus {
+  const PaymentProcessing();
+}
+
+// ═══════════════════════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════════════════════
 
@@ -162,12 +207,11 @@ class SalesState extends Equatable {
   final List<CartItem> items;
   final int discountTiyin;
   final List<Map<String, dynamic>> searchResults;
-  final bool isSearching;
-  final bool isProcessingPayment;
+  final SearchStatus searchStatus;
+  final PaymentStatus paymentStatus;
   final String? error;
   final String? saleSuccess;
   final List<Map<String, dynamic>> nktResults;
-  final bool isNktSearching;
   final String? nktQuery; // the barcode that triggered NKT search
   final String lastQuery; // last search query for UI hints
 
@@ -186,12 +230,11 @@ class SalesState extends Equatable {
     this.items = const [],
     this.discountTiyin = 0,
     this.searchResults = const [],
-    this.isSearching = false,
-    this.isProcessingPayment = false,
+    this.searchStatus = const SearchIdle(),
+    this.paymentStatus = const PaymentIdle(),
     this.error,
     this.saleSuccess,
     this.nktResults = const [],
-    this.isNktSearching = false,
     this.nktQuery,
     this.lastQuery = '',
     this.parkedCarts = const [],
@@ -222,14 +265,13 @@ class SalesState extends Equatable {
     List<CartItem>? items,
     int? discountTiyin,
     List<Map<String, dynamic>>? searchResults,
-    bool? isSearching,
-    bool? isProcessingPayment,
+    SearchStatus? searchStatus,
+    PaymentStatus? paymentStatus,
     String? error,
     String? saleSuccess,
     bool clearSaleSuccess = false,
     bool clearError = false,
     List<Map<String, dynamic>>? nktResults,
-    bool? isNktSearching,
     String? nktQuery,
     bool clearNkt = false,
     String? lastQuery,
@@ -245,12 +287,11 @@ class SalesState extends Equatable {
       items: items ?? this.items,
       discountTiyin: discountTiyin ?? this.discountTiyin,
       searchResults: searchResults ?? this.searchResults,
-      isSearching: isSearching ?? this.isSearching,
-      isProcessingPayment: isProcessingPayment ?? this.isProcessingPayment,
+      searchStatus: searchStatus ?? this.searchStatus,
+      paymentStatus: paymentStatus ?? this.paymentStatus,
       error: clearError ? null : (error ?? this.error),
       saleSuccess: clearSaleSuccess ? null : (saleSuccess ?? this.saleSuccess),
       nktResults: clearNkt ? const [] : (nktResults ?? this.nktResults),
-      isNktSearching: isNktSearching ?? this.isNktSearching,
       nktQuery: clearNkt ? null : (nktQuery ?? this.nktQuery),
       lastQuery: lastQuery ?? this.lastQuery,
       parkedCarts: parkedCarts ?? this.parkedCarts,
@@ -273,12 +314,11 @@ class SalesState extends Equatable {
         items,
         discountTiyin,
         searchResults,
-        isSearching,
-        isProcessingPayment,
+        searchStatus,
+        paymentStatus,
         error,
         saleSuccess,
         nktResults,
-        isNktSearching,
         nktQuery,
         lastQuery,
         parkedCarts,
@@ -458,6 +498,8 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         debugPrint('[SalesBloc] loadCategories error: $e');
         return true;
       }());
+      // Surface to the UI so the cashier knows the filter panel is stale.
+      emit(state.copyWith(error: 'Не удалось загрузить категории'));
     }
   }
 
@@ -475,29 +517,29 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
       return true;
     }());
     if (event.query.isEmpty) {
-      emit(state.copyWith(searchResults: [], isSearching: false, clearNkt: true, lastQuery: ''));
+      emit(state.copyWith(searchResults: [], searchStatus: const SearchIdle(), clearNkt: true, lastQuery: ''));
       return;
     }
 
-    emit(state.copyWith(isSearching: true, clearNkt: true, lastQuery: event.query));
+    emit(state.copyWith(searchStatus: const Searching(), clearNkt: true, lastQuery: event.query));
     try {
       final response = await _api.searchProducts(event.query);
       final products = (response['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      emit(state.copyWith(searchResults: products, isSearching: false));
+      emit(state.copyWith(searchResults: products, searchStatus: const SearchIdle()));
 
       // If no local results and query looks like a barcode → auto-search NKT
       if (products.isEmpty && _isBarcode(event.query)) {
-        emit(state.copyWith(isNktSearching: true, nktQuery: event.query));
+        emit(state.copyWith(searchStatus: const NktSearching(), nktQuery: event.query));
         try {
           final nktResp = await _api.nktSearchByGTIN(event.query);
           final nktProducts = (nktResp['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          emit(state.copyWith(nktResults: nktProducts, isNktSearching: false));
+          emit(state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle()));
         } on Exception catch (e) {
           assert(() {
             debugPrint('[SalesBloc] NKT search error: $e');
             return true;
           }());
-          emit(state.copyWith(isNktSearching: false));
+          emit(state.copyWith(searchStatus: const SearchIdle()));
         }
       }
     } on Exception catch (e) {
@@ -505,7 +547,7 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         debugPrint('[SalesBloc] search error: $e');
         return true;
       }());
-      emit(state.copyWith(isSearching: false, error: 'Ошибка поиска'));
+      emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Ошибка поиска'));
     }
   }
 
@@ -525,24 +567,41 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
     } on ApiException catch (e) {
       if (e.statusCode == 404) {
         // Not found locally — try NKT
-        emit(state.copyWith(isNktSearching: true, nktQuery: event.barcode));
+        emit(state.copyWith(searchStatus: const NktSearching(), nktQuery: event.barcode));
         try {
           final nktResp = await _api.nktSearchByGTIN(event.barcode);
           final nktProducts = (nktResp['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           if (nktProducts.isNotEmpty) {
-            emit(state.copyWith(nktResults: nktProducts, isNktSearching: false));
+            emit(state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle()));
           } else {
-            emit(state.copyWith(isNktSearching: false, error: 'Товар не найден ни локально, ни в НКТ'));
+            emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Товар не найден ни локально, ни в НКТ'));
           }
         } on Exception catch (nktErr) {
           assert(() {
             debugPrint('[SalesBloc] NKT fallback error: $nktErr');
             return true;
           }());
-          emit(state.copyWith(isNktSearching: false, error: 'Товар не найден'));
+          emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Товар не найден'));
         }
+      } else {
+        // Any non-404 ApiException (400, 401, 5xx, timeout-wrapped, …)
+        // surfaces with its status code so the cashier can tell whether
+        // it's an auth issue vs a server issue. Previously these fell
+        // through to the generic "Ошибка сканирования" with no context.
+        assert(() {
+          debugPrint('[SalesBloc] scan error: $e');
+          return true;
+        }());
+        emit(state.copyWith(
+          searchStatus: const SearchIdle(),
+          error: 'Ошибка сканирования (${e.statusCode})',
+        ));
       }
-    } on Exception catch (_) {
+    } on Exception catch (e) {
+      assert(() {
+        debugPrint('[SalesBloc] scan unexpected: $e');
+        return true;
+      }());
       emit(state.copyWith(error: 'Ошибка сканирования'));
     }
   }
@@ -550,7 +609,7 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
   Future<void> _onCompleteSale(CompleteSale event, Emitter<SalesState> emit) async {
     if (state.items.isEmpty) return;
 
-    emit(state.copyWith(isProcessingPayment: true, clearError: true));
+    emit(state.copyWith(paymentStatus: const PaymentProcessing(), clearError: true));
 
     try {
       // T5.5b: when a SalesService is injected (production path), route through
@@ -601,7 +660,10 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
             'ProductID': ci.productId,
             'Name': ci.name,
             'NTIN': ci.ntin ?? '',
-            'Quantity': ci.isWeighted ? (ci.weightGrams / 1000.0) : ci.quantity,
+            // Locked rule: integer wire format, no floats. For weighted
+            // items the line is "one ticket position" so Quantity = 1;
+            // the actual weight rides in WeightGrams below.
+            'Quantity': ci.isWeighted ? 1 : ci.quantity,
             'Unit': ci.unit,
             'Price': ci.basePrice,
             'BasePrice': ci.basePrice,
@@ -648,14 +710,14 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         409 => 'Конфликт данных — повторите попытку',
         _ => 'Ошибка сервера (${e.statusCode})',
       };
-      emit(state.copyWith(isProcessingPayment: false, error: msg));
+      emit(state.copyWith(paymentStatus: const PaymentIdle(), error: msg));
     } on Exception catch (e) {
       assert(() {
         debugPrint('[SalesBloc] completeSale error: $e');
         return true;
       }());
       emit(state.copyWith(
-        isProcessingPayment: false,
+        paymentStatus: const PaymentIdle(),
         error: 'Нет связи с сервером. Попробуйте ещё раз.',
       ));
     }

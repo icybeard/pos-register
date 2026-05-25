@@ -879,7 +879,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get posTabReceipt => 'Чек';
 
   @override
-  String get posSearchHint => 'Тауар іздеу немесе штрих-код сканерлеу...';
+  String get posSearchHint => 'Іздеу / штрих-код / SKU';
 
   @override
   String get posCatAll => 'Барлығы';
@@ -968,10 +968,10 @@ class AppLocalizationsKk extends AppLocalizations {
   String get posCartItems => 'поз.';
 
   @override
-  String get posCartEmpty => 'Чек бос';
+  String get posCartEmpty => 'Себет бос';
 
   @override
-  String get posCartEmptyHint => 'Сол жақтан тауар табыңыз';
+  String get posCartEmptyHint => 'Алғашқы тауарды сканерлеңіз';
 
   @override
   String get posQuantity => 'Саны';
@@ -1365,4 +1365,124 @@ class AppLocalizationsKk extends AppLocalizations {
   String posParkedCartLabel(int itemCount, String total) {
     return '$itemCount поз. · $total';
   }
+
+  @override
+  String get paymentTerminalUnavailable => 'Төлем терминалы қосылмаған';
+
+  @override
+  String get pinSelectCashier => 'Кассирді таңдаңыз';
+
+  @override
+  String pinCashierCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count профиль',
+      one: '$count профиль',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pinSelectedPrefix => 'Таңдалды: ';
+
+  @override
+  String get pinProceedToPin => 'Әрі қарай → PIN';
+
+  @override
+  String get pinLastBadge => 'СОҢҒЫ';
+
+  @override
+  String get pinAdminTile => 'Әкімші';
+
+  @override
+  String get pinAdminTileSubtitle => 'Email + құпиясөз';
+
+  @override
+  String get pinNewCashier => 'Жаңа кассир';
+
+  @override
+  String get posActionHistory => 'Тарих';
+
+  @override
+  String get posActionPrintReceipt => 'Чек басып шығару';
+
+  @override
+  String get posActionReportX => 'X есебі';
+
+  @override
+  String get posActionReportZ => 'Z есебі';
+
+  @override
+  String get posActionDeposit => 'Енгізу';
+
+  @override
+  String get posActionWithdraw => 'Алу';
+
+  @override
+  String get posActionOpenDrawer => 'Жәшікті ашу';
+
+  @override
+  String get posActionGoodsCodes => 'Тауар кодтары';
+
+  @override
+  String get posActionLock => 'Бұғаттау';
+
+  @override
+  String get shellSwitchCashierTitle => 'Кассирді ауыстыру?';
+
+  @override
+  String get shellSwitchCashierMessage =>
+      'Себетте тауарлар бар. Кассирді ауыстыру ағымдағы сатылымды болдырмайды. Жалғастырғыңыз келе ме?';
+
+  @override
+  String get shellSwitchCashierConfirm => 'Ауыстыру';
+
+  @override
+  String get managerOverrideTitle => 'Менеджердің растауы қажет';
+
+  @override
+  String get managerOverrideActionLabel => 'ӘРЕКЕТ';
+
+  @override
+  String get managerOverrideLoginLabel => 'Менеджер логині';
+
+  @override
+  String get managerOverridePinLabel => 'Менеджер PIN-коды';
+
+  @override
+  String get managerOverrideConfirm => 'Растау';
+
+  @override
+  String get managerOverrideCancel => 'Бас тарту';
+
+  @override
+  String get managerOverrideLocked =>
+      '3 қате әрекеттен кейін 30 сек. бұғатталды';
+
+  @override
+  String get managerOverrideNotFound => 'Логин табылмады';
+
+  @override
+  String get managerOverrideWrongPin => 'PIN дұрыс емес';
+
+  @override
+  String get managerOverrideThisUser => 'Бұл пайдаланушы';
+
+  @override
+  String managerOverrideInsufficientRole(String name) {
+    return '$name бұл операцияны растай алмайды';
+  }
+
+  @override
+  String get managerOverrideInactive => 'Тіркелгі өшірілген';
+
+  @override
+  String get paymentRemaining => 'Қалды';
+
+  @override
+  String get posScanPrompt => 'Тауарды сканерлеңіз';
+
+  @override
+  String get posScanPromptHint => 'соңғы қосылған тауар осында пайда болады';
 }

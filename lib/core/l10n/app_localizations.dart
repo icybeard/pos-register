@@ -1739,7 +1739,7 @@ abstract class AppLocalizations {
   /// No description provided for @posSearchHint.
   ///
   /// In ru, this message translates to:
-  /// **'Поиск товара или скан штрих-кода...'**
+  /// **'Поиск / штрих-код / SKU'**
   String get posSearchHint;
 
   /// No description provided for @posCatAll.
@@ -1901,13 +1901,13 @@ abstract class AppLocalizations {
   /// No description provided for @posCartEmpty.
   ///
   /// In ru, this message translates to:
-  /// **'Чек пуст'**
+  /// **'Корзина пуста'**
   String get posCartEmpty;
 
   /// No description provided for @posCartEmptyHint.
   ///
   /// In ru, this message translates to:
-  /// **'Найдите товар слева'**
+  /// **'Отсканируйте первый товар'**
   String get posCartEmptyHint;
 
   /// No description provided for @posQuantity.
@@ -2653,6 +2653,222 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'{itemCount} поз. · {total}'**
   String posParkedCartLabel(int itemCount, String total);
+
+  /// No description provided for @paymentTerminalUnavailable.
+  ///
+  /// In ru, this message translates to:
+  /// **'Терминал оплаты не подключён'**
+  String get paymentTerminalUnavailable;
+
+  /// No description provided for @pinSelectCashier.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выберите кассира'**
+  String get pinSelectCashier;
+
+  /// No description provided for @pinCashierCountLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'{count, plural, one{{count} профиль} few{{count} профиля} many{{count} профилей} other{{count} профилей}}'**
+  String pinCashierCountLabel(int count);
+
+  /// No description provided for @pinSelectedPrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Выбран: '**
+  String get pinSelectedPrefix;
+
+  /// No description provided for @pinProceedToPin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Далее → PIN'**
+  String get pinProceedToPin;
+
+  /// No description provided for @pinLastBadge.
+  ///
+  /// In ru, this message translates to:
+  /// **'ПОСЛЕДНИЙ'**
+  String get pinLastBadge;
+
+  /// No description provided for @pinAdminTile.
+  ///
+  /// In ru, this message translates to:
+  /// **'Администратор'**
+  String get pinAdminTile;
+
+  /// No description provided for @pinAdminTileSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Email + пароль'**
+  String get pinAdminTileSubtitle;
+
+  /// No description provided for @pinNewCashier.
+  ///
+  /// In ru, this message translates to:
+  /// **'Новый кассир'**
+  String get pinNewCashier;
+
+  /// No description provided for @posActionHistory.
+  ///
+  /// In ru, this message translates to:
+  /// **'История'**
+  String get posActionHistory;
+
+  /// No description provided for @posActionPrintReceipt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Печать чека'**
+  String get posActionPrintReceipt;
+
+  /// No description provided for @posActionReportX.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт X'**
+  String get posActionReportX;
+
+  /// No description provided for @posActionReportZ.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отчёт Z'**
+  String get posActionReportZ;
+
+  /// No description provided for @posActionDeposit.
+  ///
+  /// In ru, this message translates to:
+  /// **'Внесение'**
+  String get posActionDeposit;
+
+  /// No description provided for @posActionWithdraw.
+  ///
+  /// In ru, this message translates to:
+  /// **'Изъятие'**
+  String get posActionWithdraw;
+
+  /// No description provided for @posActionOpenDrawer.
+  ///
+  /// In ru, this message translates to:
+  /// **'Откр. ящик'**
+  String get posActionOpenDrawer;
+
+  /// No description provided for @posActionGoodsCodes.
+  ///
+  /// In ru, this message translates to:
+  /// **'Коды ТРУ'**
+  String get posActionGoodsCodes;
+
+  /// No description provided for @posActionLock.
+  ///
+  /// In ru, this message translates to:
+  /// **'Блокировать'**
+  String get posActionLock;
+
+  /// No description provided for @shellSwitchCashierTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сменить кассира?'**
+  String get shellSwitchCashierTitle;
+
+  /// No description provided for @shellSwitchCashierMessage.
+  ///
+  /// In ru, this message translates to:
+  /// **'В корзине есть товары. Смена кассира отменит текущую продажу. Вы уверены, что хотите продолжить?'**
+  String get shellSwitchCashierMessage;
+
+  /// No description provided for @shellSwitchCashierConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Сменить'**
+  String get shellSwitchCashierConfirm;
+
+  /// No description provided for @managerOverrideTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Требуется подтверждение менеджера'**
+  String get managerOverrideTitle;
+
+  /// No description provided for @managerOverrideActionLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'ДЕЙСТВИЕ'**
+  String get managerOverrideActionLabel;
+
+  /// No description provided for @managerOverrideLoginLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логин менеджера'**
+  String get managerOverrideLoginLabel;
+
+  /// No description provided for @managerOverridePinLabel.
+  ///
+  /// In ru, this message translates to:
+  /// **'PIN менеджера'**
+  String get managerOverridePinLabel;
+
+  /// No description provided for @managerOverrideConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подтвердить'**
+  String get managerOverrideConfirm;
+
+  /// No description provided for @managerOverrideCancel.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отмена'**
+  String get managerOverrideCancel;
+
+  /// No description provided for @managerOverrideLocked.
+  ///
+  /// In ru, this message translates to:
+  /// **'Заблокировано на 30 сек после 3 неверных попыток'**
+  String get managerOverrideLocked;
+
+  /// No description provided for @managerOverrideNotFound.
+  ///
+  /// In ru, this message translates to:
+  /// **'Логин не найден'**
+  String get managerOverrideNotFound;
+
+  /// No description provided for @managerOverrideWrongPin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Неверный PIN'**
+  String get managerOverrideWrongPin;
+
+  /// No description provided for @managerOverrideThisUser.
+  ///
+  /// In ru, this message translates to:
+  /// **'Этот пользователь'**
+  String get managerOverrideThisUser;
+
+  /// No description provided for @managerOverrideInsufficientRole.
+  ///
+  /// In ru, this message translates to:
+  /// **'{name} не может авторизовать эту операцию'**
+  String managerOverrideInsufficientRole(String name);
+
+  /// No description provided for @managerOverrideInactive.
+  ///
+  /// In ru, this message translates to:
+  /// **'Учётная запись отключена'**
+  String get managerOverrideInactive;
+
+  /// No description provided for @paymentRemaining.
+  ///
+  /// In ru, this message translates to:
+  /// **'Осталось'**
+  String get paymentRemaining;
+
+  /// No description provided for @posScanPrompt.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отсканируйте товар'**
+  String get posScanPrompt;
+
+  /// No description provided for @posScanPromptHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'последний добавленный товар появится здесь'**
+  String get posScanPromptHint;
 }
 
 class _AppLocalizationsDelegate

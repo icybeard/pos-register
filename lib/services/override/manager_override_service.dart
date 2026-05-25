@@ -47,10 +47,31 @@ class ManagerOverrideService {
   ManagerOverrideService(
     this._cashiers, {
     required PinVerifier verifier,
+    this.maxFailedAttempts = 3,
+    this.lockoutDuration = const Duration(seconds: 30),
   }) : _verify = verifier;
 
   final CashierRepository _cashiers;
   final PinVerifier _verify;
+
+  /// Number of failed attempts that triggers a lockout. Per-service state so
+  /// dismissing and re-opening the dialog doesn't reset the counter — the
+  /// guard would be useless otherwise.
+  final int maxFailedAttempts;
+
+  /// How long the service refuses verify() after [maxFailedAttempts] misses.
+  final Duration lockoutDuration;
+
+  int _failedAttempts = 0;
+  DateTime? _lockedUntil;
+
+  /// True if the service is currently rate-limited and will short-circuit
+  /// verify() with [OverrideResult.wrongPin] until [lockedUntil] passes.
+  bool get isLocked => _lockedUntil != null && DateTime.now().isBefore(_lockedUntil!);
+
+  /// Wall-clock instant when the current lockout expires. Null if not locked.
+  /// The UI reads this to render a countdown / disable the submit button.
+  DateTime? get lockedUntil => _lockedUntil;
 
   /// Roles that may authorise an oversell. Matches the locked decision in the
   /// plan (Section 2, #11): cashiers can't override; everyone senior can.
@@ -68,7 +89,30 @@ class ManagerOverrideService {
     required String login,
     required String pin,
   }) async {
+    // Service-level rate limit. State survives dialog dismissal/re-open so
+    // a guesser can't reset by tapping Cancel and trying again.
+    if (isLocked) {
+      return const ManagerOverrideOutcome(result: OverrideResult.wrongPin);
+    }
+
     final normalized = login.trim().toLowerCase();
+    final outcome = await _verifyInner(normalized, pin);
+
+    if (outcome.isOk) {
+      // Success unconditionally resets the counter.
+      _failedAttempts = 0;
+      _lockedUntil = null;
+    } else {
+      _failedAttempts++;
+      if (_failedAttempts >= maxFailedAttempts) {
+        _lockedUntil = DateTime.now().add(lockoutDuration);
+        _failedAttempts = 0; // restart counter after the lockout expires
+      }
+    }
+    return outcome;
+  }
+
+  Future<ManagerOverrideOutcome> _verifyInner(String normalized, String pin) async {
     if (normalized.isEmpty || pin.isEmpty) {
       return const ManagerOverrideOutcome(result: OverrideResult.notFound);
     }

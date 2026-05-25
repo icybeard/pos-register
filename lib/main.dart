@@ -1,9 +1,10 @@
 import 'dart:async' show Timer, runZonedGuarded, unawaited;
+import 'dart:developer' as developer;
 import 'dart:io' show Platform;
 import 'dart:ui' show PlatformDispatcher;
 import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/foundation.dart'
-    show FlutterError, FlutterErrorDetails, kIsWeb, kReleaseMode, debugPrint;
+    show FlutterError, FlutterErrorDetails, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
 import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
@@ -24,6 +25,7 @@ import 'services/auth/device_fingerprint.dart';
 import 'services/auth/device_id_store.dart';
 import 'services/auth/lockout_store.dart';
 import 'services/auth/workstation_store.dart';
+import 'services/locale/locale_store.dart';
 import 'services/auth/bcrypt_pin_verifier.dart';
 import 'services/products/product_catalog_service.dart';
 import 'services/sales/sales_service.dart';
@@ -72,19 +74,22 @@ void main() {
     // either paint a red screen (debug) or a blank grey screen (release) and
     // never surface to operators / support. For a fiscal device that swallows
     // sale-path failures silently, that is unacceptable.
+    // BLOCKER FOR BETA: wire to Sentry / Crashlytics so crashes leave a
+    // remote breadcrumb. Until then we route every error through
+    // `developer.log` so the OS log stream (Android logcat / iOS os_log /
+    // desktop stderr) at least retains a trace in release builds — unlike
+    // `debugPrint` which is a no-op outside debug.
     FlutterError.onError = (FlutterErrorDetails details) {
       FlutterError.presentError(details);
-      // TODO: wire to Sentry / Crashlytics here once enabled.
-      assert(() {
-        debugPrint('[FlutterError] ${details.exceptionAsString()}');
-        return true;
-      }());
+      developer.log(
+        details.exceptionAsString(),
+        name: 'FlutterError',
+        error: details.exception,
+        stackTrace: details.stack,
+      );
     };
     PlatformDispatcher.instance.onError = (Object error, StackTrace stack) {
-      assert(() {
-        debugPrint('[PlatformError] $error');
-        return true;
-      }());
+      developer.log('uncaught platform error', name: 'PlatformError', error: error, stackTrace: stack);
       return true; // swallow — UI error screen shown via ErrorWidget.builder
     };
     ErrorWidget.builder = (FlutterErrorDetails details) {
@@ -106,11 +111,10 @@ void main() {
     }
     runApp(const PosApp());
   }, (Object error, StackTrace stack) {
-    // TODO: forward to Sentry / Crashlytics here once enabled.
-    assert(() {
-      debugPrint('[ZoneError] $error');
-      return true;
-    }());
+    // BLOCKER FOR BETA: wire to Sentry / Crashlytics. Until then we route
+    // through developer.log so the OS log stream retains a trace in
+    // release builds — debugPrint is a no-op outside debug.
+    developer.log('uncaught zone error', name: 'ZoneError', error: error, stackTrace: stack);
   });
 }
 
@@ -121,11 +125,15 @@ class _AppBlocObserver extends BlocObserver {
   @override
   void onError(BlocBase<Object?> bloc, Object error, StackTrace stackTrace) {
     super.onError(bloc, error, stackTrace);
-    // TODO: forward to Sentry / Crashlytics here once enabled.
-    assert(() {
-      debugPrint('[BlocError] ${bloc.runtimeType}: $error');
-      return true;
-    }());
+    // BLOCKER FOR BETA: wire to Sentry / Crashlytics. developer.log
+    // makes bloc errors visible in the platform log stream in release
+    // builds (logcat / os_log / desktop stderr) — debugPrint is a no-op.
+    developer.log(
+      'bloc error',
+      name: 'BlocError.${bloc.runtimeType}',
+      error: error,
+      stackTrace: stackTrace,
+    );
   }
 }
 
@@ -136,17 +144,34 @@ class _FatalErrorScreen extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
+    // Rendered from ErrorWidget.builder, which runs OUTSIDE the
+    // MaterialApp's localizations tree — AppLocalizations.of(context) is
+    // unavailable here. We can't pick a locale at runtime, so we show
+    // both Russian and Kazakh stacked. The two-line block is short
+    // enough that bilingual presentation isn't worse than picking one.
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Container(
         color: const Color(0xFF111827),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(24),
-        child: const Text(
-          'Произошла ошибка. Перезапустите приложение. '
-          'Если проблема повторяется — обратитесь в поддержку.',
-          textAlign: TextAlign.center,
-          style: TextStyle(color: Colors.white, fontSize: 16),
+        child: const Column(
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Text(
+              'Произошла ошибка. Перезапустите приложение. '
+              'Если проблема повторяется — обратитесь в поддержку.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Colors.white, fontSize: 16),
+            ),
+            SizedBox(height: 16),
+            Text(
+              'Қате орын алды. Қолданбаны қайта іске қосыңыз. '
+              'Қайталанса — қолдау қызметіне хабарласыңыз.',
+              textAlign: TextAlign.center,
+              style: TextStyle(color: Color(0xFFC4C6CD), fontSize: 14),
+            ),
+          ],
         ),
       ),
     );
@@ -171,7 +196,15 @@ class _PosAppState extends State<PosApp> {
   late final WorkstationStore _workstationStore;
   late final DeviceIdStore _deviceIdStore;
   late final LockoutStore _lockoutStore;
+  late final LocaleStore _localeStore;
   late final SyncStatusService _syncStatusService;
+
+  /// Current operator-selected UI locale. Defaults to `'ru'` (Kazakhstan
+  /// retail-floor default); flipped to `'kk'` via the chrome bar locale
+  /// chip and persisted across boots by [LocaleStore]. The async load in
+  /// [initState] may transition this once if a different locale was saved
+  /// previously.
+  String _currentLocale = 'ru';
 
   /// Memoised SalesGuards bundle. Built once in [initState] and rebuilt
   /// only when `_activeTenantId` / `_activeWorkstationId` change (via
@@ -204,6 +237,11 @@ class _PosAppState extends State<PosApp> {
     _workstationStore = WorkstationStore();
     _deviceIdStore = DeviceIdStore();
     _lockoutStore = LockoutStore();
+    _localeStore = LocaleStore();
+    // Fire-and-forget: secure-storage round-trip is fast (≪16ms) and the
+    // first frame ships with the 'ru' default. If the operator previously
+    // saved 'kk', setState swaps in the second frame.
+    unawaited(_hydrateLocale());
 
     // Single AuthSession owns both token slots (device + user) and the
     // refresh-on-401 mutex. ApiClient consults it for headers + retry; the
@@ -236,6 +274,27 @@ class _PosAppState extends State<PosApp> {
     _syncStatusService = SyncStatusService(_db, _apiClient);
     _salesGuards = _buildSalesGuards();
     _loadTenantId();
+  }
+
+  /// Best-effort load of the persisted locale. Silently keeps the `'ru'`
+  /// default if nothing is saved or secure-storage errors out — the operator
+  /// can flip via the chrome chip and the save will fire next time.
+  Future<void> _hydrateLocale() async {
+    final saved = await _localeStore.load();
+    if (saved != null && saved != _currentLocale && mounted) {
+      setState(() => _currentLocale = saved);
+    }
+  }
+
+  /// Flip the locale between the two supported values and persist. Called
+  /// from the chrome bar `_LocaleChip` via the [_MainShell.onLocaleToggle]
+  /// callback. The HifiChrome chip's own label logic shows the OTHER
+  /// locale (e.g. "ҚЗ" when current is ru), so callers don't need to
+  /// know which way the flip goes — they just invoke this.
+  void _toggleLocale() {
+    final next = _currentLocale == 'ru' ? 'kk' : 'ru';
+    setState(() => _currentLocale = next);
+    unawaited(_localeStore.save(next));
   }
 
   /// Best-effort load of the saved tenant + workstation ids. No-ops silently
@@ -305,6 +364,10 @@ class _PosAppState extends State<PosApp> {
         // chrome of every screen to render the combined online/pull/
         // outbox indicator. Stateless service, safe to share app-wide.
         RepositoryProvider<SyncStatusService>.value(value: _syncStatusService),
+        // Compile-time feature flag profile. Exposed via provider so leaf
+        // screens (e.g. PaymentScreen) can gate their own rendering
+        // without each upstream widget having to thread the flag down.
+        RepositoryProvider<FeatureFlags>.value(value: _flags),
       ],
       child: MultiBlocProvider(
         providers: [
@@ -376,7 +439,7 @@ class _PosAppState extends State<PosApp> {
             GlobalCupertinoLocalizations.delegate,
           ],
           supportedLocales: AppLocalizations.supportedLocales,
-          locale: const Locale('ru'),
+          locale: Locale(_currentLocale),
           // Boot routing — activation-first.
           //
           // Device registration happens on the web admin; the register
@@ -427,6 +490,8 @@ class _PosAppState extends State<PosApp> {
                       ),
                     );
                   },
+                  locale: _currentLocale,
+                  onLocaleToggle: _toggleLocale,
                 );
               }
               if (state is RegisterActivated) {
@@ -521,6 +586,16 @@ class _MainShell extends StatefulWidget {
   /// swap button and the escape keyboard shortcut.
   final VoidCallback onSwitchCashier;
 
+  /// Current operator-selected UI locale (`'ru'` or `'kk'`). Threaded
+  /// down to the chrome bar's `_LocaleChip`; the chip's label flips to
+  /// show the OTHER locale so tapping it is obviously a switch.
+  final String locale;
+
+  /// Invoked when the chrome chip is tapped. The host (`_PosAppState`)
+  /// flips the locale and persists via [LocaleStore]; the shell itself
+  /// stays purely presentational.
+  final VoidCallback onLocaleToggle;
+
   const _MainShell({
     required this.api,
     required this.db,
@@ -531,6 +606,8 @@ class _MainShell extends StatefulWidget {
     required this.role,
     required this.onLogout,
     required this.onSwitchCashier,
+    required this.locale,
+    required this.onLocaleToggle,
   });
 
   @override
@@ -633,26 +710,24 @@ class _MainShellState extends State<_MainShell> {
       widget.onSwitchCashier();
       return;
     }
+    final l = AppLocalizations.of(context)!;
     showDialog<bool>(
       context: context,
       barrierDismissible: false,
       builder: (ctx) => AlertDialog(
-        title: const Text('Сменить кассира?'),
-        content: const Text(
-          'В корзине есть товары. Смена кассира отменит текущую продажу. '
-          'Вы уверены, что хотите продолжить?',
-        ),
+        title: Text(l.shellSwitchCashierTitle),
+        content: Text(l.shellSwitchCashierMessage),
         actions: [
           TextButton(
             onPressed: () => Navigator.of(ctx).pop(false),
-            child: const Text('Отмена'),
+            child: Text(l.cancel),
           ),
           FilledButton(
             onPressed: () => Navigator.of(ctx).pop(true),
             style: FilledButton.styleFrom(
               backgroundColor: Theme.of(ctx).colorScheme.error,
             ),
-            child: const Text('Сменить'),
+            child: Text(l.shellSwitchCashierConfirm),
           ),
         ],
       ),
@@ -756,175 +831,18 @@ class _MainShellState extends State<_MainShell> {
   }
 
   Widget _buildSidebar(BuildContext context) {
-    final l = AppLocalizations.of(context)!;
-    final items = _navItems(l);
-    return Container(
-      width: 240,
-      // Sidebar reskinned to Hifi.chrome (the same navy as the top chrome
-      // bar) so the two pieces of the shell share one visual language.
-      // `AppTheme.sidebarText` is intentionally kept as the muted-grey
-      // foreground; over Hifi.chrome it gives the same WCAG contrast as
-      // it did over the slate AppTheme.sidebarBg.
-      color: Hifi.chrome,
-      child: Column(
-        children: [
-          // Branding header
-          Padding(
-            padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
-            child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  // Slightly lighter navy for the logo tile, derived from
-                  // the chrome color rather than the now-defunct slate
-                  // primaryContainer.
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
-              ),
-              const SizedBox(width: 12),
-              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('POS System',
-                  style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Colors.white)
-                      .copyWith(letterSpacing: -0.3)),
-                Text('KAZAKHSTAN',
-                  style: Hifi.ui(size: 9, weight: FontWeight.w600, color: AppTheme.sidebarText)
-                      .copyWith(letterSpacing: 2)),
-              ])),
-            ]),
-          ),
-
-          // Mode toggle (owner only)
-          if (_isOwner) Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 14),
-            child: _ModeToggle(mode: _viewMode, onChanged: _switchMode),
-          ),
-          if (_isOwner) const SizedBox(height: 12),
-
-          // Nav items
-          Expanded(
-            child: ListView(
-              padding: const EdgeInsets.symmetric(horizontal: 12),
-              children: items.map((entry) {
-                final selected = _currentPage == entry.page;
-                return Padding(
-                  padding: const EdgeInsets.only(bottom: 2),
-                  child: _SidebarNavItem(
-                    icon: selected ? entry.activeIcon : entry.icon,
-                    label: entry.label,
-                    selected: selected,
-                    badge: entry.page == _PageId.approval && _pendingCount > 0 ? _pendingCount : null,
-                    onTap: () => setState(() => _currentPage = entry.page),
-                  ),
-                );
-              }).toList(),
-            ),
-          ),
-
-          // Shift status
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Container(
-              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(12),
-              ),
-              child: Row(children: [
-                Container(
-                  width: 8, height: 8,
-                  decoration: BoxDecoration(
-                    shape: BoxShape.circle,
-                    color: _currentShiftId != null ? const Color(0xFF4EDEA3) : const Color(0xFF94A3B8),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(
-                  child: Text(
-                    _currentShiftId != null ? l.shiftOpened : l.shiftClosed,
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: AppTheme.sidebarText),
-                  ),
-                ),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 12),
-
-          // Switch cashier button
-          Padding(
-            padding: const EdgeInsets.symmetric(horizontal: 16),
-            child: Material(
-              color: Colors.transparent,
-              borderRadius: BorderRadius.circular(10),
-              child: InkWell(
-                onTap: widget.onSwitchCashier,
-                borderRadius: BorderRadius.circular(10),
-                hoverColor: Colors.white.withValues(alpha: 0.06),
-                child: Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
-                  decoration: BoxDecoration(
-                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Row(children: [
-                    Icon(Icons.swap_horiz_rounded, size: 16, color: AppTheme.sidebarText.withValues(alpha: 0.8)),
-                    const SizedBox(width: 10),
-                    Text(
-                      l.switchCashier,
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: AppTheme.sidebarText),
-                    ),
-                  ]),
-                ),
-              ),
-            ),
-          ),
-          const SizedBox(height: 8),
-
-          // User profile card
-          Padding(
-            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
-            child: Container(
-              padding: const EdgeInsets.all(12),
-              decoration: BoxDecoration(
-                color: Colors.white.withValues(alpha: 0.06),
-                borderRadius: BorderRadius.circular(14),
-              ),
-              child: Row(children: [
-                Container(
-                  width: 36, height: 36,
-                  decoration: BoxDecoration(
-                    gradient: const LinearGradient(colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: Center(
-                    child: Text(
-                      widget.cashierName.isNotEmpty ? widget.cashierName[0].toUpperCase() : '?',
-                      style: const TextStyle(fontFamily: 'Inter', color: Colors.white, fontSize: 14, fontWeight: FontWeight.w700),
-                    ),
-                  ),
-                ),
-                const SizedBox(width: 10),
-                Expanded(child: Column(
-                  crossAxisAlignment: CrossAxisAlignment.start,
-                  children: [
-                    Text(
-                      widget.cashierName,
-                      style: const TextStyle(fontFamily: 'Inter', color: Colors.white, fontSize: 13, fontWeight: FontWeight.w600),
-                      overflow: TextOverflow.ellipsis,
-                    ),
-                    Text(
-                      _roleLabel(widget.role),
-                      style: const TextStyle(fontFamily: 'Inter', color: AppTheme.sidebarText, fontSize: 10, fontWeight: FontWeight.w500),
-                    ),
-                  ],
-                )),
-              ]),
-            ),
-          ),
-          const SizedBox(height: 8),
-        ],
-      ),
+    return _MainShellSidebar(
+      isOwner: _isOwner,
+      viewMode: _viewMode,
+      currentPage: _currentPage,
+      navItems: _navItems(AppLocalizations.of(context)!),
+      pendingCount: _pendingCount,
+      currentShiftId: _currentShiftId,
+      cashierName: widget.cashierName,
+      role: widget.role,
+      onViewModeChanged: _switchMode,
+      onPageSelected: (page) => setState(() => _currentPage = page),
+      onSwitchCashier: widget.onSwitchCashier,
     );
   }
 
@@ -960,6 +878,8 @@ class _MainShellState extends State<_MainShell> {
       title: _pageTitle(_currentPage, l),
       cashierName: widget.cashierName.isNotEmpty ? widget.cashierName : null,
       shiftNumber: shiftLabel,
+      locale: widget.locale,
+      onToggleLocale: widget.onLocaleToggle,
       extras: [
         // Live aggregated sync indicator (server reachability + outbox depth
         // + master-data freshness). Replaces the Material "system online"
@@ -982,16 +902,6 @@ class _MainShellState extends State<_MainShell> {
       timestamp: null, // HifiLiveClock goes in extras when needed; the chip
                       // alongside the bell is enough density on iPad.
     );
-  }
-
-  String _roleLabel(String role) {
-    final l = AppLocalizations.of(context)!;
-    return switch (role) {
-      'owner' => l.roleOwner,
-      'admin' => l.roleAdmin,
-      'senior_cashier' => l.roleSeniorCashier,
-      _ => l.roleCashier,
-    };
   }
 
   void _showMoreMenu(BuildContext context) {
@@ -1057,6 +967,242 @@ class _MainShellState extends State<_MainShell> {
     _PageId.audit    => AuditScreen(api: widget.api),
     _PageId.settings => SettingsScreen(api: widget.api, onLogout: widget.onLogout, role: widget.role),
   };
+}
+
+// ---------------------------------------------------------------------------
+// Sidebar (extracted from _MainShellState._buildSidebar for narrow rebuild
+// boundaries — without this, the 200-line sidebar tree rebuilt on every
+// inactivity-timer tick, every page swap, every pending-count refresh).
+// ---------------------------------------------------------------------------
+
+class _MainShellSidebar extends StatelessWidget {
+  const _MainShellSidebar({
+    required this.isOwner,
+    required this.viewMode,
+    required this.currentPage,
+    required this.navItems,
+    required this.pendingCount,
+    required this.currentShiftId,
+    required this.cashierName,
+    required this.role,
+    required this.onViewModeChanged,
+    required this.onPageSelected,
+    required this.onSwitchCashier,
+  });
+
+  final bool isOwner;
+  final ViewMode viewMode;
+  final _PageId currentPage;
+  final List<_NavEntry> navItems;
+  final int pendingCount;
+  final String? currentShiftId;
+  final String cashierName;
+  final String role;
+  final ValueChanged<ViewMode> onViewModeChanged;
+  final ValueChanged<_PageId> onPageSelected;
+  final VoidCallback onSwitchCashier;
+
+  String _roleLabel(AppLocalizations l) => switch (role) {
+        'owner' => l.roleOwner,
+        'admin' => l.roleAdmin,
+        'senior_cashier' => l.roleSeniorCashier,
+        _ => l.roleCashier,
+      };
+
+  @override
+  Widget build(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Container(
+      width: 240,
+      // Sidebar reskinned to Hifi.chrome (the same navy as the top chrome
+      // bar) so the two pieces of the shell share one visual language.
+      // `AppTheme.sidebarText` is intentionally kept as the muted-grey
+      // foreground; over Hifi.chrome it gives the same WCAG contrast as
+      // it did over the slate AppTheme.sidebarBg.
+      color: Hifi.chrome,
+      child: Column(
+        children: [
+          // Branding header
+          Padding(
+            padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
+            child: Row(children: [
+              Container(
+                width: 40, height: 40,
+                decoration: BoxDecoration(
+                  color: Colors.white.withValues(alpha: 0.12),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
+              ),
+              const SizedBox(width: 12),
+              Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                Text('POS System',
+                    style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Colors.white)
+                        .copyWith(letterSpacing: -0.3)),
+                Text('KAZAKHSTAN',
+                    style: Hifi.ui(size: 9, weight: FontWeight.w600, color: AppTheme.sidebarText)
+                        .copyWith(letterSpacing: 2)),
+              ])),
+            ]),
+          ),
+
+          if (isOwner) Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 14),
+            child: _ModeToggle(mode: viewMode, onChanged: onViewModeChanged),
+          ),
+          if (isOwner) const SizedBox(height: 12),
+
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.symmetric(horizontal: 12),
+              children: navItems.map((entry) {
+                final selected = currentPage == entry.page;
+                return Padding(
+                  padding: const EdgeInsets.only(bottom: 2),
+                  child: _SidebarNavItem(
+                    icon: selected ? entry.activeIcon : entry.icon,
+                    label: entry.label,
+                    selected: selected,
+                    badge: entry.page == _PageId.approval && pendingCount > 0
+                        ? pendingCount
+                        : null,
+                    onTap: () => onPageSelected(entry.page),
+                  ),
+                );
+              }).toList(),
+            ),
+          ),
+
+          // Shift status
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Container(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(12),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 8, height: 8,
+                  decoration: BoxDecoration(
+                    shape: BoxShape.circle,
+                    color: currentShiftId != null
+                        ? const Color(0xFF4EDEA3)
+                        : const Color(0xFF94A3B8),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(
+                  child: Text(
+                    currentShiftId != null ? l.shiftOpened : l.shiftClosed,
+                    style: const TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 12,
+                        fontWeight: FontWeight.w500,
+                        color: AppTheme.sidebarText),
+                  ),
+                ),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 12),
+
+          // Switch cashier button
+          Padding(
+            padding: const EdgeInsets.symmetric(horizontal: 16),
+            child: Material(
+              color: Colors.transparent,
+              borderRadius: BorderRadius.circular(10),
+              child: InkWell(
+                onTap: onSwitchCashier,
+                borderRadius: BorderRadius.circular(10),
+                hoverColor: Colors.white.withValues(alpha: 0.06),
+                child: Container(
+                  padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
+                  decoration: BoxDecoration(
+                    border: Border.all(color: Colors.white.withValues(alpha: 0.12)),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Row(children: [
+                    Icon(Icons.swap_horiz_rounded,
+                        size: 16,
+                        color: AppTheme.sidebarText.withValues(alpha: 0.8)),
+                    const SizedBox(width: 10),
+                    Text(
+                      l.switchCashier,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          fontSize: 11,
+                          fontWeight: FontWeight.w600,
+                          color: AppTheme.sidebarText),
+                    ),
+                  ]),
+                ),
+              ),
+            ),
+          ),
+          const SizedBox(height: 8),
+
+          // User profile card
+          Padding(
+            padding: const EdgeInsets.fromLTRB(16, 0, 16, 12),
+            child: Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.06),
+                borderRadius: BorderRadius.circular(14),
+              ),
+              child: Row(children: [
+                Container(
+                  width: 36, height: 36,
+                  decoration: BoxDecoration(
+                    gradient: const LinearGradient(
+                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
+                    borderRadius: BorderRadius.circular(10),
+                  ),
+                  child: Center(
+                    child: Text(
+                      cashierName.isNotEmpty ? cashierName[0].toUpperCase() : '?',
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 14,
+                          fontWeight: FontWeight.w700),
+                    ),
+                  ),
+                ),
+                const SizedBox(width: 10),
+                Expanded(child: Column(
+                  crossAxisAlignment: CrossAxisAlignment.start,
+                  children: [
+                    Text(
+                      cashierName,
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: Colors.white,
+                          fontSize: 13,
+                          fontWeight: FontWeight.w600),
+                      overflow: TextOverflow.ellipsis,
+                    ),
+                    Text(
+                      _roleLabel(l),
+                      style: const TextStyle(
+                          fontFamily: 'Inter',
+                          color: AppTheme.sidebarText,
+                          fontSize: 10,
+                          fontWeight: FontWeight.w500),
+                    ),
+                  ],
+                )),
+              ]),
+            ),
+          ),
+          const SizedBox(height: 8),
+        ],
+      ),
+    );
+  }
 }
 
 // ---------------------------------------------------------------------------

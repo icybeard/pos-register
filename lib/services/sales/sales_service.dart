@@ -214,10 +214,10 @@ class LegacySalesService implements SalesService {
         'ProductID': l.productId,
         'Name': l.productName,
         'NTIN': l.ntin ?? '',
-        // Go server expects `Quantity` as a float on this endpoint regardless
-        // of piece-vs-weighted — kept as double to preserve byte-for-byte wire
-        // parity with the pre-T5.5 inline code path.
-        'Quantity': l.isWeighted ? (l.weightGrams / 1000.0) : l.quantity.toDouble(),
+        // Locked rule: integer wire format, no floats for money or quantity.
+        // For weighted items the line is "one ticket position" (Quantity = 1);
+        // the actual measurement rides in WeightGrams below.
+        'Quantity': l.isWeighted ? 1 : l.quantity,
         'Unit': l.unit,
         'Price': l.unitPriceTiyin,
         'BasePrice': l.unitPriceTiyin,

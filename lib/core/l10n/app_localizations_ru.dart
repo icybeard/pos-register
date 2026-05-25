@@ -878,7 +878,7 @@ class AppLocalizationsRu extends AppLocalizations {
   String get posTabReceipt => 'Чек';
 
   @override
-  String get posSearchHint => 'Поиск товара или скан штрих-кода...';
+  String get posSearchHint => 'Поиск / штрих-код / SKU';
 
   @override
   String get posCatAll => 'Все';
@@ -968,10 +968,10 @@ class AppLocalizationsRu extends AppLocalizations {
   String get posCartItems => 'поз.';
 
   @override
-  String get posCartEmpty => 'Чек пуст';
+  String get posCartEmpty => 'Корзина пуста';
 
   @override
-  String get posCartEmptyHint => 'Найдите товар слева';
+  String get posCartEmptyHint => 'Отсканируйте первый товар';
 
   @override
   String get posQuantity => 'Количество';
@@ -1375,4 +1375,126 @@ class AppLocalizationsRu extends AppLocalizations {
   String posParkedCartLabel(int itemCount, String total) {
     return '$itemCount поз. · $total';
   }
+
+  @override
+  String get paymentTerminalUnavailable => 'Терминал оплаты не подключён';
+
+  @override
+  String get pinSelectCashier => 'Выберите кассира';
+
+  @override
+  String pinCashierCountLabel(int count) {
+    String _temp0 = intl.Intl.pluralLogic(
+      count,
+      locale: localeName,
+      other: '$count профилей',
+      many: '$count профилей',
+      few: '$count профиля',
+      one: '$count профиль',
+    );
+    return '$_temp0';
+  }
+
+  @override
+  String get pinSelectedPrefix => 'Выбран: ';
+
+  @override
+  String get pinProceedToPin => 'Далее → PIN';
+
+  @override
+  String get pinLastBadge => 'ПОСЛЕДНИЙ';
+
+  @override
+  String get pinAdminTile => 'Администратор';
+
+  @override
+  String get pinAdminTileSubtitle => 'Email + пароль';
+
+  @override
+  String get pinNewCashier => 'Новый кассир';
+
+  @override
+  String get posActionHistory => 'История';
+
+  @override
+  String get posActionPrintReceipt => 'Печать чека';
+
+  @override
+  String get posActionReportX => 'Отчёт X';
+
+  @override
+  String get posActionReportZ => 'Отчёт Z';
+
+  @override
+  String get posActionDeposit => 'Внесение';
+
+  @override
+  String get posActionWithdraw => 'Изъятие';
+
+  @override
+  String get posActionOpenDrawer => 'Откр. ящик';
+
+  @override
+  String get posActionGoodsCodes => 'Коды ТРУ';
+
+  @override
+  String get posActionLock => 'Блокировать';
+
+  @override
+  String get shellSwitchCashierTitle => 'Сменить кассира?';
+
+  @override
+  String get shellSwitchCashierMessage =>
+      'В корзине есть товары. Смена кассира отменит текущую продажу. Вы уверены, что хотите продолжить?';
+
+  @override
+  String get shellSwitchCashierConfirm => 'Сменить';
+
+  @override
+  String get managerOverrideTitle => 'Требуется подтверждение менеджера';
+
+  @override
+  String get managerOverrideActionLabel => 'ДЕЙСТВИЕ';
+
+  @override
+  String get managerOverrideLoginLabel => 'Логин менеджера';
+
+  @override
+  String get managerOverridePinLabel => 'PIN менеджера';
+
+  @override
+  String get managerOverrideConfirm => 'Подтвердить';
+
+  @override
+  String get managerOverrideCancel => 'Отмена';
+
+  @override
+  String get managerOverrideLocked =>
+      'Заблокировано на 30 сек после 3 неверных попыток';
+
+  @override
+  String get managerOverrideNotFound => 'Логин не найден';
+
+  @override
+  String get managerOverrideWrongPin => 'Неверный PIN';
+
+  @override
+  String get managerOverrideThisUser => 'Этот пользователь';
+
+  @override
+  String managerOverrideInsufficientRole(String name) {
+    return '$name не может авторизовать эту операцию';
+  }
+
+  @override
+  String get managerOverrideInactive => 'Учётная запись отключена';
+
+  @override
+  String get paymentRemaining => 'Осталось';
+
+  @override
+  String get posScanPrompt => 'Отсканируйте товар';
+
+  @override
+  String get posScanPromptHint => 'последний добавленный товар появится здесь';
 }
