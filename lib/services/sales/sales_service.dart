@@ -1,8 +1,6 @@
-import '../../core/feature_flags.dart';
 import '../../data/database.dart';
 import '../../data/repositories/receipt_repository.dart';
 import '../../data/repositories/shift_repository.dart';
-import '../api_client.dart';
 
 /// One cart line in canonical form. Mirrors what the cashier sees on screen,
 /// money in tiyin, weighted vs piece distinguished by [isWeighted].
@@ -94,18 +92,14 @@ class SalesCompletionResult {
 }
 
 /// Cashier "Pay" button — the single critical-path operation the sales BLoC
-/// hands off when a customer tap-finishes a transaction. Two implementations
-/// behind [createSalesService]:
+/// hands off when a customer tap-finishes a transaction. Backed by
+/// [DriftSalesService], which writes locally (receipt + items + stock
+/// movements + shift roll-up) in one drift transaction; `sync_outbox` carries
+/// the rows to central asynchronously. Survives offline.
 ///
-///   - [DriftSalesService] writes locally (receipt + items + stock_movements +
-///     shift roll-up) in one drift transaction; sync_outbox carries the rows
-///     to central asynchronously. Survives offline.
-///   - [LegacySalesService] hits the Go server's `POST /api/receipts`. No
-///     offline support — Go is the source of truth for older builds.
-///
-/// Per the FeatureFlags rule, the BLoC consumes this interface and the factory
-/// picks the impl from `FeatureFlags.useDriftSales`. Flipping the flag swaps
-/// the data path with zero UI change.
+/// The legacy `LegacySalesService` that POST-ed to the decommissioned Go
+/// server's `/api/receipts` was removed once the .NET central server became
+/// the source of truth — drift-local-first is the only path now.
 abstract interface class SalesService {
   Future<SalesCompletionResult> completeSale(SalesCompletionInput input);
 }
@@ -196,85 +190,36 @@ class DriftSalesService implements SalesService {
       );
 }
 
-/// HTTP-backed against the Go server. Single network call. No offline support;
-/// fires `ApiException` on transport errors which the BLoC already handles.
-///
-/// Removed at P9 cutover when Go is deleted.
-class LegacySalesService implements SalesService {
-  LegacySalesService(this._api);
-
-  final ApiClient _api;
+/// Stand-in [SalesService] for the owner-web-admin case where the device was
+/// never activated as a register (no tenant / workstation id). The cart UI
+/// shouldn't reach `CompleteSale` in that state — if anything does, this
+/// surfaces a loud error instead of silently routing to a dead Go endpoint.
+class DisabledSalesService implements SalesService {
+  const DisabledSalesService();
 
   @override
   Future<SalesCompletionResult> completeSale(SalesCompletionInput input) async {
-    final items = <Map<String, dynamic>>[];
-    for (var i = 0; i < input.lines.length; i++) {
-      final l = input.lines[i];
-      items.add({
-        'ProductID': l.productId,
-        'Name': l.productName,
-        'NTIN': l.ntin ?? '',
-        // Locked rule: integer wire format, no floats for money or quantity.
-        // For weighted items the line is "one ticket position" (Quantity = 1);
-        // the actual measurement rides in WeightGrams below.
-        'Quantity': l.isWeighted ? 1 : l.quantity,
-        'Unit': l.unit,
-        'Price': l.unitPriceTiyin,
-        'BasePrice': l.unitPriceTiyin,
-        'Discount': l.discountTiyin,
-        'Total': l.itemTotalTiyin,
-        'VATRate': l.vatRate,
-        'IsWeighted': l.isWeighted,
-        'WeightGrams': l.weightGrams,
-        'SortOrder': i + 1,
-      });
-    }
-
-    final resp = await _api.createReceipt({
-      'ShiftID': input.shiftId,
-      'CashierID': input.cashierId,
-      'Subtotal': input.subtotalTiyin,
-      'Discount': input.discountTiyin,
-      'Total': input.totalTiyin,
-      'VATAmount': input.vatAmountTiyin,
-      'PaymentType': input.paymentType,
-      'CashAmount': input.cashAmountTiyin,
-      'CardAmount': input.cardAmountTiyin,
-      'QRAmount': input.qrAmountTiyin,
-      'ChangeAmount': input.changeAmountTiyin,
-      'FiscalStatus': 'pending',
-      'Items': items,
-    });
-
-    // Go server may return the new receipt id under any of these keys depending
-    // on version — be tolerant. If none match, fall back to a synthetic id.
-    final id = (resp['ID'] ?? resp['id'] ?? resp['ReceiptID']) as String?;
-    return SalesCompletionResult(
-      receiptId: id ?? 'legacy-no-id-${DateTime.now().microsecondsSinceEpoch}',
+    throw StateError(
+      'SalesService unavailable: register is not activated '
+      '(no tenant or workstation id). Activate the device before ringing up a sale.',
     );
   }
 }
 
-/// Pick an impl based on [FeatureFlags.useDriftSales]. Constructed once per
-/// authenticated session (workstation/tenant don't change mid-session) and
-/// injected into the sales BLoC.
+/// Construct the drift-backed sales service. One instance per authenticated
+/// session — workstation / tenant don't change mid-session.
 SalesService createSalesService({
-  required FeatureFlags flags,
   required AppDatabase db,
-  required ApiClient api,
   required String tenantId,
   required String deviceId,
   required String workstationId,
   String? storeId,
 }) {
-  if (flags.useDriftSales) {
-    return DriftSalesService(
-      db,
-      tenantId: tenantId,
-      deviceId: deviceId,
-      workstationId: workstationId,
-      storeId: storeId,
-    );
-  }
-  return LegacySalesService(api);
+  return DriftSalesService(
+    db,
+    tenantId: tenantId,
+    deviceId: deviceId,
+    workstationId: workstationId,
+    storeId: storeId,
+  );
 }

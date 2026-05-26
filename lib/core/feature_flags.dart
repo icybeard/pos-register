@@ -27,7 +27,6 @@ class FeatureFlags {
     this.useDriftSuppliers = false,
     this.useDriftDelivery = false,
     this.useDriftShifts = false,
-    this.useDriftSales = false, // critical path — flip last
     this.useDriftAnalytics = false,
     this.useDriftAudit = false,
     this.useDriftApproval = false,
@@ -56,7 +55,6 @@ class FeatureFlags {
     useDriftSuppliers: true,
     useDriftDelivery: true,
     useDriftShifts: true,
-    useDriftSales: true,
     useDriftAnalytics: true,
     useDriftAudit: true,
     useDriftApproval: true,
@@ -76,7 +74,6 @@ class FeatureFlags {
   final bool useDriftSuppliers;
   final bool useDriftDelivery;
   final bool useDriftShifts;
-  final bool useDriftSales;
   final bool useDriftAnalytics;
   final bool useDriftAudit;
   final bool useDriftApproval;
@@ -96,7 +93,6 @@ class FeatureFlags {
     bool? useDriftSuppliers,
     bool? useDriftDelivery,
     bool? useDriftShifts,
-    bool? useDriftSales,
     bool? useDriftAnalytics,
     bool? useDriftAudit,
     bool? useDriftApproval,
@@ -114,7 +110,6 @@ class FeatureFlags {
       useDriftSuppliers: useDriftSuppliers ?? this.useDriftSuppliers,
       useDriftDelivery: useDriftDelivery ?? this.useDriftDelivery,
       useDriftShifts: useDriftShifts ?? this.useDriftShifts,
-      useDriftSales: useDriftSales ?? this.useDriftSales,
       useDriftAnalytics: useDriftAnalytics ?? this.useDriftAnalytics,
       useDriftAudit: useDriftAudit ?? this.useDriftAudit,
       useDriftApproval: useDriftApproval ?? this.useDriftApproval,
@@ -141,7 +136,6 @@ class FeatureFlags {
       useDriftSuppliers: bv('use_drift_suppliers'),
       useDriftDelivery: bv('use_drift_delivery'),
       useDriftShifts: bv('use_drift_shifts'),
-      useDriftSales: bv('use_drift_sales'),
       useDriftAnalytics: bv('use_drift_analytics'),
       useDriftAudit: bv('use_drift_audit'),
       useDriftApproval: bv('use_drift_approval'),

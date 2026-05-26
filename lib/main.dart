@@ -324,17 +324,16 @@ class _PosAppState extends State<PosApp> {
     super.dispose();
   }
 
-  /// Build the [SalesGuards] bundle for the current device. Wired when both
-  /// the drift-sales flag is on AND we know the tenant + workstation id from
-  /// the register-activation payload. Otherwise returns [SalesGuards.disabled]
-  /// — the cart's pay flow then bypasses the pre-check and dispatches
-  /// `CompleteSale` immediately, preserving pre-T5.7 behaviour.
+  /// Build the [SalesGuards] bundle for the current device. Wired once the
+  /// register-activation payload has provided the tenant + workstation id.
+  /// Until then returns [SalesGuards.disabled] — the cart's pay flow then
+  /// bypasses the pre-check and dispatches `CompleteSale` immediately.
   ///
   /// The [PinVerifier] uses [bcryptVerify] (pointycastle-backed) so offline
   /// PIN gates verify against the hash minted by .NET/BCrypt.Net — see T5.7e.
   SalesGuards _buildSalesGuards() {
     final tenantId = _activeTenantId;
-    if (!_flags.useDriftSales || tenantId == null) {
+    if (tenantId == null) {
       return const SalesGuards.disabled();
     }
     final deviceId = _activeWorkstationId ?? 'unknown-device';
@@ -384,20 +383,18 @@ class _PosAppState extends State<PosApp> {
           BlocProvider(
             create: (_) => SalesBloc(
               _apiClient,
-              // T5.5b/c: route CompleteSale through the SalesService abstraction.
-              // Factory picks drift vs. legacy HTTP based on FeatureFlags. Both
-              // tenantId AND workstationId must be known for the drift path —
-              // workstationId is supplied by `/api/register/activate` and stored
-              // alongside tokens. Until that completes, fall back to the legacy
-              // HTTP path. The fallback also covers the owner-web-admin case
-              // where the device was never activated as a register at all.
+              // Drift-local-first: receipts commit to drift in one atomic
+              // transaction; `sync_outbox` drains to the .NET central server
+              // asynchronously. Until the register is activated (tenant +
+              // workstation id arrive via `/api/register/activate`), we
+              // wire in a disabled stub that throws if CompleteSale fires
+              // — the cart UI shouldn't reach Pay in that state, and the
+              // owner-web-admin case never rings up a sale at all.
               salesService:
                   (_activeTenantId == null || _activeWorkstationId == null)
-                      ? LegacySalesService(_apiClient)
+                      ? const DisabledSalesService()
                       : createSalesService(
-                          flags: _flags,
                           db: _db,
-                          api: _apiClient,
                           tenantId: _activeTenantId!,
                           deviceId: _activeWorkstationId!,
                           workstationId: _activeWorkstationId!,

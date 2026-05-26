@@ -1,10 +1,8 @@
 import 'package:drift/native.dart';
 import 'package:flutter_test/flutter_test.dart';
-import 'package:pos_system/core/feature_flags.dart';
 import 'package:pos_system/data/database.dart';
 import 'package:pos_system/data/repositories/shift_repository.dart';
 import 'package:pos_system/data/repositories/stock_movement_repository.dart';
-import 'package:pos_system/services/api_client.dart';
 import 'package:pos_system/services/sales/sales_service.dart';
 
 void main() {
@@ -230,95 +228,31 @@ void main() {
     });
   });
 
-  group('LegacySalesService', () {
-    test('sends Go-server PascalCase wire shape to /api/receipts', () async {
-      final api = _CapturingApiClient(returnedId: 'srv-receipt-99');
-      final svc = LegacySalesService(api);
-
-      final result = await svc.completeSale(SalesCompletionInput(
-        shiftId: 'shift-99',
-        cashierId: cashierId,
-        paymentType: 'mixed',
-        lines: [coke(qty: 2), bread350g()],
-        subtotalTiyin: 78000,
-        discountTiyin: 0,
-        totalTiyin: 78000,
-        vatAmountTiyin: 8357,
-        cashAmountTiyin: 50000,
-        cardAmountTiyin: 28000,
-      ));
-
-      expect(result.receiptId, 'srv-receipt-99');
-      final body = api.lastBody!;
-      expect(body['ShiftID'], 'shift-99');
-      expect(body['PaymentType'], 'mixed');
-      expect(body['Total'], 78000);
-      expect(body['CashAmount'], 50000);
-      expect(body['FiscalStatus'], 'pending');
-
-      final items = body['Items'] as List;
-      expect(items, hasLength(2));
-      // Go server expects double in both branches — matches the pre-T5.5
-      // inline BLoC code path byte-for-byte.
-      expect(items[0]['Quantity'], 2.0);
-      expect(items[0]['IsWeighted'], false);
-      // Weighted line: Quantity is grams/1000 as double
-      expect(items[1]['IsWeighted'], true);
-      expect(items[1]['Quantity'], 0.35);
-      expect(items[1]['WeightGrams'], 350);
-      // Sort order is 1-based per the existing wire contract
-      expect(items[0]['SortOrder'], 1);
-      expect(items[1]['SortOrder'], 2);
-    });
-
-    test('falls back to a synthetic id when the Go server omits one', () async {
-      final api = _CapturingApiClient(); // returns empty {}
-      final svc = LegacySalesService(api);
-      final result = await svc.completeSale(SalesCompletionInput(
-        shiftId: 's', cashierId: 'c', paymentType: 'cash',
-        lines: [coke()],
-        subtotalTiyin: 25000, discountTiyin: 0, totalTiyin: 25000,
-        vatAmountTiyin: 0, cashAmountTiyin: 25000,
-      ));
-      expect(result.receiptId, startsWith('legacy-no-id-'));
-    });
-  });
-
   group('createSalesService factory', () {
-    test('returns drift impl when useDriftSales=true', () {
+    test('returns the drift impl (drift-local-first is the only path)', () {
       final db = AppDatabase.forTesting(NativeDatabase.memory());
       final svc = createSalesService(
-        flags: const FeatureFlags(useDriftSales: true),
-        db: db, api: _CapturingApiClient(),
-        tenantId: tenantId, deviceId: deviceId,
+        db: db,
+        tenantId: tenantId,
+        deviceId: deviceId,
         workstationId: workstationId,
       );
       expect(svc, isA<DriftSalesService>());
     });
+  });
 
-    test('returns legacy impl when useDriftSales=false', () {
-      final db = AppDatabase.forTesting(NativeDatabase.memory());
-      final svc = createSalesService(
-        flags: const FeatureFlags(),
-        db: db, api: _CapturingApiClient(),
-        tenantId: tenantId, deviceId: deviceId,
-        workstationId: workstationId,
+  group('DisabledSalesService', () {
+    test('completeSale throws StateError pointing at register activation', () async {
+      const svc = DisabledSalesService();
+      await expectLater(
+        svc.completeSale(SalesCompletionInput(
+          shiftId: 's', cashierId: 'c', paymentType: 'cash',
+          lines: [coke()],
+          subtotalTiyin: 25000, discountTiyin: 0, totalTiyin: 25000,
+          vatAmountTiyin: 0, cashAmountTiyin: 25000,
+        )),
+        throwsA(isA<StateError>()),
       );
-      expect(svc, isA<LegacySalesService>());
     });
   });
-}
-
-/// [ApiClient] stub that records the last `createReceipt` body for assertions.
-class _CapturingApiClient extends ApiClient {
-  _CapturingApiClient({this.returnedId}) : super(baseUrl: 'http://fake');
-
-  final String? returnedId;
-  Map<String, dynamic>? lastBody;
-
-  @override
-  Future<Map<String, dynamic>> createReceipt(Map<String, dynamic> receipt) async {
-    lastBody = receipt;
-    return returnedId != null ? {'ID': returnedId} : <String, dynamic>{};
-  }
 }
