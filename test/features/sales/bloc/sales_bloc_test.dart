@@ -207,11 +207,11 @@ void main() {
       final states =
           await collectStates(bloc, SearchProduct('хлеб'), count: 2);
 
-      // First state: isSearching = true
-      expect(states.first.isSearching, isTrue);
+      // First state: search status flips to Searching
+      expect(states.first.searchStatus, isA<Searching>());
       // Last state: results populated
       expect(states.last.searchResults.length, 2);
-      expect(states.last.isSearching, isFalse);
+      expect(states.last.searchStatus, isA<SearchIdle>());
     });
 
     test('empty query clears results', () async {
@@ -225,7 +225,7 @@ void main() {
 
       final states = await collectStates(bloc, SearchProduct(''));
       expect(states.last.searchResults, isEmpty);
-      expect(states.last.isSearching, isFalse);
+      expect(states.last.searchStatus, isA<SearchIdle>());
     });
 
     test('error sets error message', () async {
@@ -235,7 +235,7 @@ void main() {
       final states =
           await collectStates(bloc, SearchProduct('test'), count: 2);
 
-      expect(states.last.isSearching, isFalse);
+      expect(states.last.searchStatus, isA<SearchIdle>());
       expect(states.last.error, isNotNull);
     });
 
@@ -256,7 +256,7 @@ void main() {
       // Should have NKT results
       final last = states.last;
       expect(last.nktResults.length, 1);
-      expect(last.isNktSearching, isFalse);
+      expect(last.searchStatus, isA<SearchIdle>());
     });
   });
 
@@ -298,9 +298,9 @@ void main() {
       final completer = Completer<void>();
       final sub = bloc.stream.listen((s) {
         states.add(s);
-        // We need isNktSearching=true then nktResults populated
+        // We need NktSearching to flip back to SearchIdle then nktResults populated
         if (states.length >= 2 &&
-            !states.last.isNktSearching &&
+            states.last.searchStatus is SearchIdle &&
             states.last.nktResults.isNotEmpty &&
             !completer.isCompleted) {
           completer.complete();
@@ -324,7 +324,7 @@ void main() {
       final sub = bloc.stream.listen((s) {
         states.add(s);
         if (states.length >= 2 &&
-            !states.last.isNktSearching &&
+            states.last.searchStatus is SearchIdle &&
             !completer.isCompleted) {
           completer.complete();
         }
@@ -382,8 +382,8 @@ void main() {
 
       final states = await collectStates(bloc, event, count: 2);
 
-      // First state: isProcessingPayment=true
-      expect(states.first.isProcessingPayment, isTrue);
+      // First state: payment status flips to PaymentProcessing
+      expect(states.first.paymentStatus, isA<PaymentProcessing>());
       // Last state: success
       expect(states.last.saleSuccess, isNotNull);
       expect(states.last.items, isEmpty);
@@ -434,7 +434,7 @@ void main() {
         count: 2,
       );
 
-      expect(states.last.isProcessingPayment, isFalse);
+      expect(states.last.paymentStatus, isA<PaymentIdle>());
       expect(states.last.error, contains('Некорректные'));
     });
 

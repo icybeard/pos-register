@@ -33,6 +33,14 @@ class FeatureFlags {
     this.useDriftApproval = false,
     this.useDriftNkt = false,
     this.useNewCentralAuth = false, // when true, login/refresh hit .NET /api/auth/* instead of Go
+    // Gates the card / Kaspi QR payment path. Defaults to OFF until a real
+    // terminal SDK is wired in — the current "card payment" code is a
+    // 2-second Future.delayed auto-success stub that would create
+    // unrecoverable fiscal records for declined transactions if exposed.
+    // When false, the payment-screen card + Kaspi QR tiles render as
+    // disabled (greyed, non-tappable). Flip to true only on a build that
+    // talks to a real PED.
+    this.cardTerminalEnabled = false,
   });
 
   /// All-on configuration — used in dev / staging once a screen is ready to test
@@ -74,6 +82,7 @@ class FeatureFlags {
   final bool useDriftApproval;
   final bool useDriftNkt;
   final bool useNewCentralAuth;
+  final bool cardTerminalEnabled;
 
   /// Build a copy with selected flags overridden. Used by remote-config loader
   /// (`/api/settings/flags`) to apply per-tenant overrides on top of compile-time defaults.
@@ -93,6 +102,7 @@ class FeatureFlags {
     bool? useDriftApproval,
     bool? useDriftNkt,
     bool? useNewCentralAuth,
+    bool? cardTerminalEnabled,
   }) {
     return FeatureFlags(
       useDriftSettings: useDriftSettings ?? this.useDriftSettings,
@@ -110,6 +120,7 @@ class FeatureFlags {
       useDriftApproval: useDriftApproval ?? this.useDriftApproval,
       useDriftNkt: useDriftNkt ?? this.useDriftNkt,
       useNewCentralAuth: useNewCentralAuth ?? this.useNewCentralAuth,
+      cardTerminalEnabled: cardTerminalEnabled ?? this.cardTerminalEnabled,
     );
   }
 
@@ -136,6 +147,7 @@ class FeatureFlags {
       useDriftApproval: bv('use_drift_approval'),
       useDriftNkt: bv('use_drift_nkt'),
       useNewCentralAuth: bv('use_new_central_auth'),
+      cardTerminalEnabled: bv('card_terminal_enabled'),
     );
   }
 }

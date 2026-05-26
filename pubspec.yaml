@@ -92,9 +92,11 @@ dev_dependencies:
   drift_dev: ^2.31.0
   build_runner: ^2.4.13
 
-  # Mocking + BLoC test
+  # Mocking + BLoC test. bloc_test was previously declared but never
+  # imported anywhere — auth_bloc_test.dart and sales_bloc_test.dart use
+  # a hand-rolled `collectStates` helper instead. Removed to slim the
+  # dev-dep graph; re-add if a future test switches to `blocTest(...)`.
   mocktail: ^1.0.4
-  bloc_test: ^10.0.0
   sqflite_common_ffi: ^2.3.3  # test-only: sqflite backed by native sqlite3 (no platform channel)
 
 flutter:
@@ -179,7 +181,11 @@ hooks:
 #     resolving to older non-eol versions that would bring back the
 #     collision.
 dependency_overrides:
+  # See block comment (1): drift runtime forward to 2.32+ for sqlite3 3.x; drift_dev stays at 2.31.
   drift: ^2.32.0
+  # Pairs with drift 2.32 — the native-asset hook lives here in sqlite3 3.x.
   sqlite3: ^3.0.0
+  # Pairs with block comment (2): +eol shell, ObjC class renamed to satisfy Xcode 26 module linker.
   sqlite3_flutter_libs: 0.6.0+eol
+  # Same as sqlite3_flutter_libs above — +eol shell, no runtime symbols (sqlite3mc provides them).
   sqlcipher_flutter_libs: 0.7.0+eol

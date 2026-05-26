@@ -28,7 +28,11 @@ void main() {
       expect(item.total, 135000);
     });
 
-    test('fractional quantity rounds correctly', () {
+    test('fractional quantity truncates to int for pieces', () {
+      // Per CartItem.total docstring: piece quantities are always integer;
+      // the field is `double` only for storage uniformity with weighted's
+      // stockQty comparison. Total uses `quantity.toInt()`, so 1.5 → 1.
+      // No float math on money. (For weighted items, use weightGrams.)
       const item = CartItem(
         productId: 'p1',
         name: 'Item',
@@ -36,7 +40,7 @@ void main() {
         basePrice: 10000,
         quantity: 1.5,
       );
-      expect(item.total, 15000);
+      expect(item.total, 10000);
     });
   });
 
@@ -230,8 +234,11 @@ void main() {
         weightGrams: 450,
         vatRate: 12,
       );
-      // total = 144000, vat = 144000 * 12 / 112 = 15428.57... -> 15429
-      expect(item.vatAmount, 15429);
+      // total = (450 * 320000 + 500) ~/ 1000 = 144000.
+      // vat = 144000 * 12 ~/ 112 = 1_728_000 ~/ 112 = 15428 (truncating
+      // integer division, NOT rounded). Mirrors .NET Calculator.VatFromInside
+      // and the Go server — see calculator_parity_test.dart.
+      expect(item.vatAmount, 15428);
     });
   });
 
@@ -345,7 +352,12 @@ void main() {
       expect(item.total, 0);
     });
 
-    test('negative discount treated normally (clamp handles overflow)', () {
+    test('negative discount is rejected by Money.calculateItemTotal', () {
+      // Money.calculateItemTotal asserts discountTiyin >= 0. The cart
+      // building code already clamps user input to non-negative, so a
+      // negative discount reaching this layer is a bug, not a user
+      // condition — fail fast instead of silently producing inflated
+      // totals.
       const item = CartItem(
         productId: 'p1',
         name: 'Test',
@@ -354,8 +366,7 @@ void main() {
         quantity: 1,
         discount: -5000,
       );
-      // total = 10000 - (-5000) = 15000
-      expect(item.total, 15000);
+      expect(() => item.total, throwsArgumentError);
     });
 
     test('displayPrice returns basePrice', () {
