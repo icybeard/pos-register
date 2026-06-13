@@ -1,11 +1,11 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
-import '../bloc/auth_bloc.dart';
+import '../controllers/auth_controller.dart';
 import 'owner_login_screen.dart';
 
 // Internal two-state UI flag. The user-facing segmented switcher is gone
@@ -14,14 +14,14 @@ import 'owner_login_screen.dart';
 // cashier tile selects them, then "Далее → PIN" flips this flag to keypad.
 enum _LoginFlavor { pin, grid }
 
-class PinScreen extends StatefulWidget {
+class PinScreen extends ConsumerStatefulWidget {
   const PinScreen({super.key});
 
   @override
-  State<PinScreen> createState() => _PinScreenState();
+  ConsumerState<PinScreen> createState() => _PinScreenState();
 }
 
-class _PinScreenState extends State<PinScreen> {
+class _PinScreenState extends ConsumerState<PinScreen> {
   // Default to the cashier grid — quickest path for the "switch cashier"
   // scenario (tap your tile, enter 4-digit PIN). Users who want the full
   // Имя + PIN form can tap that tab explicitly. Biometrics is tab 3 —
@@ -36,70 +36,68 @@ class _PinScreenState extends State<PinScreen> {
   @override
   void initState() {
     super.initState();
-    context.read<AuthBloc>().add(CheckFirstRun());
+    // checkFirstRun must run after this frame so build() can render the
+    // initial state first; doing it inline in initState would race the
+    // Notifier's build() callback.
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      if (!mounted) return;
+      ref.read(authControllerProvider.notifier).checkFirstRun();
+    });
   }
 
   @override
   Widget build(BuildContext context) {
+    // Watch the state once — the chrome chip + body both depend on it.
+    final state = ref.watch(authControllerProvider);
+    final ws = ref.read(authControllerProvider.notifier).activeWorkstation;
+
+    // ref.listen handles the AuthAuthenticated maybePop — same screen
+    // pop behaviour as OwnerLoginScreen (this screen sits on the Navigator
+    // stack above main.dart's root Consumer, which renders _MainShell as
+    // home: but doesn't pop the pushed PinScreen on its own).
+    ref.listen<AuthState>(authControllerProvider, (prev, curr) {
+      if (curr is AuthAuthenticated) {
+        Navigator.of(context).maybePop();
+      }
+    });
+
     return Scaffold(
       backgroundColor: Hifi.canvas,
       body: Column(children: [
         // Real store + terminal binding from the activation payload. The
-        // bloc keeps `_activeWorkstation` populated for the lifetime of the
-        // process once activation/hydrate completes. We subscribe via
-        // BlocBuilder so post-mount hydration (which can complete after
-        // the screen first paints) refreshes the chip — using
-        // `context.read` here would freeze the chip at first-build value.
-        BlocBuilder<AuthBloc, AuthState>(
-          builder: (context, _) {
-            final ws = context.read<AuthBloc>().activeWorkstation;
-            if (ws == null) return const HifiChrome();
+        // controller keeps `_activeWorkstation` populated for the lifetime
+        // of the process once activation/hydrate completes. We re-read on
+        // each rebuild so post-mount hydration (which can complete after
+        // the screen first paints) refreshes the chip.
+        if (ws == null)
+          const HifiChrome()
+        else
+          HifiChrome(
+            shiftNumber: ws.storeName.isNotEmpty ? ws.storeName : null,
             // workstationId is a UUID v4; surface only the leading 8 chars
             // so operators can disambiguate registers in the same store
             // without displaying the full GUID.
-            final shortId = ws.workstationId.length >= 8
-                ? ws.workstationId.substring(0, 8)
-                : ws.workstationId;
-            return HifiChrome(
-              shiftNumber: ws.storeName.isNotEmpty ? ws.storeName : null,
-              storeLabel: 'Терминал $shortId',
-            );
-          },
-        ),
-        Expanded(
-          // BlocConsumer (not BlocBuilder): on a successful PIN login the
-          // bloc emits AuthAuthenticated and main.dart's root BlocBuilder
-          // re-renders home as _MainShell. But this screen sits on top of
-          // the Navigator stack (pushed by `_onSwitchCashier`), so without
-          // a listener pop it stays visible over the new shell — same bug
-          // we just fixed for OwnerLoginScreen. maybePop() is safe whether
-          // we were pushed (canPop=true → pops) or rendered as home
-          // (canPop=false → no-ops, root BlocBuilder takes over).
-          child: BlocConsumer<AuthBloc, AuthState>(
-            listener: (context, state) {
-              if (state is AuthAuthenticated) {
-                Navigator.of(context).maybePop();
-              }
-            },
-            builder: (context, state) {
-              if (state is AuthInitial && state.isFirstRun) {
-                return Center(child: _FirstRunSetup());
-              }
-              // Surface a `RegisterActivated.error` (e.g. listCashiers 401
-              // because the device JWT is missing / expired). Without this
-              // the grid renders empty and the operator has no clue why.
-              final activatedError =
-                  state is RegisterActivated ? state.error : null;
-              return Column(children: [
-                if (activatedError != null) _ErrorBanner(message: activatedError),
-                // No segmented switcher anymore. Grid is the only entry point;
-                // "Далее → PIN" inside the grid flips the internal flag to
-                // show the keypad. Biometric was a separate tab; it's now a
-                // per-tile badge on the matching cashier (see _CashierGridTile).
-                Expanded(child: _flavorBody()),
-              ]);
-            },
+            storeLabel: 'Терминал ${ws.workstationId.length >= 8 ? ws.workstationId.substring(0, 8) : ws.workstationId}',
           ),
+        Expanded(
+          child: Builder(builder: (context) {
+            if (state is AuthInitial && state.isFirstRun) {
+              return Center(child: _FirstRunSetup());
+            }
+            // Surface a `RegisterActivated.error` (e.g. listCashiers 401
+            // because the device JWT is missing / expired). Without this
+            // the grid renders empty and the operator has no clue why.
+            final activatedError =
+                state is RegisterActivated ? state.error : null;
+            return Column(children: [
+              if (activatedError != null) _ErrorBanner(message: activatedError),
+              // No segmented switcher anymore. Grid is the only entry point;
+              // "Далее → PIN" inside the grid flips the internal flag to
+              // show the keypad. Biometric was a separate tab; it's now a
+              // per-tile badge on the matching cashier (see _CashierGridTile).
+              Expanded(child: _flavorBody()),
+            ]);
+          }),
         ),
       ]),
     );
@@ -242,9 +240,9 @@ class _LiveClockState extends State<_LiveClock> {
 
 // ─── Wide layout: profile selection left, keypad right ───────
 
-class _WidePinLayout extends StatelessWidget {
+class _WidePinLayout extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
     return ConstrainedBox(
       constraints: const BoxConstraints(maxWidth: 960, maxHeight: 640),
@@ -296,8 +294,9 @@ class _WidePinLayout extends StatelessWidget {
                   const SizedBox(height: 12),
 
                   // Cashier profiles from server
-                  Expanded(child: BlocBuilder<AuthBloc, AuthState>(
-                    builder: (context, state) {
+                  Expanded(child: Consumer(
+                    builder: (context, ref, _) {
+                      final state = ref.watch(authControllerProvider);
                       final cashiers = state is AuthInitial ? state.cashiers : <Map<String, dynamic>>[];
                       final selected = state is AuthInitial ? state.selectedCashierName : null;
                       final openShifts = state is AuthInitial ? state.openShifts : <String, String>{};
@@ -321,7 +320,7 @@ class _WidePinLayout extends StatelessWidget {
                           final isSelected = selected == name || (selected == null && i == 0);
                           final shiftOpenedAt = openShifts[cashierId];
                           return GestureDetector(
-                            onTap: () => context.read<AuthBloc>().add(SelectCashierProfile(name)),
+                            onTap: () => ref.read(authControllerProvider.notifier).selectCashierProfile(name),
                             child: _ProfileCard(
                               name: name,
                               subtitle: _roleLabel(l, role),
@@ -508,15 +507,14 @@ class _ProfileCard extends StatelessWidget {
   }
 }
 
-class _PinDotsAndError extends StatelessWidget {
+class _PinDotsAndError extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final pinLength = state is AuthInitial ? state.pin.length : 0;
-        final error = state is AuthInitial ? state.error : null;
-        final isLocked = state is AuthInitial && state.isLockedOut;
-        return Column(children: [
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(authControllerProvider);
+    final pinLength = state is AuthInitial ? state.pin.length : 0;
+    final error = state is AuthInitial ? state.error : null;
+    final isLocked = state is AuthInitial && state.isLockedOut;
+    return Column(children: [
           Row(
             mainAxisAlignment: MainAxisAlignment.center,
             children: List.generate(4, (i) {
@@ -570,8 +568,6 @@ class _PinDotsAndError extends StatelessWidget {
                     : const SizedBox.shrink(),
           ),
         ]);
-      },
-    );
   }
 }
 
@@ -632,28 +628,25 @@ class _LockoutCountdownState extends State<_LockoutCountdown> {
   }
 }
 
-class _PinLoadingIndicator extends StatelessWidget {
+class _PinLoadingIndicator extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        if (state is AuthLoading) {
-          return const Padding(
-            padding: EdgeInsets.only(top: 24),
-            child: SizedBox(width: 24, height: 24,
-              child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2.5)),
-          );
-        }
-        return const SizedBox.shrink();
-      },
-    );
+  Widget build(BuildContext context, WidgetRef ref) {
+    final state = ref.watch(authControllerProvider);
+    if (state is AuthLoading) {
+      return const Padding(
+        padding: EdgeInsets.only(top: 24),
+        child: SizedBox(width: 24, height: 24,
+          child: CircularProgressIndicator(color: AppTheme.primary, strokeWidth: 2.5)),
+      );
+    }
+    return const SizedBox.shrink();
   }
 }
 
-class _PinKeypad extends StatelessWidget {
+class _PinKeypad extends ConsumerWidget {
   @override
-  Widget build(BuildContext context) {
-    final bloc = context.read<AuthBloc>();
+  Widget build(BuildContext context, WidgetRef ref) {
+    final controller = ref.read(authControllerProvider.notifier);
     final rows = [
       ['1', '2', '3'],
       ['4', '5', '6'],
@@ -670,7 +663,7 @@ class _PinKeypad extends StatelessWidget {
             children: row.map((label) => Expanded(
               child: Padding(
                 padding: const EdgeInsets.symmetric(horizontal: 5),
-                child: _buildKey(bloc, label),
+                child: _buildKey(controller, label),
               ),
             )).toList(),
           ),
@@ -679,7 +672,7 @@ class _PinKeypad extends StatelessWidget {
     );
   }
 
-  Widget _buildKey(AuthBloc bloc, String label) {
+  Widget _buildKey(AuthController controller, String label) {
     final isBackspace = label == '<';
     final isConfirm = label == 'OK';
 
@@ -696,11 +689,15 @@ class _PinKeypad extends StatelessWidget {
           borderRadius: BorderRadius.circular(18),
           onTap: () {
             if (label == '<') {
-              bloc.add(PinBackspacePressed());
+              controller.pinBackspace();
             } else if (label == 'OK') {
-              // login is auto-triggered on 4th digit
+              // PinSubmitPressed: no-op if pin.length < 4 (controller guards).
+              // Login is also auto-triggered on the 4th digit press; this
+              // path covers the "backspace then re-type" case where the OK
+              // key is the only remaining way to re-submit.
+              controller.pinSubmit();
             } else {
-              bloc.add(PinDigitPressed(label));
+              controller.pinDigit(label);
             }
           },
           child: Center(
@@ -727,7 +724,7 @@ class _PinKeypad extends StatelessWidget {
 // Flavor 2 — Сетка кассиров (grid)
 // ════════════════════════════════════════════════════════════════════════════
 
-class _GridFlavor extends StatelessWidget {
+class _GridFlavor extends ConsumerWidget {
   // Parent-supplied callback to flip the segmented toggle to PIN entry.
   // Replaces the previous `findAncestorStateOfType<_PinScreenState>()` walk —
   // grid tile children stay decoupled from _PinScreenState's private API.
@@ -735,13 +732,12 @@ class _GridFlavor extends StatelessWidget {
   const _GridFlavor({required this.onSwitchToPin});
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
     final l = AppLocalizations.of(context)!;
-    return BlocBuilder<AuthBloc, AuthState>(
-      builder: (context, state) {
-        final cashiers = state is AuthInitial ? state.cashiers : const <Map<String, dynamic>>[];
-        final selected = state is AuthInitial ? state.selectedCashierName : null;
-        return Padding(
+    final state = ref.watch(authControllerProvider);
+    final cashiers = state is AuthInitial ? state.cashiers : const <Map<String, dynamic>>[];
+    final selected = state is AuthInitial ? state.selectedCashierName : null;
+    return Padding(
           padding: const EdgeInsets.all(24),
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
             Row(crossAxisAlignment: CrossAxisAlignment.baseline, textBaseline: TextBaseline.alphabetic, children: [
@@ -803,19 +799,19 @@ class _GridFlavor extends StatelessWidget {
                     // BiometricLoginRequested unlocks "the saved session" —
                     // it can't pick a different cashier — so showing the
                     // badge on every tile would mislead the operator.
-                    final bloc = context.read<AuthBloc>();
-                    final showBio = bloc.isBiometricAvailable
+                    final controller = ref.read(authControllerProvider.notifier);
+                    final showBio = controller.isBiometricAvailable
                         && id.isNotEmpty
-                        && bloc.savedCashierUserId == id;
+                        && controller.savedCashierUserId == id;
                     return _CashierGridTile(
                       name: name,
                       role: _roleLabel(l, role),
                       last: isLast,
                       selected: isSelected,
-                      onTap: () => context.read<AuthBloc>().add(SelectCashierProfile(name)),
+                      onTap: () => controller.selectCashierProfile(name),
                       showFaceIdBadge: showBio,
                       onFaceIdTap: showBio
-                          ? () => context.read<AuthBloc>().add(BiometricLoginRequested())
+                          ? controller.biometricLogin
                           : null,
                     );
                   },
@@ -846,8 +842,6 @@ class _GridFlavor extends StatelessWidget {
             ]),
           ]),
         );
-      },
-    );
   }
 }
 
@@ -1099,12 +1093,12 @@ class _DashPainter extends CustomPainter {
 }
 
 
-class _FirstRunSetup extends StatefulWidget {
+class _FirstRunSetup extends ConsumerStatefulWidget {
   @override
-  State<_FirstRunSetup> createState() => _FirstRunSetupState();
+  ConsumerState<_FirstRunSetup> createState() => _FirstRunSetupState();
 }
 
-class _FirstRunSetupState extends State<_FirstRunSetup> {
+class _FirstRunSetupState extends ConsumerState<_FirstRunSetup> {
   final _nameController = TextEditingController(text: 'Владелец');
   final _pinController = TextEditingController();
   final _confirmController = TextEditingController();
@@ -1179,57 +1173,56 @@ class _FirstRunSetupState extends State<_FirstRunSetup> {
               ),
               const SizedBox(height: 24),
 
-              BlocBuilder<AuthBloc, AuthState>(
-                builder: (context, state) {
-                  final error = state is AuthInitial ? state.error : null;
-                  return Column(children: [
-                    if (error != null)
-                      Padding(
-                        padding: const EdgeInsets.only(bottom: 16),
-                        child: Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: const Color(0xFFFFDAD6),
-                            borderRadius: BorderRadius.circular(10),
-                          ),
-                          child: Text(error, style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13)),
+              Consumer(builder: (context, ref, _) {
+                final state = ref.watch(authControllerProvider);
+                final error = state is AuthInitial ? state.error : null;
+                return Column(children: [
+                  if (error != null)
+                    Padding(
+                      padding: const EdgeInsets.only(bottom: 16),
+                      child: Container(
+                        padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+                        decoration: BoxDecoration(
+                          color: const Color(0xFFFFDAD6),
+                          borderRadius: BorderRadius.circular(10),
                         ),
-                      ),
-                    SizedBox(
-                      width: double.infinity,
-                      height: 52,
-                      child: ElevatedButton(
-                        onPressed: state is AuthLoading
-                            ? null
-                            : () {
-                                final pin = _pinController.text;
-                                if (pin.length != 4) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(l.pinErrorLength)),
-                                  );
-                                  return;
-                                }
-                                if (pin != _confirmController.text) {
-                                  ScaffoldMessenger.of(context).showSnackBar(
-                                    SnackBar(content: Text(l.pinErrorMismatch)),
-                                  );
-                                  return;
-                                }
-                                context.read<AuthBloc>().add(CreateFirstCashier(_nameController.text, pin));
-                              },
-                        style: ElevatedButton.styleFrom(
-                          backgroundColor: AppTheme.secondary,
-                          foregroundColor: Colors.white,
-                          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
-                        ),
-                        child: state is AuthLoading
-                            ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
-                            : Text(l.pinCreateAndLogin, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600)),
+                        child: Text(error, style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13)),
                       ),
                     ),
-                  ]);
-                },
-              ),
+                  SizedBox(
+                    width: double.infinity,
+                    height: 52,
+                    child: ElevatedButton(
+                      onPressed: state is AuthLoading
+                          ? null
+                          : () {
+                              final pin = _pinController.text;
+                              if (pin.length != 4) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l.pinErrorLength)),
+                                );
+                                return;
+                              }
+                              if (pin != _confirmController.text) {
+                                ScaffoldMessenger.of(context).showSnackBar(
+                                  SnackBar(content: Text(l.pinErrorMismatch)),
+                                );
+                                return;
+                              }
+                              ref.read(authControllerProvider.notifier).createFirstCashier(_nameController.text, pin);
+                            },
+                      style: ElevatedButton.styleFrom(
+                        backgroundColor: AppTheme.secondary,
+                        foregroundColor: Colors.white,
+                        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(14)),
+                      ),
+                      child: state is AuthLoading
+                          ? const SizedBox(width: 22, height: 22, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2.5))
+                          : Text(l.pinCreateAndLogin, style: const TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w600)),
+                    ),
+                  ),
+                ]);
+              }),
             ],
           ),
         ),

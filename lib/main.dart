@@ -6,7 +6,17 @@ import 'package:flutter/services.dart' show LogicalKeyboardKey;
 import 'package:flutter/foundation.dart'
     show FlutterError, FlutterErrorDetails, kIsWeb, kReleaseMode;
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+// Hide Riverpod's bare `Provider` here — `Provider<T>.value(...)` at widget-
+// tree DI sites needs the `provider` package's class. Riverpod's Provider
+// is still reachable as `riverpod.Provider` (rarely needed in main).
+import 'package:flutter_riverpod/flutter_riverpod.dart' hide Provider;
+// Repository / service DI at widget-tree leaves — replaces flutter_bloc's
+// re-export of RepositoryProvider. AuthController + SalesController themselves
+// are Riverpod NotifierProviders; only the SalesGuards / ApiClient / FeatureFlags
+// / SyncStatusService bag still rides this side-channel.
+// `Consumer` is hidden because Riverpod ships one too and the auth-routing
+// home: block uses Riverpod's reactive Consumer.
+import 'package:provider/provider.dart' hide Consumer;
 import 'package:flutter_localizations/flutter_localizations.dart';
 import 'package:window_manager/window_manager.dart';
 import 'core/constants/app_constants.dart';
@@ -35,11 +45,11 @@ import 'services/override/oversell_guard.dart';
 import 'data/repositories/cashier_repository.dart';
 import 'data/repositories/stock_movement_repository.dart';
 import 'features/sales/sales_guards.dart';
-import 'features/auth/bloc/auth_bloc.dart';
+import 'features/auth/controllers/auth_controller.dart';
 import 'features/auth/screens/owner_login_screen.dart';
 import 'features/auth/screens/activation_screen.dart';
 import 'features/auth/screens/pin_screen.dart';
-import 'features/sales/bloc/sales_bloc.dart';
+import 'features/sales/controllers/sales_controller.dart';
 import 'features/sales/screens/pos_screen.dart';
 import 'features/products/screens/products_screen.dart';
 import 'features/users/screens/cashiers_screen.dart';
@@ -99,17 +109,18 @@ void main() {
       return ErrorWidget(details.exception);
     };
 
-    // BLoC-level error observer. Without this, exceptions thrown inside an
-    // event handler land in the default BlocObserver.onError which only
-    // prints in debug — production loses bloc errors entirely. Forward to
-    // Sentry / Crashlytics here once enabled.
-    Bloc.observer = _AppBlocObserver();
-
     if (_isDesktop) {
       await windowManager.ensureInitialized();
       await windowManager.setFullScreen(true);
     }
-    runApp(const PosApp());
+    // Riverpod ProviderObserver replaces the prior Bloc.observer hook —
+    // catches errors thrown inside any Notifier callback and forwards them
+    // to developer.log so they survive a release build (debugPrint is a
+    // no-op outside debug). Wire to Sentry / Crashlytics once enabled.
+    runApp(const ProviderScope(
+      observers: [_AppProviderObserver()],
+      child: PosApp(),
+    ));
   }, (Object error, StackTrace stack) {
     // BLOCKER FOR BETA: wire to Sentry / Crashlytics. Until then we route
     // through developer.log so the OS log stream retains a trace in
@@ -119,18 +130,53 @@ void main() {
 }
 
 /// Forwards every bloc-level exception to the same crash-reporting pipeline
-/// as the framework / async error hooks above. Kept private — registered
-/// once via `Bloc.observer` in [main].
-class _AppBlocObserver extends BlocObserver {
+/// as the framework / async error hooks above. Kept private — wired once
+/// via `ProviderScope.observers` in [main].
+/// Triggers AuthController.hydrate() exactly once after the ProviderScope is
+/// mounted. Replaces the prior `BlocProvider(create: () => AuthBloc(...) ..add(HydrateSession()))`
+/// hook — Notifier's build() runs the first time anything reads the provider,
+/// but boot needs hydration BEFORE the AuthState consumer renders, otherwise
+/// the home: block flashes `AuthInitial` for a frame before resolving to
+/// `RegisterActivated` / `RegisterNotActivated`. This widget reads the
+/// provider once (forcing build()) then dispatches the hydrate call in a
+/// post-frame callback.
+class _PosBootHydrator extends ConsumerStatefulWidget {
+  final Widget child;
+  const _PosBootHydrator({required this.child});
+
   @override
-  void onError(BlocBase<Object?> bloc, Object error, StackTrace stackTrace) {
-    super.onError(bloc, error, stackTrace);
+  ConsumerState<_PosBootHydrator> createState() => _PosBootHydratorState();
+}
+
+class _PosBootHydratorState extends ConsumerState<_PosBootHydrator> {
+  @override
+  void initState() {
+    super.initState();
+    WidgetsBinding.instance.addPostFrameCallback((_) {
+      ref.read(authControllerProvider.notifier).hydrate();
+    });
+  }
+
+  @override
+  Widget build(BuildContext context) => widget.child;
+}
+
+class _AppProviderObserver extends ProviderObserver {
+  const _AppProviderObserver();
+
+  @override
+  void providerDidFail(
+    ProviderBase<Object?> provider,
+    Object error,
+    StackTrace stackTrace,
+    ProviderContainer container,
+  ) {
     // BLOCKER FOR BETA: wire to Sentry / Crashlytics. developer.log
-    // makes bloc errors visible in the platform log stream in release
+    // makes notifier errors visible in the platform log stream in release
     // builds (logcat / os_log / desktop stderr) — debugPrint is a no-op.
     developer.log(
-      'bloc error',
-      name: 'BlocError.${bloc.runtimeType}',
+      'provider error',
+      name: 'ProviderError.${provider.name ?? provider.runtimeType}',
       error: error,
       stackTrace: stackTrace,
     );
@@ -350,59 +396,58 @@ class _PosAppState extends State<PosApp> {
 
   @override
   Widget build(BuildContext context) {
-    return MultiRepositoryProvider(
+    // Disabled-default sales service until the register is activated
+    // (tenant + workstation id arrive via `/api/register/activate`). The
+    // disabled stub throws if completeSale fires — the cart UI shouldn't
+    // reach Pay in that state, and the owner-web-admin case never rings
+    // up a sale at all.
+    final SalesService salesService =
+        (_activeTenantId == null || _activeWorkstationId == null)
+            ? const DisabledSalesService()
+            : createSalesService(
+                db: _db,
+                tenantId: _activeTenantId!,
+                deviceId: _activeWorkstationId!,
+                workstationId: _activeWorkstationId!,
+              );
+
+    return MultiProvider(
       providers: [
-        RepositoryProvider.value(value: _apiClient),
+        Provider<ApiClient>.value(value: _apiClient),
         // Real bundle when drift-sales + register activation are both in
         // place; disabled-default otherwise. The instance lives in state
         // (built once at boot, refreshed when tenant id loads from secure
         // storage) — calling _buildSalesGuards() on every build() would
         // leak the underlying repos on each frame.
-        RepositoryProvider<SalesGuards>.value(value: _salesGuards),
+        Provider<SalesGuards>.value(value: _salesGuards),
         // Sync status aggregator — read by SyncStatusChip in the top
         // chrome of every screen to render the combined online/pull/
         // outbox indicator. Stateless service, safe to share app-wide.
-        RepositoryProvider<SyncStatusService>.value(value: _syncStatusService),
+        Provider<SyncStatusService>.value(value: _syncStatusService),
         // Compile-time feature flag profile. Exposed via provider so leaf
         // screens (e.g. PaymentScreen) can gate their own rendering
         // without each upstream widget having to thread the flag down.
-        RepositoryProvider<FeatureFlags>.value(value: _flags),
+        Provider<FeatureFlags>.value(value: _flags),
       ],
-      child: MultiBlocProvider(
-        providers: [
-          BlocProvider(
-            create: (_) => AuthBloc(
-              _apiClient,
-              tokens: _tokenStore,
-              deviceTokens: _deviceTokenStore,
-              workstation: _workstationStore,
-              deviceIdStore: _deviceIdStore,
-              lockoutStore: _lockoutStore,
-            )..add(HydrateSession()),
-          ),
-          BlocProvider(
-            create: (_) => SalesBloc(
-              _apiClient,
-              // Drift-local-first: receipts commit to drift in one atomic
-              // transaction; `sync_outbox` drains to the .NET central server
-              // asynchronously. Until the register is activated (tenant +
-              // workstation id arrive via `/api/register/activate`), we
-              // wire in a disabled stub that throws if CompleteSale fires
-              // — the cart UI shouldn't reach Pay in that state, and the
-              // owner-web-admin case never rings up a sale at all.
-              salesService:
-                  (_activeTenantId == null || _activeWorkstationId == null)
-                      ? const DisabledSalesService()
-                      : createSalesService(
-                          db: _db,
-                          tenantId: _activeTenantId!,
-                          deviceId: _activeWorkstationId!,
-                          workstationId: _activeWorkstationId!,
-                        ),
-            ),
-          ),
+      child: ProviderScope(
+        // Override Riverpod's construction-time seams so the AuthController /
+        // SalesController build() picks up the boot-resolved storage + api
+        // client. Drives the dependency graph from main.dart, mirroring the
+        // prior BlocProvider create:() lambdas.
+        overrides: [
+          // Auth controller deps
+          authApiClientProvider.overrideWithValue(_apiClient),
+          authUserTokenStoreProvider.overrideWithValue(_tokenStore),
+          authDeviceTokenStoreProvider.overrideWithValue(_deviceTokenStore),
+          authWorkstationStoreProvider.overrideWithValue(_workstationStore),
+          authDeviceIdStoreProvider.overrideWithValue(_deviceIdStore),
+          authLockoutStoreProvider.overrideWithValue(_lockoutStore),
+          // Sales controller deps
+          salesApiClientProvider.overrideWithValue(_apiClient),
+          salesServiceProvider.overrideWithValue(salesService),
         ],
-        child: MaterialApp(
+        child: _PosBootHydrator(
+          child: MaterialApp(
           title: 'POS System',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
@@ -446,8 +491,9 @@ class _PosAppState extends State<PosApp> {
           //   AuthAuthenticated     → main shell
           //   AuthLoading           → spinner
           //   AuthInitial (legacy)  → OwnerLoginScreen as a fallback
-          home: BlocBuilder<AuthBloc, AuthState>(
-            builder: (context, state) {
+          home: Consumer(
+            builder: (context, ref, _) {
+              final state = ref.watch(authControllerProvider);
               if (state is AuthLoading) {
                 return const Scaffold(
                     body: Center(child: CircularProgressIndicator()));
@@ -466,7 +512,7 @@ class _PosAppState extends State<PosApp> {
                   // "when they press выйти из системы we show login with
                   // email password".
                   onLogout: () {
-                    context.read<AuthBloc>().add(LogoutRequested());
+                    ref.read(authControllerProvider.notifier).logout();
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const OwnerLoginScreen(),
@@ -480,7 +526,7 @@ class _PosAppState extends State<PosApp> {
                   // and enters PIN. Replaces the legacy CashierLoginScreen
                   // text-form.
                   onSwitchCashier: () {
-                    context.read<AuthBloc>().add(LogoutRequested());
+                    ref.read(authControllerProvider.notifier).logout();
                     Navigator.of(context).push(
                       MaterialPageRoute<void>(
                         builder: (_) => const PinScreen(),
@@ -503,9 +549,9 @@ class _PosAppState extends State<PosApp> {
               }
               if (state is AuthInitial) {
                 // PinScreen also owns the AuthInitial state — it's what
-                // _onCheckFirstRun emits after the cashier list loads
+                // checkFirstRun emits after the cashier list loads
                 // (state.cashiers / state.isFirstRun / lockout fields).
-                // Without this branch the BlocBuilder would fall through
+                // Without this branch the Consumer would fall through
                 // to OwnerLoginScreen and the user would land on
                 // email + password right after activation succeeds.
                 return const PinScreen();
@@ -514,6 +560,7 @@ class _PosAppState extends State<PosApp> {
               return const OwnerLoginScreen();
             },
           ),
+        ),
         ),
       ),
     );
@@ -565,7 +612,7 @@ List<_NavEntry> _allNav(AppLocalizations l) => [
 // _MainShell
 // ---------------------------------------------------------------------------
 
-class _MainShell extends StatefulWidget {
+class _MainShell extends ConsumerStatefulWidget {
   final ApiClient api;
   final AppDatabase db;
   final FeatureFlags flags;
@@ -608,10 +655,10 @@ class _MainShell extends StatefulWidget {
   });
 
   @override
-  State<_MainShell> createState() => _MainShellState();
+  ConsumerState<_MainShell> createState() => _MainShellState();
 }
 
-class _MainShellState extends State<_MainShell> {
+class _MainShellState extends ConsumerState<_MainShell> {
   _PageId _currentPage = _PageId.pos;
   String? _currentShiftId;
   int _pendingCount = 0;
@@ -702,7 +749,7 @@ class _MainShellState extends State<_MainShell> {
   /// that keeps the shortcut snappy for the normal handoff flow.
   void _handleEscapeSwitchCashier() {
     if (!mounted) return;
-    final cartHasItems = context.read<SalesBloc>().state.items.isNotEmpty;
+    final cartHasItems = ref.read(salesControllerProvider).items.isNotEmpty;
     if (!cartHasItems) {
       widget.onSwitchCashier();
       return;

@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/auth_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../controllers/auth_controller.dart';
 
 /// First-boot device activation. Owner generates a one-time code on the
 /// web admin (`/stores` → "Activate register"), hands it to the operator,
@@ -13,14 +13,14 @@ import '../bloc/auth_bloc.dart';
 ///   - Accepts pasted values with dashes/spaces/lowercase — they're stripped
 ///   - A "Вставить" shortcut pulls from the clipboard on tap
 ///   - Server errors are mapped to short, specific Russian strings
-class ActivationScreen extends StatefulWidget {
+class ActivationScreen extends ConsumerStatefulWidget {
   const ActivationScreen({super.key});
 
   @override
-  State<ActivationScreen> createState() => _ActivationScreenState();
+  ConsumerState<ActivationScreen> createState() => _ActivationScreenState();
 }
 
-class _ActivationScreenState extends State<ActivationScreen> {
+class _ActivationScreenState extends ConsumerState<ActivationScreen> {
   final _ctrl = TextEditingController();
   // Server allows 6-16 characters. Admin tooling currently mints 8-character
   // codes; we accept anything in that window without enforcing a hard length.
@@ -48,16 +48,16 @@ class _ActivationScreenState extends State<ActivationScreen> {
   void _submit() {
     if (!_canSubmit) return;
     // Belt-and-braces re-entry guard. The Enter key on the TextField fires
-    // before the BlocBuilder rebuild has propagated `busy=true` back to
+    // before the Consumer rebuild has propagated `busy=true` back to
     // disable the action button, so a fast double-Enter would otherwise
     // post two activate calls — the second one lands after the code is
     // consumed and shows a misleading "уже использован" on a successful
-    // first try. The bloc has its own guard too; this one keeps the UI
-    // from even trying.
-    final s = context.read<AuthBloc>().state;
+    // first try. The controller has its own guard too; this one keeps
+    // the UI from even trying.
+    final s = ref.read(authControllerProvider);
     if (s is RegisterNotActivated && s.busy) return;
     if (s is RegisterActivated) return;
-    context.read<AuthBloc>().add(ActivateRegisterRequested(_normalised));
+    ref.read(authControllerProvider.notifier).activateRegister(_normalised);
   }
 
   Future<void> _pasteFromClipboard() async {
@@ -78,13 +78,11 @@ class _ActivationScreenState extends State<ActivationScreen> {
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+    final state = ref.watch(authControllerProvider);
+    final busy = state is RegisterNotActivated && state.busy;
+    final errorMsg = state is RegisterNotActivated ? state.error : null;
     return Scaffold(
-      body: BlocBuilder<AuthBloc, AuthState>(
-        builder: (context, state) {
-          final busy = state is RegisterNotActivated && state.busy;
-          final errorMsg =
-              state is RegisterNotActivated ? state.error : null;
-          return Center(
+      body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 460),
               child: Card(
@@ -230,8 +228,6 @@ class _ActivationScreenState extends State<ActivationScreen> {
                 ),
               ),
             ),
-          );
-        },
       ),
     );
   }

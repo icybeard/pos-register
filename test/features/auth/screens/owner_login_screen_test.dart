@@ -1,32 +1,26 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pos_system/core/l10n/app_localizations.dart';
-import 'package:pos_system/features/auth/bloc/auth_bloc.dart';
+import 'package:pos_system/features/auth/controllers/auth_controller.dart';
 import 'package:pos_system/features/auth/screens/owner_login_screen.dart';
 
 import '../../../mocks/mock_api_client.dart';
 
 void main() {
   late MockApiClient mockApi;
-  late AuthBloc bloc;
 
   setUp(() {
     mockApi = MockApiClient();
-    bloc = AuthBloc(mockApi);
   });
 
-  tearDown(() async {
-    await bloc.close();
-  });
-
-  // BlocProvider must be ABOVE MaterialApp so any route the screen pushes
-  // (and the screen itself) can resolve `context.read<AuthBloc>()`. With
-  // the provider under MaterialApp.home, pushed routes are siblings of
-  // the provider in the Navigator tree and `read` throws.
-  Widget wrap(Widget child) => BlocProvider<AuthBloc>.value(
-        value: bloc,
+  // ProviderScope sits ABOVE MaterialApp so any route the screen pushes
+  // (and the screen itself) can resolve `ref.read(authControllerProvider)`.
+  Widget wrap(Widget child) => ProviderScope(
+        overrides: [
+          authApiClientProvider.overrideWithValue(mockApi),
+        ],
         child: MaterialApp(
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -71,8 +65,8 @@ void main() {
     mockApi.onOwnerLogin = ({required email, required password}) async {
       receivedEmail = email;
       receivedPassword = password;
-      // Throwing keeps the bloc on the error branch — fine here, we only
-      // need to verify the call shape.
+      // Throwing keeps the controller on the error branch — fine here, we
+      // only need to verify the call shape.
       throw Exception('no-network in test');
     };
 
@@ -81,10 +75,9 @@ void main() {
     await tester.enterText(fields.at(0), '  owner@example.com  ');
     await tester.enterText(fields.at(1), 'hunter2');
     await tester.tap(find.text('Войти'));
-    // Drain the bloc's async chain in real time. The bloc's stream queue
-    // runs in a zone the test scheduler doesn't drive, so a plain pump
-    // can't complete the dispatch. runAsync hands control to the real
-    // Dart event loop just long enough for the mock callback to fire.
+    // Drain the controller's async chain in real time. runAsync hands
+    // control to the real Dart event loop just long enough for the mock
+    // callback to fire.
     await tester.runAsync(() async {
       for (var i = 0; i < 20 && receivedEmail == null; i++) {
         await Future<void>.delayed(const Duration(milliseconds: 10));

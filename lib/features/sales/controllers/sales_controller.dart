@@ -1,132 +1,15 @@
-import 'package:equatable/equatable.dart';
 import 'package:flutter/foundation.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../services/api_client.dart';
 import '../../../services/sales/sales_service.dart';
 import '../models/cart_item.dart';
 
 // ═══════════════════════════════════════════════════════════════
-// Events
-// ═══════════════════════════════════════════════════════════════
-
-sealed class SalesEvent {}
-
-class AddToCart extends SalesEvent {
-  final CartItem item;
-  AddToCart(this.item);
-}
-
-class RemoveFromCart extends SalesEvent {
-  final int index;
-  RemoveFromCart(this.index);
-}
-
-class UpdateQuantity extends SalesEvent {
-  final int index;
-  final double quantity;
-  UpdateQuantity(this.index, this.quantity);
-}
-
-class UpdateWeight extends SalesEvent {
-  final int index;
-  final int weightGrams;
-  UpdateWeight(this.index, this.weightGrams);
-}
-
-/// Global discount on the whole receipt
-class ApplyDiscount extends SalesEvent {
-  final int discountTiyin;
-  ApplyDiscount(this.discountTiyin);
-}
-
-/// Per-item discount (in tiyin)
-class ApplyItemDiscount extends SalesEvent {
-  final int index;
-  final int discountTiyin;
-  ApplyItemDiscount(this.index, this.discountTiyin);
-}
-
-class ClearCart extends SalesEvent {}
-
-/// Undo the last destructive action (remove item)
-class UndoLastAction extends SalesEvent {}
-
-/// Park current cart (save aside) to serve another customer
-class ParkCart extends SalesEvent {}
-
-/// Resume a previously parked cart
-class ResumeParkedCart extends SalesEvent {
-  final int index;
-  ResumeParkedCart(this.index);
-}
-
-/// Delete a parked cart
-class DeleteParkedCart extends SalesEvent {
-  final int index;
-  DeleteParkedCart(this.index);
-}
-
-class SearchProduct extends SalesEvent {
-  final String query;
-  SearchProduct(this.query);
-}
-
-class ScanBarcode extends SalesEvent {
-  final String barcode;
-  ScanBarcode(this.barcode);
-}
-
-/// Creates a receipt on the server after payment
-class CompleteSale extends SalesEvent {
-  final String shiftId;
-  final String cashierId;
-  final String paymentType; // cash, card, kaspiQR, mixed
-  final int cashAmount;
-  final int cardAmount;
-  final int qrAmount;
-  final int changeAmount;
-
-  /// UUID of the manager who authorised an oversell, if any. The UI runs
-  /// `OversellGuard` + `ManagerOverrideDialog` BEFORE dispatching this event
-  /// — BLoCs can't pop modals — and stamps the returned user id here.
-  /// Null on normal sales.
-  final String? overrideUserId;
-
-  CompleteSale({
-    required this.shiftId,
-    required this.cashierId,
-    required this.paymentType,
-    required this.cashAmount,
-    required this.cardAmount,
-    required this.qrAmount,
-    required this.changeAmount,
-    this.overrideUserId,
-  });
-}
-
-/// Dismiss NKT results
-class ClearNktResults extends SalesEvent {}
-
-/// Scale weight update for the last weighted item in cart
-class ScaleWeightUpdate extends SalesEvent {
-  final int weightGrams;
-  ScaleWeightUpdate(this.weightGrams);
-}
-
-/// Load categories from server
-class LoadCategories extends SalesEvent {}
-
-/// Filter products by category
-class SelectCategory extends SalesEvent {
-  final String? categoryId; // null = all
-  SelectCategory(this.categoryId);
-}
-
-// ═══════════════════════════════════════════════════════════════
 // Parked cart snapshot
 // ═══════════════════════════════════════════════════════════════
 
-class ParkedCart extends Equatable {
+@immutable
+class ParkedCart {
   final List<CartItem> items;
   final int discountTiyin;
   final DateTime parkedAt;
@@ -145,65 +28,86 @@ class ParkedCart extends Equatable {
 
   int get itemCount => items.length;
 
-  // Without value equality, two SalesState objects holding the same parked
-  // carts compare unequal under Equatable's deep-list comparison and the
-  // _CartActionPanel's BlocBuilder rebuilds on every event. CartItem has
-  // value equality already; the parked-at timestamp is part of identity
-  // because two carts parked at distinct moments are conceptually distinct.
   @override
-  List<Object?> get props => [items, discountTiyin, parkedAt];
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is ParkedCart &&
+        listEquals(items, other.items) &&
+        discountTiyin == other.discountTiyin &&
+        parkedAt == other.parkedAt;
+  }
+
+  @override
+  int get hashCode => Object.hash(Object.hashAll(items), discountTiyin, parkedAt);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// State machines (replace boolean-flag-soup loading flags)
+// State machines
 // ═══════════════════════════════════════════════════════════════
 
 /// Discriminated union for search/scan progress. Replaces the prior
 /// `isSearching` + `isNktSearching` pair: those two booleans could in
 /// principle co-exist (an impossible state) and forced consumers to
 /// AND/OR them. Search and the NKT fallback are mutually exclusive in
-/// the actual flow — the bloc transitions [Searching] → [NktSearching]
+/// the actual flow — the controller transitions [Searching] → [NktSearching]
 /// → [SearchIdle], never holding both simultaneously.
-sealed class SearchStatus extends Equatable {
+sealed class SearchStatus {
   const SearchStatus();
-  @override
-  List<Object?> get props => const [];
 }
 
 class SearchIdle extends SearchStatus {
   const SearchIdle();
+  @override
+  bool operator ==(Object other) => other is SearchIdle;
+  @override
+  int get hashCode => 0;
 }
 
 class Searching extends SearchStatus {
   const Searching();
+  @override
+  bool operator ==(Object other) => other is Searching;
+  @override
+  int get hashCode => 1;
 }
 
 class NktSearching extends SearchStatus {
   const NktSearching();
+  @override
+  bool operator ==(Object other) => other is NktSearching;
+  @override
+  int get hashCode => 2;
 }
 
 /// Discriminated union for the payment-completion handshake. Replaces
 /// `isProcessingPayment` so a future `PaymentRefunding` / `PaymentVoid`
 /// state can be added without sprouting more booleans.
-sealed class PaymentStatus extends Equatable {
+sealed class PaymentStatus {
   const PaymentStatus();
-  @override
-  List<Object?> get props => const [];
 }
 
 class PaymentIdle extends PaymentStatus {
   const PaymentIdle();
+  @override
+  bool operator ==(Object other) => other is PaymentIdle;
+  @override
+  int get hashCode => 0;
 }
 
 class PaymentProcessing extends PaymentStatus {
   const PaymentProcessing();
+  @override
+  bool operator ==(Object other) => other is PaymentProcessing;
+  @override
+  int get hashCode => 1;
 }
 
 // ═══════════════════════════════════════════════════════════════
 // State
 // ═══════════════════════════════════════════════════════════════
 
-class SalesState extends Equatable {
+@immutable
+class SalesState {
   final List<CartItem> items;
   final int discountTiyin;
   final List<Map<String, dynamic>> searchResults;
@@ -302,94 +206,113 @@ class SalesState extends Equatable {
     );
   }
 
-  // Value-equality so BlocBuilder<SalesBloc, SalesState> short-circuits
-  // rebuilds when copyWith() yields a state whose fields are unchanged.
-  // Without this, every event (including SearchProduct fired on each
-  // keystroke) rebuilds the full _CartPane subtree even when nothing
-  // visible changed. List-typed fields rely on Equatable's deep list
-  // comparison; CartItem already has value semantics via its own equals
-  // (verified by the parity test suite).
+  // Value-equality so ConsumerWidget rebuilds short-circuit when copyWith()
+  // yields a state whose fields are unchanged. Without this, every method
+  // call (including searchProduct fired on each keystroke) rebuilds the full
+  // _CartPane subtree even when nothing visible changed. List-typed fields
+  // use Flutter's listEquals; CartItem has value semantics already (verified
+  // by the parity test suite).
   @override
-  List<Object?> get props => [
-        items,
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is SalesState &&
+        listEquals(items, other.items) &&
+        discountTiyin == other.discountTiyin &&
+        listEquals(searchResults, other.searchResults) &&
+        searchStatus == other.searchStatus &&
+        paymentStatus == other.paymentStatus &&
+        error == other.error &&
+        saleSuccess == other.saleSuccess &&
+        listEquals(nktResults, other.nktResults) &&
+        nktQuery == other.nktQuery &&
+        lastQuery == other.lastQuery &&
+        listEquals(parkedCarts, other.parkedCarts) &&
+        undoItem == other.undoItem &&
+        undoIndex == other.undoIndex &&
+        listEquals(categories, other.categories) &&
+        selectedCategoryId == other.selectedCategoryId;
+  }
+
+  @override
+  int get hashCode => Object.hashAll([
+        Object.hashAll(items),
         discountTiyin,
-        searchResults,
+        Object.hashAll(searchResults),
         searchStatus,
         paymentStatus,
         error,
         saleSuccess,
-        nktResults,
+        Object.hashAll(nktResults),
         nktQuery,
         lastQuery,
-        parkedCarts,
+        Object.hashAll(parkedCarts),
         undoItem,
         undoIndex,
-        categories,
+        Object.hashAll(categories),
         selectedCategoryId,
-      ];
+      ]);
 }
 
 // ═══════════════════════════════════════════════════════════════
-// BLoC
+// Controller (was: SalesBloc — flutter_bloc → Riverpod migration P0b)
 // ═══════════════════════════════════════════════════════════════
+//
+// Method-per-former-event so the call-site rewrite is mechanical:
+//   bloc.add(AddToCart(x))       →  controller.addToCart(x)
+//   bloc.add(SearchProduct(q))   →  controller.searchProduct(q)
+//
+// State mutations go through `state = state.copyWith(...)` instead of
+// `emit(...)`. Notifier suppresses identical-state rewrites automatically
+// (it compares via `==`), so SalesState's hand-rolled equality is what makes
+// the listEquals-driven rebuild-suppression work — same effect Equatable
+// gave us before.
 
-class SalesBloc extends Bloc<SalesEvent, SalesState> {
-  final ApiClient _api;
+class SalesController extends Notifier<SalesState> {
+  late final ApiClient _api;
+  late final SalesService? _salesService;
 
-  /// Optional sales-service. When provided, `CompleteSale` routes through the
-  /// abstraction (which picks drift vs. legacy HTTP via the factory in
-  /// `main.dart`). When null, the BLoC falls back to the direct `_api` call —
-  /// keeps the existing bloc_test suite (which doesn't inject a service) working.
-  final SalesService? _salesService;
-
-  SalesBloc(this._api, {SalesService? salesService})
-      : _salesService = salesService,
-        super(const SalesState()) {
-    on<AddToCart>(_onAdd);
-    on<RemoveFromCart>(_onRemove);
-    on<UpdateQuantity>(_onUpdateQty);
-    on<UpdateWeight>(_onUpdateWeight);
-    on<ApplyDiscount>(_onDiscount);
-    on<ApplyItemDiscount>(_onItemDiscount);
-    on<ClearCart>(_onClear);
-    on<UndoLastAction>(_onUndo);
-    on<ParkCart>(_onPark);
-    on<ResumeParkedCart>(_onResume);
-    on<DeleteParkedCart>(_onDeleteParked);
-    on<SearchProduct>(_onSearch);
-    on<ScanBarcode>(_onScan);
-    on<CompleteSale>(_onCompleteSale);
-    on<ClearNktResults>(_onClearNkt);
-    on<ScaleWeightUpdate>(_onScaleWeight);
-    on<LoadCategories>(_onLoadCategories);
-    on<SelectCategory>(_onSelectCategory);
+  @override
+  SalesState build() {
+    // ProviderScope.overrides supplies these in main.dart; tests can override
+    // with mocks via container.overrides. The provider definitions below are
+    // the dependency seam.
+    _api = ref.read(salesApiClientProvider);
+    _salesService = ref.read(salesServiceProvider);
+    return const SalesState();
   }
 
-  void _onAdd(AddToCart event, Emitter<SalesState> emit) {
-    final items = List<CartItem>.from(state.items)..add(event.item);
-    emit(state.copyWith(items: items, searchResults: [], clearError: true, clearSaleSuccess: true, clearNkt: true, clearUndo: true));
+  void addToCart(CartItem item) {
+    final items = List<CartItem>.from(state.items)..add(item);
+    state = state.copyWith(
+      items: items,
+      searchResults: [],
+      clearError: true,
+      clearSaleSuccess: true,
+      clearNkt: true,
+      clearUndo: true,
+    );
   }
 
-  void _onRemove(RemoveFromCart event, Emitter<SalesState> emit) {
-    if (event.index < 0 || event.index >= state.items.length) return;
-    final removedItem = state.items[event.index];
-    final items = List<CartItem>.from(state.items)..removeAt(event.index);
-    emit(state.copyWith(
+  void removeFromCart(int index) {
+    if (index < 0 || index >= state.items.length) return;
+    final removedItem = state.items[index];
+    final items = List<CartItem>.from(state.items)..removeAt(index);
+    state = state.copyWith(
       items: items,
       undoItem: removedItem,
-      undoIndex: event.index,
-    ));
+      undoIndex: index,
+    );
   }
 
-  void _onUndo(UndoLastAction event, Emitter<SalesState> emit) {
+  void undoLastAction() {
     if (state.undoItem == null) return;
     final items = List<CartItem>.from(state.items);
     final insertIndex = (state.undoIndex ?? items.length).clamp(0, items.length);
     items.insert(insertIndex, state.undoItem!);
-    emit(state.copyWith(items: items, clearUndo: true));
+    state = state.copyWith(items: items, clearUndo: true);
   }
 
-  void _onPark(ParkCart event, Emitter<SalesState> emit) {
+  void parkCart() {
     if (state.items.isEmpty) return;
     final parked = ParkedCart(
       items: List.unmodifiable(state.items),
@@ -397,12 +320,12 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
       parkedAt: DateTime.now(),
     );
     final parkedCarts = List<ParkedCart>.from(state.parkedCarts)..add(parked);
-    emit(SalesState(parkedCarts: parkedCarts, categories: state.categories));
+    state = SalesState(parkedCarts: parkedCarts, categories: state.categories);
   }
 
-  void _onResume(ResumeParkedCart event, Emitter<SalesState> emit) {
-    if (event.index < 0 || event.index >= state.parkedCarts.length) return;
-    final cart = state.parkedCarts[event.index];
+  void resumeParkedCart(int index) {
+    if (index < 0 || index >= state.parkedCarts.length) return;
+    final cart = state.parkedCarts[index];
 
     // If current cart is not empty, park it first
     List<ParkedCart> parkedCarts;
@@ -413,58 +336,58 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         parkedAt: DateTime.now(),
       );
       parkedCarts = List<ParkedCart>.from(state.parkedCarts)
-        ..removeAt(event.index)
+        ..removeAt(index)
         ..add(currentParked);
     } else {
-      parkedCarts = List<ParkedCart>.from(state.parkedCarts)..removeAt(event.index);
+      parkedCarts = List<ParkedCart>.from(state.parkedCarts)..removeAt(index);
     }
 
-    emit(state.copyWith(
+    state = state.copyWith(
       items: List<CartItem>.from(cart.items),
       discountTiyin: cart.discountTiyin,
       parkedCarts: parkedCarts,
       clearUndo: true,
-    ));
+    );
   }
 
-  void _onDeleteParked(DeleteParkedCart event, Emitter<SalesState> emit) {
-    if (event.index < 0 || event.index >= state.parkedCarts.length) return;
-    final parkedCarts = List<ParkedCart>.from(state.parkedCarts)..removeAt(event.index);
-    emit(state.copyWith(parkedCarts: parkedCarts));
+  void deleteParkedCart(int index) {
+    if (index < 0 || index >= state.parkedCarts.length) return;
+    final parkedCarts = List<ParkedCart>.from(state.parkedCarts)..removeAt(index);
+    state = state.copyWith(parkedCarts: parkedCarts);
   }
 
-  void _onUpdateQty(UpdateQuantity event, Emitter<SalesState> emit) {
+  void updateQuantity(int index, double quantity) {
     final items = List<CartItem>.from(state.items);
-    items[event.index] = items[event.index].copyWith(quantity: event.quantity);
-    emit(state.copyWith(items: items));
+    items[index] = items[index].copyWith(quantity: quantity);
+    state = state.copyWith(items: items);
   }
 
-  void _onUpdateWeight(UpdateWeight event, Emitter<SalesState> emit) {
+  void updateWeight(int index, int weightGrams) {
     final items = List<CartItem>.from(state.items);
-    items[event.index] = items[event.index].copyWith(weightGrams: event.weightGrams);
-    emit(state.copyWith(items: items));
+    items[index] = items[index].copyWith(weightGrams: weightGrams);
+    state = state.copyWith(items: items);
   }
 
-  void _onDiscount(ApplyDiscount event, Emitter<SalesState> emit) {
-    emit(state.copyWith(discountTiyin: event.discountTiyin));
+  void applyDiscount(int discountTiyin) {
+    state = state.copyWith(discountTiyin: discountTiyin);
   }
 
-  void _onItemDiscount(ApplyItemDiscount event, Emitter<SalesState> emit) {
-    if (event.index < 0 || event.index >= state.items.length) return;
+  void applyItemDiscount(int index, int discountTiyin) {
+    if (index < 0 || index >= state.items.length) return;
     final items = List<CartItem>.from(state.items);
-    items[event.index] = items[event.index].copyWith(discount: event.discountTiyin);
-    emit(state.copyWith(items: items));
+    items[index] = items[index].copyWith(discount: discountTiyin);
+    state = state.copyWith(items: items);
   }
 
-  void _onClear(ClearCart event, Emitter<SalesState> emit) {
-    emit(SalesState(parkedCarts: state.parkedCarts, categories: state.categories));
+  void clearCart() {
+    state = SalesState(parkedCarts: state.parkedCarts, categories: state.categories);
   }
 
-  void _onClearNkt(ClearNktResults event, Emitter<SalesState> emit) {
-    emit(state.copyWith(clearNkt: true));
+  void clearNktResults() {
+    state = state.copyWith(clearNkt: true);
   }
 
-  void _onScaleWeight(ScaleWeightUpdate event, Emitter<SalesState> emit) {
+  void scaleWeightUpdate(int weightGrams) {
     final items = state.items;
     if (items.isEmpty) return;
 
@@ -478,8 +401,8 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
     if (lastWeightedIdx == null) return;
 
     final updated = List<CartItem>.from(items);
-    updated[lastWeightedIdx] = updated[lastWeightedIdx].copyWith(weightGrams: event.weightGrams);
-    emit(state.copyWith(items: updated));
+    updated[lastWeightedIdx] = updated[lastWeightedIdx].copyWith(weightGrams: weightGrams);
+    state = state.copyWith(items: updated);
   }
 
   /// Returns true if all characters are digits
@@ -488,72 +411,76 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
   /// Returns true if the query looks like a full barcode (8-14 digits)
   static bool _isBarcode(String q) => q.length >= 8 && q.length <= 14 && _isAllDigits(q);
 
-  Future<void> _onLoadCategories(LoadCategories event, Emitter<SalesState> emit) async {
+  Future<void> loadCategories() async {
     try {
       final resp = await _api.listCategories();
       final cats = (resp['categories'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      emit(state.copyWith(categories: cats));
+      state = state.copyWith(categories: cats);
     } on Exception catch (e) {
       assert(() {
-        debugPrint('[SalesBloc] loadCategories error: $e');
+        debugPrint('[SalesController] loadCategories error: $e');
         return true;
       }());
-      // Surface to the UI so the cashier knows the filter panel is stale.
-      emit(state.copyWith(error: 'Не удалось загрузить категории'));
+      state = state.copyWith(error: 'Не удалось загрузить категории');
     }
   }
 
-  void _onSelectCategory(SelectCategory event, Emitter<SalesState> emit) {
-    if (event.categoryId == null) {
-      emit(state.copyWith(clearCategoryFilter: true));
+  void selectCategory(String? categoryId) {
+    if (categoryId == null) {
+      state = state.copyWith(clearCategoryFilter: true);
     } else {
-      emit(state.copyWith(selectedCategoryId: event.categoryId));
+      state = state.copyWith(selectedCategoryId: categoryId);
     }
   }
 
-  Future<void> _onSearch(SearchProduct event, Emitter<SalesState> emit) async {
+  Future<void> searchProduct(String query) async {
     assert(() {
-      debugPrint('[SalesBloc] search query: "${event.query}"');
+      debugPrint('[SalesController] search query: "$query"');
       return true;
     }());
-    if (event.query.isEmpty) {
-      emit(state.copyWith(searchResults: [], searchStatus: const SearchIdle(), clearNkt: true, lastQuery: ''));
+    if (query.isEmpty) {
+      state = state.copyWith(
+        searchResults: [],
+        searchStatus: const SearchIdle(),
+        clearNkt: true,
+        lastQuery: '',
+      );
       return;
     }
 
-    emit(state.copyWith(searchStatus: const Searching(), clearNkt: true, lastQuery: event.query));
+    state = state.copyWith(searchStatus: const Searching(), clearNkt: true, lastQuery: query);
     try {
-      final response = await _api.searchProducts(event.query);
+      final response = await _api.searchProducts(query);
       final products = (response['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-      emit(state.copyWith(searchResults: products, searchStatus: const SearchIdle()));
+      state = state.copyWith(searchResults: products, searchStatus: const SearchIdle());
 
       // If no local results and query looks like a barcode → auto-search NKT
-      if (products.isEmpty && _isBarcode(event.query)) {
-        emit(state.copyWith(searchStatus: const NktSearching(), nktQuery: event.query));
+      if (products.isEmpty && _isBarcode(query)) {
+        state = state.copyWith(searchStatus: const NktSearching(), nktQuery: query);
         try {
-          final nktResp = await _api.nktSearchByGTIN(event.query);
+          final nktResp = await _api.nktSearchByGTIN(query);
           final nktProducts = (nktResp['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-          emit(state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle()));
+          state = state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle());
         } on Exception catch (e) {
           assert(() {
-            debugPrint('[SalesBloc] NKT search error: $e');
+            debugPrint('[SalesController] NKT search error: $e');
             return true;
           }());
-          emit(state.copyWith(searchStatus: const SearchIdle()));
+          state = state.copyWith(searchStatus: const SearchIdle());
         }
       }
     } on Exception catch (e) {
       assert(() {
-        debugPrint('[SalesBloc] search error: $e');
+        debugPrint('[SalesController] search error: $e');
         return true;
       }());
-      emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Ошибка поиска'));
+      state = state.copyWith(searchStatus: const SearchIdle(), error: 'Ошибка поиска');
     }
   }
 
-  Future<void> _onScan(ScanBarcode event, Emitter<SalesState> emit) async {
+  Future<void> scanBarcode(String barcode) async {
     try {
-      final response = await _api.getProductByBarcode(event.barcode);
+      final response = await _api.getProductByBarcode(barcode);
       final item = CartItem(
         productId: response['ID'] as String,
         name: response['Name'] as String,
@@ -563,66 +490,66 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         isWeighted: response['IsWeighted'] as bool? ?? false,
         vatRate: (response['VATRate'] as num?)?.toInt() ?? 12,
       );
-      add(AddToCart(item));
+      addToCart(item);
     } on ApiException catch (e) {
       if (e.statusCode == 404) {
         // Not found locally — try NKT
-        emit(state.copyWith(searchStatus: const NktSearching(), nktQuery: event.barcode));
+        state = state.copyWith(searchStatus: const NktSearching(), nktQuery: barcode);
         try {
-          final nktResp = await _api.nktSearchByGTIN(event.barcode);
+          final nktResp = await _api.nktSearchByGTIN(barcode);
           final nktProducts = (nktResp['products'] as List?)?.cast<Map<String, dynamic>>() ?? [];
           if (nktProducts.isNotEmpty) {
-            emit(state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle()));
+            state = state.copyWith(nktResults: nktProducts, searchStatus: const SearchIdle());
           } else {
-            emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Товар не найден ни локально, ни в НКТ'));
+            state = state.copyWith(
+              searchStatus: const SearchIdle(),
+              error: 'Товар не найден ни локально, ни в НКТ',
+            );
           }
         } on Exception catch (nktErr) {
           assert(() {
-            debugPrint('[SalesBloc] NKT fallback error: $nktErr');
+            debugPrint('[SalesController] NKT fallback error: $nktErr');
             return true;
           }());
-          emit(state.copyWith(searchStatus: const SearchIdle(), error: 'Товар не найден'));
+          state = state.copyWith(searchStatus: const SearchIdle(), error: 'Товар не найден');
         }
       } else {
-        // Any non-404 ApiException (400, 401, 5xx, timeout-wrapped, …)
-        // surfaces with its status code so the cashier can tell whether
-        // it's an auth issue vs a server issue. Previously these fell
-        // through to the generic "Ошибка сканирования" with no context.
         assert(() {
-          debugPrint('[SalesBloc] scan error: $e');
+          debugPrint('[SalesController] scan error: $e');
           return true;
         }());
-        emit(state.copyWith(
+        state = state.copyWith(
           searchStatus: const SearchIdle(),
           error: 'Ошибка сканирования (${e.statusCode})',
-        ));
+        );
       }
     } on Exception catch (e) {
       assert(() {
-        debugPrint('[SalesBloc] scan unexpected: $e');
+        debugPrint('[SalesController] scan unexpected: $e');
         return true;
       }());
-      emit(state.copyWith(error: 'Ошибка сканирования'));
+      state = state.copyWith(error: 'Ошибка сканирования');
     }
   }
 
-  Future<void> _onCompleteSale(CompleteSale event, Emitter<SalesState> emit) async {
+  Future<void> completeSale({
+    required String shiftId,
+    required String cashierId,
+    required String paymentType, // cash, card, kaspiQR, mixed
+    required int cashAmount,
+    required int cardAmount,
+    required int qrAmount,
+    required int changeAmount,
+    String? overrideUserId,
+  }) async {
     if (state.items.isEmpty) return;
 
-    emit(state.copyWith(paymentStatus: const PaymentProcessing(), clearError: true));
+    state = state.copyWith(paymentStatus: const PaymentProcessing(), clearError: true);
 
     try {
-      // T5.5b: when a SalesService is injected (production path), route through
-      // the abstraction — the factory in main.dart picks drift-vs-HTTP via
-      // FeatureFlags.useDriftSales. When null (legacy tests / builds without
-      // an auth'd session), fall back to the direct Go-server call with the
-      // same PascalCase wire shape the server has always accepted.
       if (_salesService case final svc?) {
         final lines = <SalesLineInput>[];
         for (final ci in state.items) {
-          // CartItem.quantity is double because piece-input shares a field with
-          // weighted-input-in-kg; for the receipt wire shape we split: pieces go
-          // to `quantity` (int), weighted goes to `weightGrams`.
           lines.add(SalesLineInput(
             productId: ci.productId,
             productName: ci.name,
@@ -638,19 +565,19 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
           ));
         }
         await svc.completeSale(SalesCompletionInput(
-          shiftId: event.shiftId,
-          cashierId: event.cashierId,
-          paymentType: event.paymentType,
+          shiftId: shiftId,
+          cashierId: cashierId,
+          paymentType: paymentType,
           lines: lines,
           subtotalTiyin: state.subtotal,
           discountTiyin: state.discountTiyin,
           totalTiyin: state.total,
           vatAmountTiyin: state.vatAmount,
-          cashAmountTiyin: event.cashAmount,
-          cardAmountTiyin: event.cardAmount,
-          qrAmountTiyin: event.qrAmount,
-          changeAmountTiyin: event.changeAmount,
-          overrideByUserId: event.overrideUserId,
+          cashAmountTiyin: cashAmount,
+          cardAmountTiyin: cardAmount,
+          qrAmountTiyin: qrAmount,
+          changeAmountTiyin: changeAmount,
+          overrideByUserId: overrideUserId,
         ));
       } else {
         final items = <Map<String, dynamic>>[];
@@ -678,30 +605,30 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         }
 
         await _api.createReceipt({
-          'ShiftID': event.shiftId,
-          'CashierID': event.cashierId,
+          'ShiftID': shiftId,
+          'CashierID': cashierId,
           'Subtotal': state.subtotal,
           'Discount': state.discountTiyin,
           'Total': state.total,
           'VATAmount': state.vatAmount,
-          'PaymentType': event.paymentType,
-          'CashAmount': event.cashAmount,
-          'CardAmount': event.cardAmount,
-          'QRAmount': event.qrAmount,
-          'ChangeAmount': event.changeAmount,
+          'PaymentType': paymentType,
+          'CashAmount': cashAmount,
+          'CardAmount': cardAmount,
+          'QRAmount': qrAmount,
+          'ChangeAmount': changeAmount,
           'FiscalStatus': 'pending',
           'Items': items,
         });
       }
 
-      emit(SalesState(
+      state = SalesState(
         saleSuccess: 'Оплата принята!',
         parkedCarts: state.parkedCarts,
         categories: state.categories,
-      ));
+      );
     } on ApiException catch (e) {
       assert(() {
-        debugPrint('[SalesBloc] completeSale API error: $e');
+        debugPrint('[SalesController] completeSale API error: $e');
         return true;
       }());
       final msg = switch (e.statusCode) {
@@ -710,16 +637,33 @@ class SalesBloc extends Bloc<SalesEvent, SalesState> {
         409 => 'Конфликт данных — повторите попытку',
         _ => 'Ошибка сервера (${e.statusCode})',
       };
-      emit(state.copyWith(paymentStatus: const PaymentIdle(), error: msg));
+      state = state.copyWith(paymentStatus: const PaymentIdle(), error: msg);
     } on Exception catch (e) {
       assert(() {
-        debugPrint('[SalesBloc] completeSale error: $e');
+        debugPrint('[SalesController] completeSale error: $e');
         return true;
       }());
-      emit(state.copyWith(
+      state = state.copyWith(
         paymentStatus: const PaymentIdle(),
         error: 'Нет связи с сервером. Попробуйте ещё раз.',
-      ));
+      );
     }
   }
 }
+
+// ═══════════════════════════════════════════════════════════════
+// Providers
+// ═══════════════════════════════════════════════════════════════
+//
+// Seams for the controller's dependencies. main.dart overrides these on
+// the root ProviderScope; tests override them on a per-test ProviderContainer
+// (replacing the prior BlocProvider.value injection pattern).
+
+final salesApiClientProvider = Provider<ApiClient>((ref) {
+  throw UnimplementedError('salesApiClientProvider must be overridden at app root');
+});
+
+final salesServiceProvider = Provider<SalesService?>((ref) => null);
+
+final salesControllerProvider =
+    NotifierProvider<SalesController, SalesState>(SalesController.new);

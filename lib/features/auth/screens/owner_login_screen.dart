@@ -1,21 +1,21 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
-import '../bloc/auth_bloc.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../controllers/auth_controller.dart';
 
 /// Primary boot screen on the register: owner / admin email + password
 /// login against `/api/auth/login` on the .NET central. Registration is
 /// done on the web admin (POST /api/signup); the register only signs in.
 ///
-/// On success [AuthBloc] persists the token pair via [AuthTokenStore] and
-/// emits [AuthAuthenticated], which `main.dart` routes into the shell.
-class OwnerLoginScreen extends StatefulWidget {
+/// On success [AuthController] persists the token pair via [AuthTokenStore]
+/// and emits [AuthAuthenticated], which `main.dart` routes into the shell.
+class OwnerLoginScreen extends ConsumerStatefulWidget {
   const OwnerLoginScreen({super.key});
 
   @override
-  State<OwnerLoginScreen> createState() => _OwnerLoginScreenState();
+  ConsumerState<OwnerLoginScreen> createState() => _OwnerLoginScreenState();
 }
 
-class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
+class _OwnerLoginScreenState extends ConsumerState<OwnerLoginScreen> {
   final _formKey = GlobalKey<FormState>();
   final _emailCtrl = TextEditingController();
   final _passwordCtrl = TextEditingController();
@@ -30,47 +30,45 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
 
   void _submit() {
     if (_formKey.currentState?.validate() != true) return;
-    context.read<AuthBloc>().add(
-          OwnerLoginRequested(
-            email: _emailCtrl.text.trim(),
-            password: _passwordCtrl.text,
-          ),
+    ref.read(authControllerProvider.notifier).ownerLogin(
+          email: _emailCtrl.text.trim(),
+          password: _passwordCtrl.text,
         );
   }
 
   @override
   Widget build(BuildContext context) {
     final cs = Theme.of(context).colorScheme;
+
+    // ref.listen reacts to AuthAuthenticated by dismissing this screen.
+    // Without it, a successful login would emit AuthAuthenticated and
+    // main.dart's root Consumer would re-render `home:` as _MainShell
+    // underneath — but THIS screen stays on top of the Navigator stack
+    // (it was pushed by LoginChooserScreen), so the user sees a frozen
+    // login form despite a 200 response. maybePop() is safe whether we
+    // were pushed (canPop=true → pops) or rendered as home (canPop=false
+    // → no-ops, root Consumer handles the rerender to _MainShell).
+    ref.listen<AuthState>(authControllerProvider, (prev, state) {
+      if (state is AuthAuthenticated) {
+        Navigator.of(context).maybePop();
+      }
+    });
+
+    final state = ref.watch(authControllerProvider);
+    final isLoading = state is AuthLoading;
+    // Login failures land in different state slots depending on whether
+    // the device is activated. _setLoginFailure in AuthController routes
+    // the error to RegisterActivated(error: …) on activated devices and
+    // AuthInitial(error: …) otherwise. Read both so the user sees the
+    // message either way.
+    final errorMsg = switch (state) {
+      AuthInitial(:final error) => error,
+      RegisterActivated(:final error) => error,
+      _ => null,
+    };
+
     return Scaffold(
-      // BlocConsumer (not BlocBuilder): we need to BOTH rebuild on state
-      // changes AND react to AuthAuthenticated by dismissing this screen.
-      // Without the listener, a successful login would emit
-      // AuthAuthenticated and main.dart's root BlocBuilder would re-render
-      // `home:` as _MainShell underneath — but THIS screen stays on top
-      // of the Navigator stack (it was pushed by LoginChooserScreen), so
-      // the user sees a frozen login form despite a 200 response.
-      // maybePop() is safe whether we were pushed (canPop=true → pops)
-      // or rendered as home (canPop=false → no-ops, BlocBuilder above
-      // handles the rerender to _MainShell on its own).
-      body: BlocConsumer<AuthBloc, AuthState>(
-        listener: (context, state) {
-          if (state is AuthAuthenticated) {
-            Navigator.of(context).maybePop();
-          }
-        },
-        builder: (context, state) {
-          final isLoading = state is AuthLoading;
-          // Login failures land in different state slots depending on
-          // whether the device is activated. _emitLoginFailure in
-          // AuthBloc routes the error to RegisterActivated(error: …) on
-          // activated devices and AuthInitial(error: …) otherwise.
-          // Read both so the user sees the message either way.
-          final errorMsg = switch (state) {
-            AuthInitial(:final error) => error,
-            RegisterActivated(:final error) => error,
-            _ => null,
-          };
-          return Center(
+      body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
               child: Card(
@@ -211,8 +209,6 @@ class _OwnerLoginScreenState extends State<OwnerLoginScreen> {
                 ),
               ),
             ),
-          );
-        },
       ),
     );
   }

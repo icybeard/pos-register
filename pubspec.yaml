@@ -18,13 +18,21 @@ dependencies:
   intl: ^0.20.2
   cupertino_icons: ^1.0.8
 
-  # State management
-  flutter_bloc: ^9.1.0
-  # Value equality for BLoC states. Without this every emit() of a state
-  # whose fields are unchanged still triggers a rebuild because BlocBuilder
-  # compares by identity. Equatable's `props` overrides == + hashCode in
-  # one place per state class.
-  equatable: ^2.0.7
+  # State management.
+  # Riverpod replaces flutter_bloc + equatable. The migration kept the sealed
+  # event/state classes intact — Auth and Sales controllers extend Riverpod's
+  # Notifier<State> with one method per former event so call-site behavior
+  # is unchanged (PIN auto-submit, session-restore handshake, payment-side
+  # effects). Equatable is gone; state classes get hand-rolled `==` /
+  # `hashCode` where rebuild stability matters.
+  flutter_riverpod: ^2.5.1
+  # Repository / service DI for context.read<X>() at widget-tree leaves
+  # (SalesGuards, ApiClient, FeatureFlags, SyncStatusService). Used to ride
+  # in via flutter_bloc's re-export of RepositoryProvider; pinned directly
+  # now that flutter_bloc is gone. Migration to authProvider-style Riverpod
+  # providers across every leaf widget would also work but is out of scope
+  # for the mechanical 0b shim.
+  provider: ^6.1.2
 
   # HTTP — kept (http) for legacy ApiClient + dio for the new client with interceptors.
   http: ^1.3.0

@@ -1,33 +1,39 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_localizations/flutter_localizations.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:flutter_test/flutter_test.dart';
 import 'package:pos_system/core/l10n/app_localizations.dart';
-import 'package:pos_system/features/auth/bloc/auth_bloc.dart';
+import 'package:pos_system/features/auth/controllers/auth_controller.dart';
 import 'package:pos_system/features/auth/screens/owner_login_screen.dart';
 import 'package:pos_system/features/auth/screens/pin_screen.dart';
+import 'package:pos_system/services/auth/device_id_store.dart';
 
 import '../../../mocks/mock_api_client.dart';
 
+/// See activation_screen_test.dart — the real FlutterSecureStorage hangs
+/// in flutter_test, so we substitute an in-process DeviceIdStore.
+class _FakeDeviceIdStore extends DeviceIdStore {
+  @override
+  Future<String> getOrCreate() async => 'test-device-id';
+}
+
 void main() {
   late MockApiClient mockApi;
-  late AuthBloc bloc;
 
   setUp(() {
     mockApi = MockApiClient();
-    bloc = AuthBloc(mockApi);
   });
 
-  tearDown(() async {
-    await bloc.close();
-  });
-
-  // BlocProvider must be ABOVE MaterialApp so any route the screen pushes
+  // ProviderScope sits ABOVE MaterialApp so any route the screen pushes
   // (PinScreen → OwnerLoginScreen via the admin tile) can resolve
-  // `context.read<AuthBloc>()`. With the provider under MaterialApp.home,
-  // pushed routes are siblings of the provider in the Navigator tree.
-  Widget wrap(Widget child) => BlocProvider<AuthBloc>.value(
-        value: bloc,
+  // `ref.read(authControllerProvider)`. With the scope under MaterialApp.home,
+  // pushed routes would be siblings of the scope in the Navigator tree and
+  // couldn't see it.
+  Widget wrap(Widget child) => ProviderScope(
+        overrides: [
+          authApiClientProvider.overrideWithValue(mockApi),
+          authDeviceIdStoreProvider.overrideWithValue(_FakeDeviceIdStore()),
+        ],
         child: MaterialApp(
           localizationsDelegates: const [
             AppLocalizations.delegate,
@@ -42,7 +48,7 @@ void main() {
       );
 
   testWidgets(
-      'renders cashier grid with admin tile after CheckFirstRun resolves',
+      'renders cashier grid with admin tile after checkFirstRun resolves',
       (tester) async {
     mockApi.onListCashiers = () async => {
           'cashiers': [
@@ -51,7 +57,8 @@ void main() {
         };
 
     await tester.pumpWidget(wrap(const PinScreen()));
-    // CheckFirstRun is dispatched from initState; let the bloc round-trip.
+    // checkFirstRun is dispatched from initState via a post-frame callback;
+    // let the controller round-trip.
     await tester.pump();
     await tester.pump(const Duration(milliseconds: 50));
 
@@ -63,8 +70,13 @@ void main() {
 
   testWidgets('tapping the admin tile pushes the owner login screen',
       (tester) async {
+    // At least one cashier required — an empty list trips checkFirstRun's
+    // first-run branch in AuthController and the screen renders
+    // _FirstRunSetup instead of the cashier grid.
     mockApi.onListCashiers = () async => {
-          'cashiers': <Map<String, dynamic>>[],
+          'cashiers': [
+            {'ID': 'c1', 'Name': 'Алия', 'Role': 'cashier'},
+          ],
         };
 
     await tester.pumpWidget(wrap(const PinScreen()));
