@@ -4,7 +4,7 @@ Flutter register client. Read this before making changes.
 
 ## Stack
 
-- Flutter 3.x (Dart 3) + BLoC for state
+- Flutter 3.x (Dart 3) + Riverpod for state (Notifier controllers at `lib/features/*/controllers/*_controller.dart`; migrated from flutter_bloc in Phase 0b)
 - [drift](https://drift.simonbinder.eu) (SQLite with WAL) as local source of truth
 - gRPC client for `Subscribe` stream, REST for push/pull sync
 - Targets: Windows, Linux, macOS, Android, iOS
