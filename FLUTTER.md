@@ -1,50 +1,67 @@
 # Flutter POS App — Architecture & Screen Reference
 
+> **Doc status (2026-07-05):** the top sections below (Overview → API
+> Communication, Dependencies, Running) are kept current. The **Screens**
+> and **state-management reference** sections further down were written
+> against the early prototype and are kept as behavioral reference — the
+> domain rules they describe (PIN lockout tiers, NKT fallback, payment
+> flows) still hold, but class names (`AuthBloc`, `SalesBloc`) are
+> pre-Riverpod, and the app has since grown screens they don't cover
+> (setup wizard, returns, X-report, manager override, approvals, delivery,
+> analytics, audit). For locked invariants read `CLAUDE.md`; for the
+> product-level view read `README.md`.
+
 ## Overview
 
-Cross-platform POS application for retail in Kazakhstan. Built with Flutter 3.x, BLoC state management, and a local Go backend communicating via REST.
+Cross-platform POS register for retail in Kazakhstan. Offline-first: Flutter 3.x with **Riverpod** state management and a local **drift** (SQLite, WAL) database as the source of truth; syncs to the .NET central server (`pos-server`) via REST push/pull (`sync_outbox` deltas).
 
-**Stack**: Flutter 3.38+ (Dart) | BLoC 9.x | Google Fonts (Inter) | SQLite (via Go server)
+**Stack**: Flutter 3.x (Dart 3) | Riverpod 2.x | drift (SQLite) | dio/http REST + gRPC stubs | bundled fonts
 
-**Platforms**: Windows, Linux, Android, iOS, macOS
+**Platforms**: Windows, Linux, macOS, Android, iOS (web is not a shipping target)
 
 ## Architecture
 
 ```
-app/lib/
+lib/
 ├── main.dart                          # Entry point, navigation shell, sidebar
 ├── core/
-│   ├── constants/app_constants.dart   # API host, currency, VAT, PIN length
-│   ├── theme/app_theme.dart           # Design system tokens + PosColors
-│   ├── utils/money.dart               # Tiyin formatting, VAT, weight calc
-│   └── widgets/num_pad.dart           # Reusable numeric keypad + quick amounts
-├── features/
-│   ├── auth/                          # PIN authentication
-│   │   ├── bloc/auth_bloc.dart
-│   │   └── screens/pin_screen.dart
-│   ├── sales/                         # POS terminal, cart, payments, shifts
-│   │   ├── bloc/sales_bloc.dart
-│   │   ├── models/cart_item.dart
-│   │   └── screens/
-│   │       ├── pos_screen.dart
-│   │       ├── payment_screen.dart
-│   │       └── shift_screen.dart
-│   ├── products/screens/products_screen.dart
-│   ├── users/screens/cashiers_screen.dart
-│   ├── clients/screens/debts_screen.dart
-│   └── settings/screens/settings_screen.dart
-└── services/api_client.dart           # HTTP client for Go backend
+│   ├── constants/                     # Currency, VAT, PIN length, breakpoints
+│   ├── feature_flags.dart
+│   ├── l10n/                          # ARB-driven strings (kk + ru)
+│   ├── theme/                         # app_theme.dart + hifi.dart design tokens
+│   ├── utils/                         # Tiyin formatting, VAT, weight calc
+│   └── widgets/                       # NumPad, sync status chip/sheet, brand mark
+├── data/
+│   ├── database.dart                  # drift database (source of truth)
+│   ├── tables/                        # drift table definitions
+│   └── repositories/                  # typed access over drift
+├── features/                          # screen + controller per domain
+│   ├── auth/       ├── sales/         # controllers/*_controller.dart (Riverpod
+│   ├── products/   ├── users/         #   Notifier), screens/, widgets/
+│   ├── clients/    ├── settings/
+│   ├── setup/      ├── analytics/
+│   ├── approval/   ├── audit/
+│   └── delivery/
+├── services/                          # auth, products, sales, stock, sync,
+│                                      #   reports, reconciliation, override, locale
+├── sync/                              # outbox drain + pull cursor client
+└── migration/                         # legacy-data migration helpers
 ```
 
 ### Patterns
 
-- **Features-based** directory structure — each domain has its own bloc/models/screens/widgets
-- **BLoC** for complex state (AuthBloc, SalesBloc); StatefulWidget for simpler screens
+- **Features-based** directory structure — each domain has its own controllers/models/screens/widgets
+- **Riverpod Notifier controllers** for complex state (`lib/features/*/controllers/*_controller.dart` — migrated from flutter_bloc in Phase 0b, one method per former event); StatefulWidget for simpler screens
 - **Immutable models** with computed properties (CartItem.total, CartItem.vatAmount)
 - **Responsive layouts** — width breakpoints: ≥800px wide (sidebar + split), <800px narrow (bottom nav + tabs)
 - **Theme-driven** — all colors/typography from `AppTheme`; semantic helpers via `PosColors.of(context)`
 
 ### Design System — "Architectural Ledger" (Stitch V4)
+
+> Superseded in practice by the hi-fi pass (`lib/core/theme/hifi.dart`, Variant C,
+> 2026-04) and the **KeregeSystem** brand (mark + palette in `assets/brand/`);
+> fonts are now bundled, not fetched from Google Fonts. The tokens below are the
+> original Stitch V4 baseline the hi-fi theme evolved from.
 
 Based on stitch_design/ HTML mockups. Key principles:
 
@@ -86,17 +103,15 @@ Money.tengeToTiyin(14.5)  // → 1450
 
 Nav items: КАССА (POS) → ИСТОРИЯ (Shift) → ТОВАРЫ (Products) → ПЕРСОНАЛ (Cashiers) → ДОЛГИ (Debts) → НАСТРОЙКИ (Settings)
 
-### API Communication
+### Data & Sync
 
-`ApiClient` wraps HTTP calls to the Go backend at `localhost:8080`. 10-second timeout. All responses parsed as JSON maps. `ApiException` carries HTTP status code + message.
+**drift (SQLite, WAL) is the local source of truth** — every write lands in drift first; the register is fully functional offline. Sync to the .NET central server (`pos-server`) happens in the background:
 
-Key endpoint groups:
-- **Products**: CRUD, search by name/barcode
-- **Auth**: PIN login, cashier management
-- **Shifts**: open/close, current shift status
-- **Receipts**: create with line items + payment breakdown
-- **NKT**: national catalog search by GTIN/NTIN/name
-- **Clients & Debts**: debt tracking for credit sales
+- **Push**: receipts + stock movements queue in `sync_outbox` and drain to `POST /api/sync/push` (~2 KB deltas) when a connection exists.
+- **Pull**: master data (products, prices, cashiers) arrives via cursor-based `GET /api/sync/pull` polling. A gRPC `Subscribe` stream is defined in `proto/` but not yet implemented server-side.
+- **NKT**: national-catalog lookups (GTIN/NTIN/name) proxy through central.
+
+`ApiClient` wraps the REST calls; `ApiException` carries HTTP status code + message. Sync state is surfaced in the UI via the sync status chip/sheet (`lib/core/widgets/`).
 
 ---
 
@@ -256,7 +271,13 @@ Key endpoint groups:
 
 ---
 
-## BLoC Reference
+## State Reference (historical — pre-Riverpod names)
+
+> Written when Auth/Sales state lived in flutter_bloc. The Phase 0b migration
+> moved these to Riverpod `Notifier` controllers with **one method per former
+> event**, keeping the sealed state classes and call-site behavior intact —
+> so the event tables below still describe the controller API surface;
+> mentally replace `AuthBloc` → `AuthController`, `SalesBloc` → `SalesController`.
 
 ### AuthBloc
 
@@ -327,28 +348,32 @@ Key endpoint groups:
 ### General
 - **Responsive breakpoints**: 800px for split layouts, 700px for sidebar vs bottom nav, 500px for stat card grid
 - **API timeout**: 10 seconds — shows error on timeout, doesn't hang
-- **Offline mode**: Planned but not yet implemented — currently requires server connection
+- **Offline mode**: Implemented — drift is the source of truth; writes queue in `sync_outbox` and drain when a connection returns
 
 ---
 
-## Dependencies
+## Dependencies (key ones — see `pubspec.yaml` for the full, commented list)
 
 ```yaml
-flutter_bloc: ^9.1.0    # BLoC state management
-http: ^1.3.0            # REST API client
-google_fonts: ^8.0.2    # Inter font family
-window_manager: ^0.5.1  # Desktop fullscreen
-cupertino_icons: ^1.0.8 # iOS-style icons
+flutter_riverpod: ^2.5.1  # State management (replaced flutter_bloc in Phase 0b)
+provider: ^6.1.2          # Repository/service DI at widget-tree leaves
+drift: (see pubspec)      # Local SQLite (WAL) — source of truth
+dio: ^5.7.0               # REST client with interceptors (http kept for legacy ApiClient)
+intl: ^0.20.2             # Pinned — keeps Russian plural rules stable
+cupertino_icons: ^1.0.8   # iOS-style icons
 ```
+
+Fonts are bundled (no runtime Google Fonts fetch — registers may be offline).
 
 ## Running
 
 ```bash
-cd app
 flutter pub get
-flutter run           # debug mode
+make run                # flutter run (debug)
 flutter run -d windows  # desktop
-flutter build apk     # Android release
+flutter build apk       # Android release
+make test               # test suite
+make analyze            # dart analyze
 ```
 
-Requires Go backend running on `localhost:8080` (see `server/` directory).
+The register runs fully standalone on its local drift database. To exercise sync, run `pos-server` locally (see that repo's README) and point the register at it via the setup wizard.

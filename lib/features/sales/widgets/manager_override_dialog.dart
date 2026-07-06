@@ -134,7 +134,7 @@ class _ManagerOverrideDialogState extends State<ManagerOverrideDialog> {
             ),
           ),
           const SizedBox(height: 12),
-          Text(l.managerOverridePinLabel, style: Hifi.ui(size: 12, color: const Color(0xFF666666))),
+          Text(l.managerOverridePinLabel, style: Hifi.ui(size: 12, color: const Color(0xFF837B6D))),
           const SizedBox(height: 8),
           HifiPinDots(filled: _pin.length),
           const SizedBox(height: 16),
@@ -192,7 +192,7 @@ class _ManagerOverrideDialogState extends State<ManagerOverrideDialog> {
           width: 48,
           height: 48,
           decoration: BoxDecoration(
-            color: const Color(0xFFFFDDB4),
+            color: const Color(0xFFFAE0C9),
             borderRadius: BorderRadius.circular(6),
           ),
           alignment: Alignment.center,
@@ -216,7 +216,7 @@ class _ManagerOverrideDialogState extends State<ManagerOverrideDialog> {
         ),
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
           Text(l.managerOverrideActionLabel,
-              style: Hifi.ui(size: 10, color: const Color(0xFF666666)).copyWith(letterSpacing: 0.5)),
+              style: Hifi.ui(size: 10, color: const Color(0xFF837B6D)).copyWith(letterSpacing: 0.5)),
           const SizedBox(height: 4),
           Text(text, style: Hifi.ui(size: 13)),
         ]),

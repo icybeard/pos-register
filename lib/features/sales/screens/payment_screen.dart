@@ -445,7 +445,7 @@ class _PaymentScreenState extends State<PaymentScreen> {
                     child: SizedBox(height: 60, width: double.infinity, child: ElevatedButton(
                       onPressed: _canPay ? _pay : null,
                       style: ElevatedButton.styleFrom(
-                        backgroundColor: _method == PaymentMethod.debt ? const Color(0xFFD97706) : AppTheme.success,
+                        backgroundColor: _method == PaymentMethod.debt ? const Color(0xFFB6781A) : AppTheme.success,
                         foregroundColor: Colors.white,
                         disabledBackgroundColor: AppTheme.success.withValues(alpha: 0.25),
                         disabledForegroundColor: Colors.white.withValues(alpha: 0.4),

@@ -171,7 +171,7 @@ class _CartPaneState extends ConsumerState<_CartPane> {
           hint: l.posSearchHint,
           onSubmitted: _onSubmitted,
           onChanged: _onChanged,
-          trailing: Text('⏎ Enter', style: Hifi.mono(size: 10, color: const Color(0xFF888888))),
+          trailing: Text('⏎ Enter', style: Hifi.mono(size: 10, color: const Color(0xFFA59C8B))),
         ),
         const SizedBox(height: 8),
         LastAddedStrip(
@@ -280,9 +280,9 @@ class _CartTable extends StatelessWidget {
           child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
             const Icon(Icons.shopping_cart_outlined, size: 36, color: Hifi.border),
             const SizedBox(height: 8),
-            Text(l.posCartEmpty, style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
+            Text(l.posCartEmpty, style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))),
             const SizedBox(height: 2),
-            Text(l.posCartEmptyHint, style: Hifi.ui(size: 11, color: const Color(0xFFAAAAAA))),
+            Text(l.posCartEmptyHint, style: Hifi.ui(size: 11, color: const Color(0xFFA59C8B))),
           ]),
         ),
       );
@@ -327,7 +327,7 @@ class _CartTable extends StatelessWidget {
   Widget _h(String label, TextAlign align) => Text(
         label.toUpperCase(),
         textAlign: align,
-        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555))
+        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52))
             .copyWith(letterSpacing: 0.3),
       );
 }
@@ -384,7 +384,7 @@ class _CartRow extends ConsumerWidget {
             const SizedBox(height: 2),
             Text(
               '${Money.format(item.basePrice)}${item.isWeighted ? "/кг" : "/шт"}',
-              style: Hifi.mono(size: 10, color: const Color(0xFF888888)),
+              style: Hifi.mono(size: 10, color: const Color(0xFFA59C8B)),
             ),
           ]),
         ),
@@ -412,7 +412,7 @@ class _CartRow extends ConsumerWidget {
           child: Text(
             Money.format(item.basePrice),
             textAlign: TextAlign.right,
-            style: Hifi.mono(size: 13, color: const Color(0xFF666666)),
+            style: Hifi.mono(size: 13, color: const Color(0xFF837B6D)),
           ),
         ),
         SizedBox(
@@ -428,7 +428,7 @@ class _CartRow extends ConsumerWidget {
           child: IconButton(
             padding: EdgeInsets.zero,
             onPressed: () => sales.removeFromCart(index),
-            icon: const Icon(Icons.close, size: 18, color: Color(0xFF888888)),
+            icon: const Icon(Icons.close, size: 18, color: Color(0xFFA59C8B)),
           ),
         ),
       ]),

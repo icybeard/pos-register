@@ -1497,4 +1497,72 @@ class AppLocalizationsRu extends AppLocalizations {
 
   @override
   String get posScanPromptHint => 'последний добавленный товар появится здесь';
+
+  @override
+  String get platformSectionTitle => 'Платформа';
+
+  @override
+  String get platformStandaloneTitle => 'Автономный режим';
+
+  @override
+  String get platformStandaloneSubtitle =>
+      'Все данные — на этом устройстве. Нажмите, чтобы подключить кассу к платформе (синхронизация, склад, аналитика).';
+
+  @override
+  String get platformLinkedTitle => 'Подключено к платформе';
+
+  @override
+  String get platformLinkedSyncing => 'Синхронизация с облаком активна';
+
+  @override
+  String get platformStorePrefix => 'Магазин';
+
+  @override
+  String get connectSkip => 'Пропустить — работать автономно';
+
+  @override
+  String get connectSkipHint =>
+      'Касса будет работать без облака: все данные — на этом устройстве. Подключить к платформе можно позже в настройках.';
+
+  @override
+  String get standaloneTitle => 'Автономная касса';
+
+  @override
+  String get standaloneSubtitle =>
+      'Все данные хранятся на этом устройстве. Создайте владельца — он управляет кассой и кассирами.';
+
+  @override
+  String get standaloneOwnerName => 'Ваше имя';
+
+  @override
+  String get standaloneStoreName => 'Название магазина (необязательно)';
+
+  @override
+  String get standalonePin => 'PIN (4 цифры)';
+
+  @override
+  String get standalonePinConfirm => 'Повторите PIN';
+
+  @override
+  String get standalonePinMismatch => 'PIN-коды не совпадают';
+
+  @override
+  String get standaloneSaveError =>
+      'Не удалось сохранить данные — попробуйте ещё раз';
+
+  @override
+  String get standaloneDbError =>
+      'Локальная база недоступна — перезапустите кассу';
+
+  @override
+  String get standaloneStart => 'Начать работу';
+
+  @override
+  String get standaloneBackToConnect => 'Назад — подключить к платформе';
+
+  @override
+  String get syncStandalone => 'Автономно';
+
+  @override
+  String get standaloneStoreDefault => 'Мой магазин';
 }

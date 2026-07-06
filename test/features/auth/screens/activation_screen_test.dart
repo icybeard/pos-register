@@ -47,9 +47,9 @@ void main() {
 
   testWidgets('renders header, code field, and submit button', (tester) async {
     await tester.pumpWidget(wrap(const ActivationScreen()));
-    expect(find.text('Активация кассы'), findsOneWidget);
+    expect(find.text('Подключение кассы к платформе'), findsOneWidget);
     expect(find.byType(TextField), findsOneWidget);
-    expect(find.text('Активировать'), findsOneWidget);
+    expect(find.text('Подключить'), findsOneWidget);
   });
 
   testWidgets(
@@ -69,7 +69,7 @@ void main() {
     // strip both before dispatching.
     await tester.enterText(find.byType(TextField), 'abcd-1234');
     await tester.pump();
-    await tester.tap(find.text('Активировать'));
+    await tester.tap(find.text('Подключить'));
     // Drain the controller's async chain in real time. pumpAndSettle alone
     // returns before the mock-call microtask fires; runAsync gives the
     // real Dart event loop a chance to flush those microtasks.

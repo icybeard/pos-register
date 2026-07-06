@@ -115,7 +115,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
       ['Kaspi / Halyk', Money.formatTenge(card + qr), Hifi.success],
       ['Возвраты', '−${Money.formatTenge(returns)}', Hifi.danger],
       ['Скидки', '−${Money.formatTenge(discount)}', Hifi.warn],
-      ['Отложенные', '$parked', const Color(0xFF666666)],
+      ['Отложенные', '$parked', const Color(0xFF837B6D)],
       ['Долги открыты', '$openedDebts', Hifi.warn],
     ];
 
@@ -147,7 +147,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
         Padding(
           padding: const EdgeInsets.symmetric(horizontal: 8),
           child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('Ожидаемо в кассе', style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+            Text('Ожидаемо в кассе', style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
             Text(Money.formatTenge(expected), style: Hifi.mono(size: 28, weight: FontWeight.w700, color: Hifi.chrome)),
           ]),
         ),
@@ -188,7 +188,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(label.toUpperCase(), style: Hifi.ui(size: 10, color: const Color(0xFF666666)).copyWith(letterSpacing: 0.5)),
+        Text(label.toUpperCase(), style: Hifi.ui(size: 10, color: const Color(0xFF837B6D)).copyWith(letterSpacing: 0.5)),
         const SizedBox(height: 2),
         Text(value, style: Hifi.mono(size: 16, weight: FontWeight.w700, color: color), maxLines: 1, overflow: TextOverflow.ellipsis),
       ]),
@@ -200,7 +200,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
       return Container(
         decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
         child: Center(
-          child: Text('Нет операций за смену', style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
+          child: Text('Нет операций за смену', style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))),
         ),
       );
     }
@@ -234,7 +234,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
                 final amount = (r['Total'] as num?)?.toInt() ?? 0;
                 final isRefund = kind.toLowerCase().contains('возврат');
                 final isDebt = kind.toLowerCase().contains('долг');
-                final color = isRefund ? Hifi.danger : (isDebt ? Hifi.warn : const Color(0xFF333333));
+                final color = isRefund ? Hifi.danger : (isDebt ? Hifi.warn : const Color(0xFF322E28));
                 final amtStr = isRefund ? '−${Money.formatTenge(amount.abs())}' : Money.formatTenge(amount);
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
@@ -256,7 +256,7 @@ class _ShiftCloseScreenState extends State<ShiftCloseScreen> {
   }
 
   Widget _th(String label, {TextAlign align = TextAlign.left}) => Text(label,
-      textAlign: align, style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)).copyWith(letterSpacing: 0.3));
+      textAlign: align, style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52)).copyWith(letterSpacing: 0.3));
 
   Widget _rightPanel() {
     final tiles = <ActionTile>[

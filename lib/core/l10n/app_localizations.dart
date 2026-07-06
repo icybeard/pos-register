@@ -2869,6 +2869,132 @@ abstract class AppLocalizations {
   /// In ru, this message translates to:
   /// **'последний добавленный товар появится здесь'**
   String get posScanPromptHint;
+
+  /// No description provided for @platformSectionTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Платформа'**
+  String get platformSectionTitle;
+
+  /// No description provided for @platformStandaloneTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автономный режим'**
+  String get platformStandaloneTitle;
+
+  /// No description provided for @platformStandaloneSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все данные — на этом устройстве. Нажмите, чтобы подключить кассу к платформе (синхронизация, склад, аналитика).'**
+  String get platformStandaloneSubtitle;
+
+  /// No description provided for @platformLinkedTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Подключено к платформе'**
+  String get platformLinkedTitle;
+
+  /// No description provided for @platformLinkedSyncing.
+  ///
+  /// In ru, this message translates to:
+  /// **'Синхронизация с облаком активна'**
+  String get platformLinkedSyncing;
+
+  /// No description provided for @platformStorePrefix.
+  ///
+  /// In ru, this message translates to:
+  /// **'Магазин'**
+  String get platformStorePrefix;
+
+  /// No description provided for @connectSkip.
+  ///
+  /// In ru, this message translates to:
+  /// **'Пропустить — работать автономно'**
+  String get connectSkip;
+
+  /// No description provided for @connectSkipHint.
+  ///
+  /// In ru, this message translates to:
+  /// **'Касса будет работать без облака: все данные — на этом устройстве. Подключить к платформе можно позже в настройках.'**
+  String get connectSkipHint;
+
+  /// No description provided for @standaloneTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автономная касса'**
+  String get standaloneTitle;
+
+  /// No description provided for @standaloneSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все данные хранятся на этом устройстве. Создайте владельца — он управляет кассой и кассирами.'**
+  String get standaloneSubtitle;
+
+  /// No description provided for @standaloneOwnerName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Ваше имя'**
+  String get standaloneOwnerName;
+
+  /// No description provided for @standaloneStoreName.
+  ///
+  /// In ru, this message translates to:
+  /// **'Название магазина (необязательно)'**
+  String get standaloneStoreName;
+
+  /// No description provided for @standalonePin.
+  ///
+  /// In ru, this message translates to:
+  /// **'PIN (4 цифры)'**
+  String get standalonePin;
+
+  /// No description provided for @standalonePinConfirm.
+  ///
+  /// In ru, this message translates to:
+  /// **'Повторите PIN'**
+  String get standalonePinConfirm;
+
+  /// No description provided for @standalonePinMismatch.
+  ///
+  /// In ru, this message translates to:
+  /// **'PIN-коды не совпадают'**
+  String get standalonePinMismatch;
+
+  /// No description provided for @standaloneSaveError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Не удалось сохранить данные — попробуйте ещё раз'**
+  String get standaloneSaveError;
+
+  /// No description provided for @standaloneDbError.
+  ///
+  /// In ru, this message translates to:
+  /// **'Локальная база недоступна — перезапустите кассу'**
+  String get standaloneDbError;
+
+  /// No description provided for @standaloneStart.
+  ///
+  /// In ru, this message translates to:
+  /// **'Начать работу'**
+  String get standaloneStart;
+
+  /// No description provided for @standaloneBackToConnect.
+  ///
+  /// In ru, this message translates to:
+  /// **'Назад — подключить к платформе'**
+  String get standaloneBackToConnect;
+
+  /// No description provided for @syncStandalone.
+  ///
+  /// In ru, this message translates to:
+  /// **'Автономно'**
+  String get syncStandalone;
+
+  /// No description provided for @standaloneStoreDefault.
+  ///
+  /// In ru, this message translates to:
+  /// **'Мой магазин'**
+  String get standaloneStoreDefault;
 }
 
 class _AppLocalizationsDelegate

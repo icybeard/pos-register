@@ -134,14 +134,14 @@ class _PinEntry extends StatelessWidget {
 /// Generates a consistent gradient color pair from a name string.
 List<Color> _avatarColors(String name) {
   const palettes = [
-    [Color(0xFF3B82F6), Color(0xFF2563EB)], // blue
-    [Color(0xFF8B5CF6), Color(0xFF7C3AED)], // violet
-    [Color(0xFFEC4899), Color(0xFFDB2777)], // pink
-    [Color(0xFFF59E0B), Color(0xFFD97706)], // amber
-    [Color(0xFF10B981), Color(0xFF059669)], // emerald
-    [Color(0xFF06B6D4), Color(0xFF0891B2)], // cyan
-    [Color(0xFFEF4444), Color(0xFFDC2626)], // red
-    [Color(0xFF6366F1), Color(0xFF4F46E5)], // indigo
+    [Color(0xFFBF5F30), Color(0xFFA44D24)], // blue
+    [Color(0xFFA44D24), Color(0xFF843D1D)], // violet
+    [Color(0xFFEC4899), Color(0xFFB8332E)], // pink
+    [Color(0xFFB6781A), Color(0xFFB6781A)], // amber
+    [Color(0xFF2C8A5A), Color(0xFF226E47)], // emerald
+    [Color(0xFF1E7A93), Color(0xFF155F73)], // cyan
+    [Color(0xFFB8332E), Color(0xFFB8332E)], // red
+    [Color(0xFFBF5F30), Color(0xFFBF5F30)], // indigo
   ];
   final hash = name.codeUnits.fold<int>(0, (h, c) => h * 31 + c);
   return palettes[hash.abs() % palettes.length];
@@ -221,7 +221,7 @@ class _LiveClockState extends State<_LiveClock> {
           style: const TextStyle(fontFamily: 'Inter', 
             fontSize: 28,
             fontWeight: FontWeight.w300,
-            color: Color(0xFF74777D),
+            color: Color(0xFF837B6D),
             letterSpacing: 2,
           ),
         ),
@@ -230,7 +230,7 @@ class _LiveClockState extends State<_LiveClock> {
           style: TextStyle(fontFamily: 'Inter', 
             fontSize: 12,
             fontWeight: FontWeight.w500,
-            color: const Color(0xFF74777D).withValues(alpha: 0.7),
+            color: const Color(0xFF837B6D).withValues(alpha: 0.7),
           ),
         ),
       ],
@@ -261,7 +261,7 @@ class _WidePinLayout extends ConsumerWidget {
           SizedBox(
             width: 340,
             child: Container(
-              color: const Color(0xFFE6EEFF),
+              color: const Color(0xFFFAF7F0),
               padding: const EdgeInsets.all(32),
               child: Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
@@ -281,16 +281,16 @@ class _WidePinLayout extends ConsumerWidget {
                       Text('POS SYSTEM',
                         style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.3)),
                       Text('KAZAKHSTAN',
-                        style: TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF74777D), letterSpacing: 2)),
+                        style: TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF837B6D), letterSpacing: 2)),
                     ]),
                   ]),
                   const SizedBox(height: 8),
                   Text(l.pinTerminal,
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 12, fontWeight: FontWeight.w500, color: Color(0xFF837B6D))),
 
                   const SizedBox(height: 32),
                   Text(l.pinSelectProfile,
-                    style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF74777D), letterSpacing: 1.5)),
+                    style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w700, color: Color(0xFF837B6D), letterSpacing: 1.5)),
                   const SizedBox(height: 12),
 
                   // Cashier profiles from server
@@ -354,17 +354,17 @@ class _WidePinLayout extends ConsumerWidget {
                       style: const TextStyle(fontFamily: 'Inter', fontSize: 22, fontWeight: FontWeight.w700, color: AppTheme.primary)),
                     const SizedBox(height: 6),
                     Text(l.pinEnterCode,
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF837B6D))),
                     const SizedBox(height: 28),
                     _PinDotsAndError(),
                     const SizedBox(height: 28),
                     _PinKeypad(),
                     const SizedBox(height: 16),
                     Row(mainAxisAlignment: MainAxisAlignment.center, children: [
-                      const Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFFC4C6CD)),
+                      const Icon(Icons.verified_user_outlined, size: 14, color: Color(0xFFC8BFAC)),
                       const SizedBox(width: 6),
                       Text(l.pinEncryptedAccess,
-                        style: const TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFC4C6CD), letterSpacing: 1.5)),
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFFC8BFAC), letterSpacing: 1.5)),
                     ]),
                   ],
                 ),
@@ -409,10 +409,10 @@ class _NarrowPinLayout extends StatelessWidget {
               style: TextStyle(fontFamily: 'Inter', fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
             const SizedBox(height: 4),
             const Text('KAZAKHSTAN',
-              style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF74777D), letterSpacing: 3)),
+              style: TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF837B6D), letterSpacing: 3)),
             const SizedBox(height: 32),
             Text(l.pinEnterCode,
-              style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF74777D))),
+              style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500, color: Color(0xFF837B6D))),
             const SizedBox(height: 24),
             _PinDotsAndError(),
             _PinLoadingIndicator(),
@@ -468,7 +468,7 @@ class _ProfileCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(14),
       decoration: BoxDecoration(
-        color: selected ? const Color(0xFFD5E3FD) : Colors.white,
+        color: selected ? const Color(0xFFC8BFAC) : Colors.white,
         borderRadius: BorderRadius.circular(16),
       ),
       child: Row(children: [
@@ -477,7 +477,7 @@ class _ProfileCard extends StatelessWidget {
         Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(name, style: const TextStyle(fontFamily: 'Inter', fontWeight: FontWeight.w600, fontSize: 14, color: AppTheme.primary)),
           const SizedBox(height: 2),
-          Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D))),
+          Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF837B6D))),
           if (hasShift) ...[
             const SizedBox(height: 4),
             Container(
@@ -489,12 +489,12 @@ class _ProfileCard extends StatelessWidget {
               child: Row(mainAxisSize: MainAxisSize.min, children: [
                 Container(
                   width: 6, height: 6,
-                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF059669)),
+                  decoration: const BoxDecoration(shape: BoxShape.circle, color: Color(0xFF226E47)),
                 ),
                 const SizedBox(width: 4),
                 Text(
                   'Смена с $shiftTime',
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF059669)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 10, fontWeight: FontWeight.w600, color: Color(0xFF226E47)),
                 ),
               ]),
             ),
@@ -538,7 +538,7 @@ class _PinDotsAndError extends ConsumerWidget {
                         ? AppTheme.error
                         : filled
                             ? AppTheme.primary
-                            : const Color(0xFFC4C6CD),
+                            : const Color(0xFFC8BFAC),
                     width: 2,
                   ),
                 ),
@@ -556,7 +556,7 @@ class _PinDotsAndError extends ConsumerWidget {
                           margin: const EdgeInsets.only(top: 10),
                           padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
                           decoration: BoxDecoration(
-                            color: const Color(0xFFFFDAD6),
+                            color: const Color(0xFFFBE9E7),
                             borderRadius: BorderRadius.circular(10),
                           ),
                           child: Text(
@@ -612,7 +612,7 @@ class _LockoutCountdownState extends State<_LockoutCountdown> {
         margin: const EdgeInsets.only(top: 10),
         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 6),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFDAD6),
+          color: const Color(0xFFFBE9E7),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
@@ -681,7 +681,7 @@ class _PinKeypad extends ConsumerWidget {
       child: Material(
         color: isConfirm
             ? AppTheme.primary
-            : const Color(0xFFEFF4FF),
+            : const Color(0xFFFAF7F0),
         borderRadius: BorderRadius.circular(18),
         elevation: isConfirm ? 4 : 0,
         shadowColor: isConfirm ? AppTheme.primary.withValues(alpha: 0.3) : Colors.transparent,
@@ -702,7 +702,7 @@ class _PinKeypad extends ConsumerWidget {
           },
           child: Center(
             child: isBackspace
-                ? const Icon(Icons.backspace_outlined, size: 20, color: Color(0xFF43474C))
+                ? const Icon(Icons.backspace_outlined, size: 20, color: Color(0xFF4A453C))
                 : isConfirm
                     ? const Icon(Icons.login_rounded, size: 22, color: Colors.white)
                     : Text(
@@ -745,7 +745,7 @@ class _GridFlavor extends ConsumerWidget {
               const SizedBox(width: 10),
               Text(
                 l.pinCashierCountLabel(cashiers.length),
-                style: Hifi.mono(size: 12, color: const Color(0xFF666666)),
+                style: Hifi.mono(size: 12, color: const Color(0xFF837B6D)),
               ),
             ]),
             const SizedBox(height: 14),
@@ -822,7 +822,7 @@ class _GridFlavor extends ConsumerWidget {
             Row(children: [
               if (selected != null)
                 Text.rich(
-                  TextSpan(style: Hifi.ui(size: 12, color: const Color(0xFF666666)), children: [
+                  TextSpan(style: Hifi.ui(size: 12, color: const Color(0xFF837B6D)), children: [
                     TextSpan(text: l.pinSelectedPrefix),
                     TextSpan(text: selected, style: Hifi.ui(size: 12, weight: FontWeight.w700, color: Hifi.chrome)),
                   ]),
@@ -872,7 +872,7 @@ class _CashierGridTile extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Material(
-      color: selected ? const Color(0xFFDBE4FF) : Colors.white,
+      color: selected ? const Color(0xFFFAE0C9) : Colors.white,
       shape: RoundedRectangleBorder(
         borderRadius: BorderRadius.circular(10),
         side: BorderSide(color: selected ? Hifi.chrome : Hifi.border, width: selected ? 2 : 1),
@@ -892,7 +892,7 @@ class _CashierGridTile extends StatelessWidget {
                 children: [
                   Text(name, style: Hifi.ui(size: 14, weight: FontWeight.w700)),
                   const SizedBox(height: 2),
-                  Text(role, style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+                  Text(role, style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
                 ],
               )),
             ]),
@@ -1012,11 +1012,11 @@ class _AddCashierTile extends StatelessWidget {
       onTap: null,
       child: DottedBorderBox(
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
-          Text('＋', style: Hifi.ui(size: 26, color: const Color(0xFF666666))),
+          Text('＋', style: Hifi.ui(size: 26, color: const Color(0xFF837B6D))),
           const SizedBox(height: 4),
           Text(
             AppLocalizations.of(context)!.pinNewCashier,
-            style: Hifi.ui(size: 12, color: const Color(0xFF666666)),
+            style: Hifi.ui(size: 12, color: const Color(0xFF837B6D)),
           ),
         ]),
       ),
@@ -1051,14 +1051,14 @@ class _ErrorBanner extends StatelessWidget {
     return Container(
       width: double.infinity,
       padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
-      color: const Color(0xFFFEF2F2),
+      color: const Color(0xFFFBE9E7),
       child: Row(children: [
-        const Icon(Icons.error_outline, size: 18, color: Color(0xFFB91C1C)),
+        const Icon(Icons.error_outline, size: 18, color: Color(0xFF721B18)),
         const SizedBox(width: 10),
         Expanded(
           child: Text(
             message,
-            style: Hifi.ui(size: 13, color: const Color(0xFFB91C1C)),
+            style: Hifi.ui(size: 13, color: const Color(0xFF721B18)),
           ),
         ),
       ]),
@@ -1143,7 +1143,7 @@ class _FirstRunSetupState extends ConsumerState<_FirstRunSetup> {
                 style: const TextStyle(fontFamily: 'Inter', fontSize: 24, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
               const SizedBox(height: 6),
               Text(l.pinFirstRunSubtitle,
-                style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF74777D))),
+                style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF837B6D))),
               const SizedBox(height: 32),
 
               TextField(
@@ -1183,7 +1183,7 @@ class _FirstRunSetupState extends ConsumerState<_FirstRunSetup> {
                       child: Container(
                         padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
                         decoration: BoxDecoration(
-                          color: const Color(0xFFFFDAD6),
+                          color: const Color(0xFFFBE9E7),
                           borderRadius: BorderRadius.circular(10),
                         ),
                         child: Text(error, style: const TextStyle(fontFamily: 'Inter', color: AppTheme.error, fontSize: 13)),

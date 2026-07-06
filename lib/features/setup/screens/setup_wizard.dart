@@ -147,7 +147,7 @@ class _SetupWizardState extends State<SetupWizard> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: const Color(0xFFEFF4FF),
+      backgroundColor: const Color(0xFFFAF7F0),
       body: SafeArea(
         child: Center(
           child: ConstrainedBox(
@@ -194,7 +194,7 @@ class _SetupWizardState extends State<SetupWizard> {
                         height: 8,
                         margin: const EdgeInsets.symmetric(horizontal: 3),
                         decoration: BoxDecoration(
-                          color: i <= _step ? AppTheme.primary : const Color(0xFFD1D5DB),
+                          color: i <= _step ? AppTheme.primary : const Color(0xFFC8BFAC),
                           borderRadius: BorderRadius.circular(4),
                         ),
                       )),
@@ -203,7 +203,7 @@ class _SetupWizardState extends State<SetupWizard> {
                     // Step label
                     Text(
                       _stepLabel(),
-                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF9CA3AF)),
+                      style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFFA59C8B)),
                     ),
                     const SizedBox(height: 24),
 
@@ -286,7 +286,7 @@ class _SetupWizardState extends State<SetupWizard> {
       const SizedBox(height: 6),
       Text(
         _t('Этот аккаунт будет иметь полный доступ', 'Бұл аккаунтта толық рұқсат болады'),
-        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF837B6D)),
       ),
       const SizedBox(height: 20),
       TextField(
@@ -349,7 +349,7 @@ class _SetupWizardState extends State<SetupWizard> {
           'Эти данные будут печататься на чеках',
           'Бұл деректер чектерде басылады',
         ),
-        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF837B6D)),
       ),
       const SizedBox(height: 20),
       TextField(
@@ -421,7 +421,7 @@ class _SetupWizardState extends State<SetupWizard> {
           'Настройте подключённое оборудование',
           'Қосылған жабдықты баптаңыз',
         ),
-        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, color: Color(0xFF837B6D)),
       ),
       const SizedBox(height: 20),
 
@@ -503,7 +503,7 @@ class _SetupWizardState extends State<SetupWizard> {
 
   Widget _buildInitialDataStep() {
     return Column(children: [
-      const Icon(Icons.check_circle_rounded, size: 56, color: Color(0xFF4EDEA3)),
+      const Icon(Icons.check_circle_rounded, size: 56, color: Color(0xFF5AB880)),
       const SizedBox(height: 12),
       Text(
         _t('Почти готово!', 'Дерлік дайын!'),
@@ -512,7 +512,7 @@ class _SetupWizardState extends State<SetupWizard> {
       const SizedBox(height: 6),
       Text(
         _t('Выберите, как наполнить каталог товаров', 'Тауар каталогін қалай толтыруды таңдаңыз'),
-        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF74777D)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, color: Color(0xFF837B6D)),
       ),
       const SizedBox(height: 24),
 
@@ -527,12 +527,12 @@ class _SetupWizardState extends State<SetupWizard> {
         trailing: Container(
           padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
           decoration: BoxDecoration(
-            color: const Color(0xFFFFF3CD),
+            color: const Color(0xFFFEF6E0),
             borderRadius: BorderRadius.circular(8),
           ),
           child: Text(
             _t('Скоро', 'Жақында'),
-            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF856404)),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, fontWeight: FontWeight.w600, color: Color(0xFF6E450F)),
           ),
         ),
       ),
@@ -588,7 +588,7 @@ class _SetupWizardState extends State<SetupWizard> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
         decoration: BoxDecoration(
-          color: const Color(0xFFFFDAD6),
+          color: const Color(0xFFFBE9E7),
           borderRadius: BorderRadius.circular(10),
         ),
         child: Row(
@@ -655,7 +655,7 @@ class _SetupWizardState extends State<SetupWizard> {
           const SizedBox(height: 8),
           Text(
             skipHint,
-            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF9CA3AF)),
+            style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFFA59C8B)),
             textAlign: TextAlign.center,
           ),
         ],
@@ -689,17 +689,17 @@ class _LanguageOption extends StatelessWidget {
         duration: const Duration(milliseconds: 180),
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(
-          color: selected ? const Color(0xFFE6EEFF) : Colors.white,
+          color: selected ? const Color(0xFFFAF7F0) : Colors.white,
           borderRadius: BorderRadius.circular(14),
           border: Border.all(
-            color: selected ? AppTheme.primary : const Color(0xFFE5E7EB),
+            color: selected ? AppTheme.primary : const Color(0xFFE5DCCB),
             width: selected ? 2 : 1,
           ),
         ),
         child: Row(children: [
           Icon(
             selected ? Icons.radio_button_checked : Icons.radio_button_unchecked,
-            color: selected ? AppTheme.primary : const Color(0xFF9CA3AF),
+            color: selected ? AppTheme.primary : const Color(0xFFA59C8B),
             size: 22,
           ),
           const SizedBox(width: 14),
@@ -710,10 +710,10 @@ class _LanguageOption extends StatelessWidget {
                 style: TextStyle(fontFamily: 'Inter', 
                   fontSize: 15,
                   fontWeight: FontWeight.w600,
-                  color: selected ? AppTheme.primary : const Color(0xFF374151),
+                  color: selected ? AppTheme.primary : const Color(0xFF4A453C),
                 ),
               ),
-              Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D))),
+              Text(subtitle, style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF837B6D))),
             ]),
           ),
         ]),
@@ -732,7 +732,7 @@ class _SectionLabel extends StatelessWidget {
       alignment: Alignment.centerLeft,
       child: Text(
         label,
-        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF374151)),
+        style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600, color: Color(0xFF4A453C)),
       ),
     );
   }
@@ -760,23 +760,23 @@ class _HardwareChip extends StatelessWidget {
           duration: const Duration(milliseconds: 160),
           padding: const EdgeInsets.symmetric(vertical: 14),
           decoration: BoxDecoration(
-            color: selected ? const Color(0xFFE6EEFF) : const Color(0xFFF9FAFB),
+            color: selected ? const Color(0xFFFAF7F0) : const Color(0xFFFAF7F0),
             borderRadius: BorderRadius.circular(12),
             border: Border.all(
-              color: selected ? AppTheme.primary : const Color(0xFFE5E7EB),
+              color: selected ? AppTheme.primary : const Color(0xFFE5DCCB),
               width: selected ? 2 : 1,
             ),
           ),
           child: Column(
             children: [
-              Icon(icon, size: 22, color: selected ? AppTheme.primary : const Color(0xFF6B7280)),
+              Icon(icon, size: 22, color: selected ? AppTheme.primary : const Color(0xFF837B6D)),
               const SizedBox(height: 6),
               Text(
                 label,
                 style: TextStyle(fontFamily: 'Inter', 
                   fontSize: 13,
                   fontWeight: selected ? FontWeight.w600 : FontWeight.w500,
-                  color: selected ? AppTheme.primary : const Color(0xFF374151),
+                  color: selected ? AppTheme.primary : const Color(0xFF4A453C),
                 ),
               ),
             ],
@@ -805,14 +805,14 @@ class _ToggleTile extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 10),
       decoration: BoxDecoration(
-        color: value ? const Color(0xFFE6EEFF) : const Color(0xFFF9FAFB),
+        color: value ? const Color(0xFFFAF7F0) : const Color(0xFFFAF7F0),
         borderRadius: BorderRadius.circular(12),
         border: Border.all(
-          color: value ? AppTheme.primary : const Color(0xFFE5E7EB),
+          color: value ? AppTheme.primary : const Color(0xFFE5DCCB),
         ),
       ),
       child: Row(children: [
-        Icon(icon, size: 22, color: value ? AppTheme.primary : const Color(0xFF6B7280)),
+        Icon(icon, size: 22, color: value ? AppTheme.primary : const Color(0xFF837B6D)),
         const SizedBox(width: 12),
         Expanded(
           child: Text(
@@ -820,7 +820,7 @@ class _ToggleTile extends StatelessWidget {
             style: TextStyle(fontFamily: 'Inter', 
               fontSize: 13,
               fontWeight: FontWeight.w500,
-              color: value ? AppTheme.primary : const Color(0xFF374151),
+              color: value ? AppTheme.primary : const Color(0xFF4A453C),
             ),
           ),
         ),
@@ -859,9 +859,9 @@ class _DataOptionCard extends StatelessWidget {
     return Container(
       padding: const EdgeInsets.all(16),
       decoration: BoxDecoration(
-        color: const Color(0xFFF9FAFB),
+        color: const Color(0xFFFAF7F0),
         borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: const Color(0xFFE5E7EB)),
+        border: Border.all(color: const Color(0xFFE5DCCB)),
       ),
       child: Row(
         crossAxisAlignment: CrossAxisAlignment.start,
@@ -870,7 +870,7 @@ class _DataOptionCard extends StatelessWidget {
             width: 40,
             height: 40,
             decoration: BoxDecoration(
-              color: const Color(0xFFE6EEFF),
+              color: const Color(0xFFFAF7F0),
               borderRadius: BorderRadius.circular(10),
             ),
             child: Icon(icon, size: 20, color: AppTheme.primary),
@@ -885,7 +885,7 @@ class _DataOptionCard extends StatelessWidget {
                     Expanded(
                       child: Text(
                         title,
-                        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF1F2937)),
+                        style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600, color: Color(0xFF322E28)),
                       ),
                     ),
                     ?trailing,
@@ -894,7 +894,7 @@ class _DataOptionCard extends StatelessWidget {
                 const SizedBox(height: 4),
                 Text(
                   subtitle,
-                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF74777D)),
+                  style: const TextStyle(fontFamily: 'Inter', fontSize: 12, color: Color(0xFF837B6D)),
                 ),
                 if (actionLabel != null) ...[
                   const SizedBox(height: 10),

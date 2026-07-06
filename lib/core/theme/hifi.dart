@@ -11,30 +11,30 @@ class Hifi {
   Hifi._();
 
   // Chrome + surfaces
-  static const Color chrome = Color(0xFF1A3A6B);
-  static const Color chromeOnline = Color(0xFF87F7C3);
-  static const Color chromeOffline = Color(0xFFFFCDD2);
-  static const Color canvas = Color(0xFFEEF1F4);
+  static const Color chrome = Color(0xFF322E28);
+  static const Color chromeOnline = Color(0xFF8FD2A8);
+  static const Color chromeOffline = Color(0xFFFBE9E7);
+  static const Color canvas = Color(0xFFF3EDE0);
   static const Color paneBg = Colors.white;
-  static const Color infoStrip = Color(0xFFF4F6F9);
-  static const Color tableHead = Color(0xFFF6F8FA);
+  static const Color infoStrip = Color(0xFFF3EDE0);
+  static const Color tableHead = Color(0xFFFAF7F0);
 
   // Borders + dividers
-  static const Color border = Color(0xFFD0D7DE);
-  static const Color divider = Color(0xFFE6E8EB);
+  static const Color border = Color(0xFFC8BFAC);
+  static const Color divider = Color(0xFFE5DCCB);
 
   // Action tile palette
-  static const Color tileDefault = Color(0xFFE3F2FF);
-  static const Color tileGreen = Color(0xFFC8F7D7);
-  static const Color tileYellow = Color(0xFFFFE9A8);
-  static const Color tileRed = Color(0xFFFFCDD2);
-  static const Color tileRedFg = Color(0xFFB71C1C);
-  static const Color tilePay = Color(0xFF2E7D32);
+  static const Color tileDefault = Color(0xFFFAF7F0);
+  static const Color tileGreen = Color(0xFFC4EAD0);
+  static const Color tileYellow = Color(0xFFFDE8B0);
+  static const Color tileRed = Color(0xFFFBE9E7);
+  static const Color tileRedFg = Color(0xFF721B18);
+  static const Color tilePay = Color(0xFF226E47);
 
   // Status colors
-  static const Color success = Color(0xFF006C49);
-  static const Color warn = Color(0xFF9C5700);
-  static const Color danger = Color(0xFFB91C1C);
+  static const Color success = Color(0xFF2C8A5A);
+  static const Color warn = Color(0xFF905C13);
+  static const Color danger = Color(0xFF721B18);
 
   // Typography
   static TextStyle mono({double size = 13, FontWeight weight = FontWeight.w500, Color? color}) =>
@@ -271,7 +271,7 @@ class ActionTile extends StatelessWidget {
     final fg = switch (variant) {
       HifiTileVariant.red => Hifi.tileRedFg,
       HifiTileVariant.pay => Colors.white,
-      _ => const Color(0xFF1B1B21),
+      _ => const Color(0xFF1D1A16),
     };
     final disabled = onTap == null;
     final effective = disabled ? bg.withValues(alpha: 0.55) : bg;
@@ -414,7 +414,7 @@ class LastAddedStrip extends StatelessWidget {
           child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
             Text(title, style: Hifi.ui(size: 13, weight: FontWeight.w600, color: Hifi.chrome), maxLines: 1, overflow: TextOverflow.ellipsis),
             const SizedBox(height: 2),
-            Text(subtitle, style: Hifi.mono(size: 10, color: const Color(0xFF666666)), maxLines: 1, overflow: TextOverflow.ellipsis),
+            Text(subtitle, style: Hifi.mono(size: 10, color: const Color(0xFF837B6D)), maxLines: 1, overflow: TextOverflow.ellipsis),
           ]),
         ),
         if (!empty)
@@ -660,11 +660,11 @@ class HifiSectionHeader extends StatelessWidget {
           Text(title, style: Hifi.ui(size: 14, weight: FontWeight.w600, color: Hifi.chrome)),
           if (subtitle != null) ...[
             const SizedBox(height: 2),
-            Text(subtitle!, style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+            Text(subtitle!, style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
           ],
         ])),
         if (trailing != null)
-          Text(trailing!, style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+          Text(trailing!, style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
       ]),
     );
   }
@@ -713,7 +713,7 @@ class HifiTable extends StatelessWidget {
                   align: c.align,
                   child: Text(
                     c.label.toUpperCase(),
-                    style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555))
+                    style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52))
                         .copyWith(letterSpacing: 0.3),
                   ),
                 ),
@@ -815,8 +815,8 @@ class HifiTotals extends StatelessWidget {
   Widget _row(String label, String value) => Padding(
         padding: const EdgeInsets.symmetric(vertical: 1),
         child: Row(mainAxisSize: MainAxisSize.min, children: [
-          Text('$label: ', style: Hifi.ui(size: 13, color: const Color(0xFF666666))),
-          Text(value, style: Hifi.mono(size: 13, color: const Color(0xFF666666))),
+          Text('$label: ', style: Hifi.ui(size: 13, color: const Color(0xFF837B6D))),
+          Text(value, style: Hifi.mono(size: 13, color: const Color(0xFF837B6D))),
         ]),
       );
 }
@@ -856,7 +856,7 @@ class HifiSearchField extends StatelessWidget {
         border: Border.all(color: Hifi.border),
       ),
       child: Row(children: [
-        leading ?? const Icon(Icons.search, size: 18, color: Color(0xFF666666)),
+        leading ?? const Icon(Icons.search, size: 18, color: Color(0xFF837B6D)),
         const SizedBox(width: 8),
         Expanded(
           child: TextField(
@@ -871,7 +871,7 @@ class HifiSearchField extends StatelessWidget {
               contentPadding: EdgeInsets.zero,
               border: InputBorder.none,
               hintText: hint,
-              hintStyle: Hifi.ui(size: 13, color: const Color(0xFF888888)),
+              hintStyle: Hifi.ui(size: 13, color: const Color(0xFFA59C8B)),
             ),
           ),
         ),

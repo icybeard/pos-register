@@ -1,7 +1,10 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../services/api_client.dart';
+import '../../auth/controllers/auth_controller.dart';
+import '../../auth/screens/activation_screen.dart';
 
 class SettingsScreen extends StatefulWidget {
   final ApiClient api;
@@ -107,6 +110,49 @@ class _SettingsScreenState extends State<SettingsScreen> {
             padding: const EdgeInsets.fromLTRB(24, 20, 24, 32),
             sliver: SliverList(
               delegate: SliverChildListDelegate([
+                // Платформа — standalone vs linked (spec 03 R3). Wrapped in a
+                // Consumer because SettingsScreen itself predates Riverpod.
+                _SectionLabel(l.platformSectionTitle),
+                const SizedBox(height: 10),
+                Consumer(builder: (context, ref, _) {
+                  // Watch so the card flips after linking succeeds.
+                  ref.watch(authControllerProvider);
+                  final notifier = ref.read(authControllerProvider.notifier);
+                  final standalone = notifier.isStandalone;
+                  final ws = notifier.activeWorkstation;
+                  return _SettingsCard(children: [
+                    _SettingsTile(
+                      icon: standalone
+                          ? Icons.cloud_off_rounded
+                          : Icons.cloud_done_rounded,
+                      iconColor: standalone ? pos.warningFg : pos.successFg,
+                      iconBg: standalone ? pos.warningBg : pos.successBg,
+                      title: standalone
+                          ? l.platformStandaloneTitle
+                          : l.platformLinkedTitle,
+                      subtitle: standalone
+                          ? l.platformStandaloneSubtitle
+                          : (ws != null && ws.storeName.isNotEmpty
+                              ? '${l.platformStorePrefix}: ${ws.storeName}'
+                              : l.platformLinkedSyncing),
+                      trailing: standalone
+                          ? const Icon(Icons.chevron_right_rounded)
+                          : null,
+                      onTap: standalone
+                          ? () {
+                              Navigator.of(context).push(
+                                MaterialPageRoute<void>(
+                                  builder: (_) => const ActivationScreen(
+                                      allowSkip: false),
+                                ),
+                              );
+                            }
+                          : null,
+                    ),
+                  ]);
+                }),
+
+                const SizedBox(height: 28),
                 _SectionLabel(l.settingsActions),
                 const SizedBox(height: 10),
                 _SettingsCard(children: [

@@ -120,7 +120,7 @@ class _SyncStatusSheetState extends State<SyncStatusSheet> {
               const SizedBox(height: 14),
               _StatusRow(
                 icon: Icons.access_time,
-                iconColor: const Color(0xFF78909C),
+                iconColor: const Color(0xFF837B6D),
                 title: 'Обновлено',
                 body: _updatedAgo(_snap!.checkedAt),
               ),
@@ -147,7 +147,7 @@ class _SyncStatusSheetState extends State<SyncStatusSheet> {
           width: 40,
           height: 4,
           decoration: BoxDecoration(
-            color: const Color(0xFFCCCCCC),
+            color: const Color(0xFFC8BFAC),
             borderRadius: BorderRadius.circular(2),
           ),
         ),
@@ -173,11 +173,11 @@ class _SyncStatusSheetState extends State<SyncStatusSheet> {
       case StockFreshness.fresh:
         return Hifi.success;
       case StockFreshness.stale:
-        return const Color(0xFFE67E00);
+        return const Color(0xFFB6781A);
       case StockFreshness.outdated:
         return Hifi.chromeOffline;
       case StockFreshness.unknown:
-        return const Color(0xFF78909C);
+        return const Color(0xFF837B6D);
     }
   }
 
@@ -192,7 +192,7 @@ class _SyncStatusSheetState extends State<SyncStatusSheet> {
   Color _outboxColor(int pending, int failed) {
     if (failed > 0) return Hifi.chromeOffline;
     if (pending > 10) return Hifi.chromeOffline;
-    if (pending > 0) return const Color(0xFFE67E00);
+    if (pending > 0) return const Color(0xFFB6781A);
     return Hifi.success;
   }
 
@@ -240,7 +240,7 @@ class _StatusRow extends StatelessWidget {
         child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
           Text(
             title,
-            style: Hifi.ui(size: 12, weight: FontWeight.w600, color: const Color(0xFF666666)),
+            style: Hifi.ui(size: 12, weight: FontWeight.w600, color: const Color(0xFF837B6D)),
           ),
           const SizedBox(height: 2),
           Text(

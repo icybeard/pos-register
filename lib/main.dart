@@ -23,6 +23,7 @@ import 'core/constants/app_constants.dart';
 import 'core/l10n/app_localizations.dart';
 import 'core/theme/app_theme.dart';
 import 'core/theme/hifi.dart';
+import 'core/widgets/kerege_icon.dart';
 import 'core/widgets/sync_status_chip.dart';
 import 'core/feature_flags.dart';
 import 'data/database.dart';
@@ -33,7 +34,9 @@ import 'services/auth/auth_token_store.dart';
 import 'services/auth/database_key_store.dart';
 import 'services/auth/device_fingerprint.dart';
 import 'services/auth/device_id_store.dart';
+import 'services/auth/local_auth_service.dart';
 import 'services/auth/lockout_store.dart';
+import 'services/auth/standalone_store.dart';
 import 'services/auth/workstation_store.dart';
 import 'services/locale/locale_store.dart';
 import 'services/auth/bcrypt_pin_verifier.dart';
@@ -49,6 +52,7 @@ import 'features/auth/controllers/auth_controller.dart';
 import 'features/auth/screens/owner_login_screen.dart';
 import 'features/auth/screens/activation_screen.dart';
 import 'features/auth/screens/pin_screen.dart';
+import 'features/setup/screens/standalone_setup_screen.dart';
 import 'features/sales/controllers/sales_controller.dart';
 import 'features/sales/screens/pos_screen.dart';
 import 'features/products/screens/products_screen.dart';
@@ -198,7 +202,7 @@ class _FatalErrorScreen extends StatelessWidget {
     return Directionality(
       textDirection: TextDirection.ltr,
       child: Container(
-        color: const Color(0xFF111827),
+        color: const Color(0xFF1D1A16),
         alignment: Alignment.center,
         padding: const EdgeInsets.all(24),
         child: const Column(
@@ -215,7 +219,7 @@ class _FatalErrorScreen extends StatelessWidget {
               'Қате орын алды. Қолданбаны қайта іске қосыңыз. '
               'Қайталанса — қолдау қызметіне хабарласыңыз.',
               textAlign: TextAlign.center,
-              style: TextStyle(color: Color(0xFFC4C6CD), fontSize: 14),
+              style: TextStyle(color: Color(0xFFC8BFAC), fontSize: 14),
             ),
           ],
         ),
@@ -242,6 +246,8 @@ class _PosAppState extends State<PosApp> {
   late final WorkstationStore _workstationStore;
   late final DeviceIdStore _deviceIdStore;
   late final LockoutStore _lockoutStore;
+  late final StandaloneStore _standaloneStore;
+  late final LocalAuthService _localAuthService;
   late final LocaleStore _localeStore;
   late final SyncStatusService _syncStatusService;
 
@@ -283,6 +289,7 @@ class _PosAppState extends State<PosApp> {
     _workstationStore = WorkstationStore();
     _deviceIdStore = DeviceIdStore();
     _lockoutStore = LockoutStore();
+    _standaloneStore = StandaloneStore();
     _localeStore = LocaleStore();
     // Fire-and-forget: secure-storage round-trip is fast (≪16ms) and the
     // first frame ships with the 'ru' default. If the operator previously
@@ -317,6 +324,7 @@ class _PosAppState extends State<PosApp> {
     // mints a fresh 256-bit key on first boot and keeps it in the
     // platform secure store (see DatabaseKeyStore).
     _db = AppDatabase(keyStore: DatabaseKeyStore());
+    _localAuthService = LocalAuthService(_db);
     _syncStatusService = SyncStatusService(_db, _apiClient);
     _salesGuards = _buildSalesGuards();
     _loadTenantId();
@@ -441,6 +449,8 @@ class _PosAppState extends State<PosApp> {
           authDeviceTokenStoreProvider.overrideWithValue(_deviceTokenStore),
           authWorkstationStoreProvider.overrideWithValue(_workstationStore),
           authDeviceIdStoreProvider.overrideWithValue(_deviceIdStore),
+          authStandaloneStoreProvider.overrideWithValue(_standaloneStore),
+          authLocalAuthServiceProvider.overrideWithValue(_localAuthService),
           authLockoutStoreProvider.overrideWithValue(_lockoutStore),
           // Sales controller deps
           salesApiClientProvider.overrideWithValue(_apiClient),
@@ -546,6 +556,11 @@ class _PosAppState extends State<PosApp> {
               }
               if (state is RegisterNotActivated) {
                 return const ActivationScreen();
+              }
+              if (state is StandaloneSetupRequired) {
+                // «Пропустить — работать автономно» chosen on the connect
+                // screen; local owner not created yet (spec 03 R1).
+                return const StandaloneSetupScreen();
               }
               if (state is AuthInitial) {
                 // PinScreen also owns the AuthInitial state — it's what
@@ -1070,14 +1085,7 @@ class _MainShellSidebar extends StatelessWidget {
           Padding(
             padding: const EdgeInsets.fromLTRB(20, 28, 20, 16),
             child: Row(children: [
-              Container(
-                width: 40, height: 40,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.12),
-                  borderRadius: BorderRadius.circular(10),
-                ),
-                child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
-              ),
+              const KeregeIcon(size: 40),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
                 Text('POS System',
@@ -1132,8 +1140,8 @@ class _MainShellSidebar extends StatelessWidget {
                   decoration: BoxDecoration(
                     shape: BoxShape.circle,
                     color: currentShiftId != null
-                        ? const Color(0xFF4EDEA3)
-                        : const Color(0xFF94A3B8),
+                        ? const Color(0xFF5AB880)
+                        : const Color(0xFFA59C8B),
                   ),
                 ),
                 const SizedBox(width: 10),
@@ -1202,7 +1210,7 @@ class _MainShellSidebar extends StatelessWidget {
                   width: 36, height: 36,
                   decoration: BoxDecoration(
                     gradient: const LinearGradient(
-                        colors: [Color(0xFF3B82F6), Color(0xFF2563EB)]),
+                        colors: [Color(0xFFBF5F30), Color(0xFFA44D24)]),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Center(
@@ -1367,7 +1375,7 @@ class _SidebarNavItem extends StatelessWidget {
               Container(
                 padding: const EdgeInsets.symmetric(horizontal: 6, vertical: 2),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444),
+                  color: const Color(0xFFB8332E),
                   borderRadius: BorderRadius.circular(10),
                 ),
                 child: Text(
@@ -1458,7 +1466,7 @@ class _ChromeNotificationBell extends StatelessWidget {
                 padding: const EdgeInsets.symmetric(horizontal: 4, vertical: 1),
                 constraints: const BoxConstraints(minWidth: 14),
                 decoration: BoxDecoration(
-                  color: const Color(0xFFEF4444),
+                  color: const Color(0xFFB8332E),
                   borderRadius: BorderRadius.circular(999),
                 ),
                 child: Text(

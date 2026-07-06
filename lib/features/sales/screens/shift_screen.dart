@@ -138,7 +138,7 @@ class _ShiftScreenState extends State<ShiftScreen> {
           Text('Смена №$_shiftNumber уже открыта', style: Hifi.ui(size: 20, weight: FontWeight.w700, color: Hifi.chrome)),
           const SizedBox(height: 8),
           Text('Работайте на кассе, или закройте смену с Z-отчётом.',
-              style: Hifi.ui(size: 13, color: const Color(0xFF666666))),
+              style: Hifi.ui(size: 13, color: const Color(0xFF837B6D))),
           const SizedBox(height: 24),
           FilledButton.icon(
             onPressed: () => Navigator.of(context).pushReplacementNamed('/pos'),
@@ -175,9 +175,9 @@ class _ShiftScreenState extends State<ShiftScreen> {
               border: Border(bottom: BorderSide(color: Hifi.border)),
             ),
             child: Row(children: [
-              SizedBox(width: 120, child: Text('НОМИНАЛ', style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)))),
-              Expanded(child: Center(child: Text('КОЛИЧЕСТВО', style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555))))),
-              SizedBox(width: 120, child: Text('СУММА', textAlign: TextAlign.right, style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)))),
+              SizedBox(width: 120, child: Text('НОМИНАЛ', style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52)))),
+              Expanded(child: Center(child: Text('КОЛИЧЕСТВО', style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52))))),
+              SizedBox(width: 120, child: Text('СУММА', textAlign: TextAlign.right, style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52)))),
             ]),
           ),
           Expanded(
@@ -226,8 +226,8 @@ class _ShiftScreenState extends State<ShiftScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Text('Ожидаемо: ', style: Hifi.ui(size: 13, color: const Color(0xFF666666))),
-          Text(Money.formatTenge(_expected), style: Hifi.mono(size: 13, color: const Color(0xFF666666))),
+          Text('Ожидаемо: ', style: Hifi.ui(size: 13, color: const Color(0xFF837B6D))),
+          Text(Money.formatTenge(_expected), style: Hifi.mono(size: 13, color: const Color(0xFF837B6D))),
         ]),
         const SizedBox(height: 2),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [

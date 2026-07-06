@@ -1485,4 +1485,72 @@ class AppLocalizationsKk extends AppLocalizations {
 
   @override
   String get posScanPromptHint => 'соңғы қосылған тауар осында пайда болады';
+
+  @override
+  String get platformSectionTitle => 'Платформа';
+
+  @override
+  String get platformStandaloneTitle => 'Дербес режим';
+
+  @override
+  String get platformStandaloneSubtitle =>
+      'Барлық деректер — осы құрылғыда. Кассаны платформаға қосу үшін басыңыз (синхрондау, қойма, талдамалық).';
+
+  @override
+  String get platformLinkedTitle => 'Платформаға қосылған';
+
+  @override
+  String get platformLinkedSyncing => 'Бұлтпен синхрондау белсенді';
+
+  @override
+  String get platformStorePrefix => 'Дүкен';
+
+  @override
+  String get connectSkip => 'Өткізіп жіберу — дербес жұмыс істеу';
+
+  @override
+  String get connectSkipHint =>
+      'Касса бұлтсыз жұмыс істейді: барлық деректер — осы құрылғыда. Платформаға кейінірек параметрлерде қосуға болады.';
+
+  @override
+  String get standaloneTitle => 'Дербес касса';
+
+  @override
+  String get standaloneSubtitle =>
+      'Барлық деректер осы құрылғыда сақталады. Иесін жасаңыз — ол касса мен кассирлерді басқарады.';
+
+  @override
+  String get standaloneOwnerName => 'Атыңыз';
+
+  @override
+  String get standaloneStoreName => 'Дүкен атауы (міндетті емес)';
+
+  @override
+  String get standalonePin => 'PIN (4 сан)';
+
+  @override
+  String get standalonePinConfirm => 'PIN-ді қайталаңыз';
+
+  @override
+  String get standalonePinMismatch => 'PIN-кодтар сәйкес келмейді';
+
+  @override
+  String get standaloneSaveError =>
+      'Деректерді сақтау мүмкін болмады — қайта көріңіз';
+
+  @override
+  String get standaloneDbError =>
+      'Жергілікті дерекқор қолжетімсіз — кассаны қайта қосыңыз';
+
+  @override
+  String get standaloneStart => 'Жұмысты бастау';
+
+  @override
+  String get standaloneBackToConnect => 'Артқа — платформаға қосу';
+
+  @override
+  String get syncStandalone => 'Дербес';
+
+  @override
+  String get standaloneStoreDefault => 'Менің дүкенім';
 }

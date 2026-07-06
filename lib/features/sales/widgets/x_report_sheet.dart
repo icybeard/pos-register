@@ -92,7 +92,7 @@ class _Body extends StatelessWidget {
         ]),
         const SizedBox(height: 4),
         Text('Кассир: $cashierName · смена не закрывается',
-            style: Hifi.ui(size: 12, color: const Color(0xFF666666))),
+            style: Hifi.ui(size: 12, color: const Color(0xFF837B6D))),
         const SizedBox(height: 16),
         GridView.count(
           crossAxisCount: 3,
@@ -143,7 +143,7 @@ class _Body extends StatelessWidget {
         borderRadius: BorderRadius.circular(6),
       ),
       child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisAlignment: MainAxisAlignment.center, children: [
-        Text(label, style: Hifi.ui(size: 10, color: const Color(0xFF666666)).copyWith(letterSpacing: 0.5)),
+        Text(label, style: Hifi.ui(size: 10, color: const Color(0xFF837B6D)).copyWith(letterSpacing: 0.5)),
         const SizedBox(height: 2),
         Text(value, style: Hifi.mono(size: 14, weight: FontWeight.w700, color: color), maxLines: 1, overflow: TextOverflow.ellipsis),
       ]),
@@ -152,7 +152,7 @@ class _Body extends StatelessWidget {
 
   Widget _list(List<Map<String, dynamic>> receipts) {
     if (receipts.isEmpty) {
-      return Center(child: Text('Операций за смену ещё нет', style: Hifi.ui(size: 13, color: const Color(0xFF888888))));
+      return Center(child: Text('Операций за смену ещё нет', style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))));
     }
     return Container(
       decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
@@ -172,7 +172,7 @@ class _Body extends StatelessWidget {
               decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Hifi.divider))),
               child: Row(children: [
                 Expanded(child: Text('№$no · ${isRefund ? "Возврат" : "Продажа"}', style: Hifi.ui(size: 12))),
-                SizedBox(width: 100, child: Text(tender, style: Hifi.ui(size: 12, color: const Color(0xFF666666)))),
+                SizedBox(width: 100, child: Text(tender, style: Hifi.ui(size: 12, color: const Color(0xFF837B6D)))),
                 SizedBox(
                   width: 120,
                   child: Text(

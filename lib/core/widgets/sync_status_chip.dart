@@ -1,6 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter_riverpod/flutter_riverpod.dart';
 
+import '../../features/auth/controllers/auth_controller.dart';
 import '../../services/sync/sync_status_service.dart';
+import '../l10n/app_localizations.dart';
 import '../theme/hifi.dart';
 import 'sync_status_sheet.dart';
 
@@ -8,7 +11,12 @@ import 'sync_status_sheet.dart';
 /// dot + one-word label; tap opens `SyncStatusSheet` with the four-row
 /// detail view. Subscribes to `SyncStatusService.watch()` for live updates
 /// on the service's internal 15 s poll cadence.
-class SyncStatusChip extends StatelessWidget {
+///
+/// In standalone (автономный) mode there is no server, so the chip shows a
+/// neutral «Автономно» state instead of the health-derived tiers — otherwise
+/// a register that deliberately skipped linking would read as OFFLINE
+/// (spec 03 R4).
+class SyncStatusChip extends ConsumerWidget {
   const SyncStatusChip({
     super.key,
     required this.service,
@@ -17,7 +25,11 @@ class SyncStatusChip extends StatelessWidget {
   final SyncStatusService service;
 
   @override
-  Widget build(BuildContext context) {
+  Widget build(BuildContext context, WidgetRef ref) {
+    ref.watch(authControllerProvider); // rebuild when standalone → linked
+    if (ref.read(authControllerProvider.notifier).isStandalone) {
+      return _standalonePill(context);
+    }
     return StreamBuilder<SyncStatusSnapshot>(
       stream: service.watch(),
       builder: (context, snap) {
@@ -52,6 +64,32 @@ class SyncStatusChip extends StatelessWidget {
           ),
         );
       },
+    );
+  }
+
+  /// Neutral pill for standalone mode — no dot-tier, no tap-through to the
+  /// sync sheet (there is nothing to sync). Grey styling matches the "not
+  /// syncing" tier so it reads as calm, not error.
+  Widget _standalonePill(BuildContext context) {
+    final l = AppLocalizations.of(context)!;
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+      decoration: BoxDecoration(
+        color: const Color(0x38B0BEC5),
+        borderRadius: BorderRadius.circular(999),
+      ),
+      child: Row(mainAxisSize: MainAxisSize.min, children: [
+        const Icon(Icons.cloud_off_rounded, size: 11, color: Color(0xFF837B6D)),
+        const SizedBox(width: 4),
+        Text(
+          l.syncStandalone.toUpperCase(),
+          style: Hifi.ui(
+            size: 11,
+            weight: FontWeight.w600,
+            color: const Color(0xFF837B6D),
+          ).copyWith(letterSpacing: 0.3),
+        ),
+      ]),
     );
   }
 
@@ -99,12 +137,12 @@ class SyncStatusChip extends StatelessWidget {
       case SyncStatusTier.green:
         return Hifi.chromeOnline;
       case SyncStatusTier.amber:
-        return const Color(0xFFE67E00);
+        return const Color(0xFFB6781A);
       case SyncStatusTier.red:
         return Hifi.chromeOffline;
       case SyncStatusTier.grey:
       case null:
-        return const Color(0xFF78909C);
+        return const Color(0xFF837B6D);
     }
   }
 }

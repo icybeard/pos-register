@@ -435,13 +435,13 @@ class _ProductsScreenState extends State<ProductsScreen> with SingleTickerProvid
                 return Container(
                   padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 8),
                   decoration: BoxDecoration(
-                    color: margin > 0 ? const Color(0xFFD1FAE5) : const Color(0xFFFEF3C7),
+                    color: margin > 0 ? const Color(0xFFD1FAE5) : const Color(0xFFFEF6E0),
                     borderRadius: BorderRadius.circular(10),
                   ),
                   child: Row(mainAxisAlignment: MainAxisAlignment.spaceBetween, children: [
                     Text(l.productsMargin, style: const TextStyle(fontFamily: 'Inter', fontSize: 13, fontWeight: FontWeight.w600)),
                     Text('$margin%', style: TextStyle(fontFamily: 'Inter', fontSize: 15, fontWeight: FontWeight.w700,
-                      color: margin > 0 ? const Color(0xFF059669) : const Color(0xFFD97706))),
+                      color: margin > 0 ? const Color(0xFF226E47) : const Color(0xFFB6781A))),
                   ]),
                 );
               }),

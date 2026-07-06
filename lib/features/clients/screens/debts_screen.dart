@@ -159,7 +159,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
           ),
           Expanded(
             child: filtered.isEmpty
-                ? Center(child: Text('Нет должников', style: Hifi.ui(size: 13, color: const Color(0xFF888888))))
+                ? Center(child: Text('Нет должников', style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))))
                 : ListView.builder(
                     padding: EdgeInsets.zero,
                     itemCount: filtered.length,
@@ -176,7 +176,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
     final daysAgo = d.lastDate == null ? 0 : DateTime.now().difference(d.lastDate!).inDays;
     final accent = daysAgo > 14 ? Hifi.danger : daysAgo > 7 ? Hifi.warn : Hifi.chrome;
     return Material(
-      color: selected ? const Color(0xFFE3F2FF) : Colors.white,
+      color: selected ? const Color(0xFFFAF7F0) : Colors.white,
       child: InkWell(
         onTap: () => setState(() => _selectedId = d.id),
         child: Container(
@@ -194,8 +194,8 @@ class _DebtsScreenState extends State<DebtsScreen> {
             ]),
             const SizedBox(height: 2),
             Row(children: [
-              Expanded(child: Text(d.phone, style: Hifi.ui(size: 11, color: const Color(0xFF666666)))),
-              Text(daysAgo == 0 ? 'сегодня' : '$daysAgo' 'д', style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+              Expanded(child: Text(d.phone, style: Hifi.ui(size: 11, color: const Color(0xFF837B6D)))),
+              Text(daysAgo == 0 ? 'сегодня' : '$daysAgo' 'д', style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
             ]),
           ]),
         ),
@@ -206,7 +206,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
   Widget _detail() {
     final d = _selected;
     if (d == null) {
-      return Center(child: Text('Выберите клиента', style: Hifi.ui(size: 13, color: const Color(0xFF888888))));
+      return Center(child: Text('Выберите клиента', style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))));
     }
     final daysAgo = d.lastDate == null ? 0 : DateTime.now().difference(d.lastDate!).inDays;
     final amountColor = daysAgo > 14 ? Hifi.danger : Hifi.chrome;
@@ -234,11 +234,11 @@ class _DebtsScreenState extends State<DebtsScreen> {
             Text(d.name, style: Hifi.ui(size: 15, weight: FontWeight.w700, color: Hifi.chrome)),
             Text(
               '${d.phone} · последняя операция ${d.lastDate == null ? '—' : _date(d.lastDate!)}',
-              style: Hifi.ui(size: 11, color: const Color(0xFF666666)),
+              style: Hifi.ui(size: 11, color: const Color(0xFF837B6D)),
             ),
           ])),
           Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
-            Text('ДОЛГ', style: Hifi.ui(size: 10, color: const Color(0xFF666666))),
+            Text('ДОЛГ', style: Hifi.ui(size: 10, color: const Color(0xFF837B6D))),
             Text(Money.formatTenge(d.amount), style: Hifi.mono(size: 22, weight: FontWeight.w700, color: amountColor)),
           ]),
         ]),
@@ -258,7 +258,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
       return Container(
         decoration: BoxDecoration(border: Border.all(color: Hifi.border), borderRadius: BorderRadius.circular(4)),
         child: Center(
-          child: Text('Нет операций', style: Hifi.ui(size: 13, color: const Color(0xFF888888))),
+          child: Text('Нет операций', style: Hifi.ui(size: 13, color: const Color(0xFFA59C8B))),
         ),
       );
     }
@@ -291,7 +291,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
                   padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                   decoration: const BoxDecoration(border: Border(bottom: BorderSide(color: Hifi.divider))),
                   child: Row(children: [
-                    SizedBox(width: 90, child: Text(_date(e.when), style: Hifi.mono(size: 12, color: const Color(0xFF666666)))),
+                    SizedBox(width: 90, child: Text(_date(e.when), style: Hifi.mono(size: 12, color: const Color(0xFF837B6D)))),
                     Expanded(child: Text(e.label, style: Hifi.ui(size: 12))),
                     SizedBox(width: 80, child: Text(e.kind, textAlign: TextAlign.center, style: Hifi.ui(size: 12, weight: FontWeight.w600, color: typeColor))),
                     SizedBox(width: 110, child: Text(amtStr, textAlign: TextAlign.right, style: Hifi.mono(size: 12, weight: FontWeight.w600, color: amtColor))),
@@ -308,7 +308,7 @@ class _DebtsScreenState extends State<DebtsScreen> {
   Widget _th(String label, {TextAlign align = TextAlign.left}) => Text(
         label,
         textAlign: align,
-        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)).copyWith(letterSpacing: 0.3),
+        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52)).copyWith(letterSpacing: 0.3),
       );
 
   Widget _rightPanel() {

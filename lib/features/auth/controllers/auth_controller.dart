@@ -4,11 +4,14 @@ import 'dart:io' show Platform;
 import 'package:flutter/foundation.dart' show kIsWeb, listEquals, mapEquals;
 import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
+import 'package:uuid/uuid.dart';
 import '../../../services/api_client.dart';
 import '../../../services/auth/auth_token_store.dart';
 import '../../../services/auth/biometric_auth_service.dart';
 import '../../../services/auth/device_id_store.dart';
+import '../../../services/auth/local_auth_service.dart';
 import '../../../services/auth/lockout_store.dart';
+import '../../../services/auth/standalone_store.dart';
 import '../../../services/auth/workstation_store.dart';
 
 // === States ===
@@ -139,6 +142,25 @@ class RegisterNotActivated extends AuthState {
   int get hashCode => Object.hash(error, busy);
 }
 
+/// Owner chose «работать автономно» on the connect screen but the local
+/// owner account hasn't been created yet. Routes to StandaloneSetupScreen.
+class StandaloneSetupRequired extends AuthState {
+  final String? error;
+  final bool busy;
+  const StandaloneSetupRequired({this.error, this.busy = false});
+
+  @override
+  bool operator ==(Object other) {
+    if (identical(this, other)) return true;
+    return other is StandaloneSetupRequired &&
+        error == other.error &&
+        busy == other.busy;
+  }
+
+  @override
+  int get hashCode => Object.hash(error, busy);
+}
+
 /// Device is activated but no user is logged in. Shows the login chooser
 /// ("Cashier" vs "Admin"). Carries the workstation payload so downstream
 /// screens don't have to re-load it from secure storage on every rebuild.
@@ -185,11 +207,18 @@ class AuthController extends Notifier<AuthState> {
   late final DeviceIdStore _deviceIdStore;
   late final LockoutStore? _lockoutStore;
   late final BiometricAuthService _biometric;
+  late final StandaloneStore? _standalone;
+  late final LocalAuthService? _localAuth;
 
   /// Cached workstation info after activation — populated by hydrate /
   /// activation handlers so cashier-login has access to tenant_id without
   /// a secure-storage read on every keystroke.
   WorkstationInfo? _activeWorkstation;
+
+  /// Standalone-mode marker (spec 03 R1/R2). Mutually exclusive with
+  /// [_activeWorkstation]: linking adopts the real tenant and clears this.
+  StandaloneInfo? _standaloneInfo;
+  bool get isStandalone => _standaloneInfo != null && _activeWorkstation == null;
 
   /// Max failed attempts before lockout.
   static const int maxAttempts = 5;
@@ -236,6 +265,8 @@ class AuthController extends Notifier<AuthState> {
     _deviceIdStore = ref.read(authDeviceIdStoreProvider);
     _lockoutStore = ref.read(authLockoutStoreProvider);
     _biometric = ref.read(authBiometricServiceProvider);
+    _standalone = ref.read(authStandaloneStoreProvider);
+    _localAuth = ref.read(authLocalAuthServiceProvider);
 
     // Notifier disposal hook — replaces Bloc.close().
     ref.onDispose(() {
@@ -284,7 +315,66 @@ class AuthController extends Notifier<AuthState> {
       default:
         return status >= 500
             ? 'Ошибка сервера'
-            : 'Активация не удалась ($status)';
+            : 'Подключение не удалось ($status)';
+    }
+  }
+
+  // --- Standalone mode (spec 03 R1: skip linking, run fully local) ---------
+
+  /// «Пропустить — работать автономно» on the connect screen.
+  void skipToStandalone() {
+    if (_activeWorkstation != null) return; // linked devices can't "skip"
+    state = const StandaloneSetupRequired();
+  }
+
+  static const _uuid = Uuid();
+  String _newUuid() => _uuid.v4();
+
+  /// Back from the standalone wizard to the connect screen.
+  void cancelStandaloneSetup() {
+    if (_standaloneInfo != null) return; // setup already persisted — no way back
+    state = const RegisterNotActivated();
+  }
+
+  /// Creates the local owner + persists the standalone marker, then lands on
+  /// the PIN grid. Synthetic tenant/store UUIDs are re-stamped to the real
+  /// tenant if the register is linked later (see [activateRegister]).
+  Future<void> finishStandaloneSetup({
+    required String ownerName,
+    required String pin,
+    required String storeName,
+  }) async {
+    final local = _localAuth;
+    final store = _standalone;
+    if (local == null || store == null) {
+      state = const StandaloneSetupRequired(
+          error: 'Локальная база недоступна — перезапустите кассу');
+      return;
+    }
+    state = const StandaloneSetupRequired(busy: true);
+    try {
+      // Reuse a marker persisted by an earlier interrupted setup so local
+      // rows never split across two synthetic tenants.
+      final info = _standaloneInfo ??
+          await store.load() ??
+          StandaloneInfo(
+            tenantId: _newUuid(),
+            storeId: _newUuid(),
+            storeName: storeName.trim(),
+            createdAt: DateTime.now().toUtc(),
+          );
+      await store.save(info);
+      _standaloneInfo = info;
+      await local.createOwner(
+        tenantId: info.tenantId,
+        storeId: info.storeId,
+        name: ownerName.trim(),
+        pin: pin,
+      );
+      await checkFirstRun();
+    } on Object {
+      state = const StandaloneSetupRequired(
+          error: 'Не удалось сохранить данные — попробуйте ещё раз');
     }
   }
 
@@ -350,6 +440,27 @@ class AuthController extends Notifier<AuthState> {
       return;
     }
 
+    // Linking a register that ran standalone: adopt the real tenant — local
+    // rows are re-stamped from the synthetic id, the pre-link outbox is
+    // dropped (sync is from-link-forward, spec 03 R5), and the standalone
+    // marker is cleared so hydrate() takes the linked path from now on.
+    final standalone = _standaloneInfo ?? await _standalone?.load();
+    if (standalone != null) {
+      try {
+        await _localAuth?.adoptTenant(
+          fromTenantId: standalone.tenantId,
+          toTenantId: info.tenantId,
+        );
+        await _standalone?.clear();
+        _standaloneInfo = null;
+      } on Object {
+        state = const RegisterNotActivated(
+            error: 'Не удалось перенести локальные данные — '
+                'попробуйте подключить кассу ещё раз');
+        return;
+      }
+    }
+
     _activeWorkstation = info;
 
     String? persistWarning;
@@ -369,7 +480,7 @@ class AuthController extends Notifier<AuthState> {
         await session.useDeviceSession(deviceTokens);
       } on Object {
         persistWarning =
-            'Активация выполнена, но не сохранена на устройстве — '
+            'Касса подключена, но настройки не сохранены — '
             'не перезагружайте кассу до входа сотрудника.';
       }
     }
@@ -378,7 +489,7 @@ class AuthController extends Notifier<AuthState> {
       await store?.save(info);
     } on Object {
       persistWarning ??=
-          'Активация выполнена, но не сохранена на устройстве — '
+          'Касса подключена, но настройки не сохранены — '
           'не перезагружайте кассу до входа сотрудника.';
     }
 
@@ -390,7 +501,7 @@ class AuthController extends Notifier<AuthState> {
   Future<void> biometricLogin() async {
     final ws = _activeWorkstation;
     if (ws == null) {
-      state = const RegisterNotActivated(error: 'Сначала активируйте кассу');
+      state = const RegisterNotActivated(error: 'Сначала подключите кассу к платформе');
       return;
     }
 
@@ -461,7 +572,7 @@ class AuthController extends Notifier<AuthState> {
   Future<void> cashierLogin({required String login, required String pin}) async {
     final ws = _activeWorkstation;
     if (ws == null) {
-      state = const RegisterNotActivated(error: 'Сначала активируйте кассу');
+      state = const RegisterNotActivated(error: 'Сначала подключите кассу к платформе');
       return;
     }
     state = RegisterActivated(ws, busy: true);
@@ -529,6 +640,20 @@ class AuthController extends Notifier<AuthState> {
 
     final wsInfo = await _workstation?.load();
     if (wsInfo == null) {
+      // No workstation binding — standalone (автономный) register? (spec 03 R1)
+      final standalone = await _standalone?.load();
+      if (standalone != null) {
+        _standaloneInfo = standalone;
+        final hasOwner =
+            await _localAuth?.hasAnyUser(standalone.tenantId) ?? false;
+        if (!hasOwner) {
+          // Skip was chosen but setup never finished (killed mid-wizard).
+          state = const StandaloneSetupRequired();
+          return;
+        }
+        await checkFirstRun();
+        return;
+      }
       state = const RegisterNotActivated();
       return;
     }
@@ -658,6 +783,25 @@ class AuthController extends Notifier<AuthState> {
   // --- Event-equivalent methods -----------------------------------------
 
   Future<void> checkFirstRun() async {
+    // Standalone mode: the cashier grid comes from the local drift users
+    // table — no server involved (spec 03 R1).
+    if (isStandalone) {
+      final standalone = _standaloneInfo!;
+      final local = _localAuth;
+      if (local == null) {
+        state = const StandaloneSetupRequired(
+            error: 'Локальная база недоступна — перезапустите кассу');
+        return;
+      }
+      final cashiers = await local.listCashiers(standalone.tenantId);
+      if (cashiers.isEmpty) {
+        state = const StandaloneSetupRequired();
+        return;
+      }
+      state = AuthInitial(cashiers: cashiers, openShifts: _openShifts);
+      return;
+    }
+
     try {
       final response = await _api.listCashiers();
       final cashiers = response['cashiers'] as List?;
@@ -672,7 +816,7 @@ class AuthController extends Notifier<AuthState> {
       final ws = _activeWorkstation;
       if (ws == null) return;
       final msg = e.statusCode == 401
-          ? 'Сессия устройства недействительна. Активируйте кассу заново.'
+          ? 'Сессия устройства недействительна. Подключите кассу заново.'
           : e.statusCode >= 500
               ? 'Ошибка сервера — список кассиров недоступен'
               : 'Не удалось загрузить кассиров (${e.statusCode})';
@@ -757,11 +901,56 @@ class AuthController extends Notifier<AuthState> {
 
   Future<void> _attemptPinLogin(String pin, AuthInitial current) async {
     state = const AuthLoading();
+
+    // Standalone mode: verify against the local drift users table (bcrypt).
+    // Reuses the same failed-attempt counters + escalating lockout as the
+    // online path — offline is not a brute-force loophole.
+    if (isStandalone) {
+      final standalone = _standaloneInfo!;
+      final selectedName = current.selectedCashierName ??
+          ((current.cashiers.isNotEmpty)
+              ? (current.cashiers.first['Name'] as String? ?? '')
+              : '');
+      final row = await _localAuth?.verifyPinByName(
+        tenantId: standalone.tenantId,
+        name: selectedName,
+        pin: pin,
+      );
+      if (row != null) {
+        _totalFailedAttempts = 0;
+        _lockedUntil = null;
+        _lockoutTimer?.cancel();
+        _clearPersistedLockout();
+        state = AuthAuthenticated(
+          cashierId: row.id,
+          cashierName: row.name,
+          role: row.role,
+        );
+        return;
+      }
+      _totalFailedAttempts++;
+      _persistFailureCount();
+      if (_totalFailedAttempts > 0 && _totalFailedAttempts % maxAttempts == 0) {
+        _startLockout();
+      } else {
+        final remaining = maxAttempts - (_totalFailedAttempts % maxAttempts);
+        state = AuthInitial(
+          error: _attemptsErrorMessage(remaining),
+          cashiers: current.cashiers,
+          openShifts: _openShifts,
+          selectedCashierName: current.selectedCashierName,
+          failedAttempts: _totalFailedAttempts,
+          lockedUntil: _lockedUntil,
+        );
+      }
+      return;
+    }
+
     try {
       final tenantId = _activeWorkstation?.tenantId ?? _ownerTenantId;
       if (tenantId == null) {
         throw ApiException(
-            401, 'Касса не активирована. Используйте код активации.');
+            401, 'Касса не подключена к платформе. Используйте код подключения.');
       }
       final selectedLogin = current.selectedCashierName ?? '';
       final response = await _api.cashierLogin(
@@ -870,6 +1059,11 @@ class AuthController extends Notifier<AuthState> {
     final ws = _activeWorkstation;
     if (ws != null) {
       state = RegisterActivated(ws);
+    } else if (isStandalone) {
+      // Standalone register: back to the local cashier grid, never to the
+      // connect screen — the device stays autonomous after logout.
+      state = const AuthLoading();
+      unawaited(checkFirstRun());
     } else {
       state = const RegisterNotActivated();
     }
@@ -899,6 +1093,12 @@ final authLockoutStoreProvider = Provider<LockoutStore?>((ref) => null);
 
 final authBiometricServiceProvider =
     Provider<BiometricAuthService>((ref) => BiometricAuthService());
+
+/// Standalone-mode persistence (spec 03). Null in tests that don't care.
+final authStandaloneStoreProvider = Provider<StandaloneStore?>((ref) => null);
+
+/// Local (drift-backed) auth used while the register is standalone.
+final authLocalAuthServiceProvider = Provider<LocalAuthService?>((ref) => null);
 
 final authControllerProvider =
     NotifierProvider<AuthController, AuthState>(AuthController.new);

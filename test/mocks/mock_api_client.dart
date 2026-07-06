@@ -27,6 +27,7 @@ class MockApiClient extends ApiClient {
   Future<String> Function(String key)? onGetSetting;
   Future<void> Function(String key, String value)? onSetSetting;
   Future<Map<String, dynamic>> Function(String gtin)? onNktSearchByGTIN;
+  Future<Map<String, dynamic>> Function(String? parentId)? onListCategories;
 
   // --- New auth flow hooks (activation + owner + cashier login) ------------
 
@@ -172,5 +173,11 @@ class MockApiClient extends ApiClient {
   Future<Map<String, dynamic>> nktSearchByGTIN(String gtin) async {
     if (onNktSearchByGTIN != null) return onNktSearchByGTIN!(gtin);
     throw UnimplementedError('MockApiClient.nktSearchByGTIN not configured');
+  }
+
+  @override
+  Future<Map<String, dynamic>> listCategories({String? parentId}) async {
+    if (onListCategories != null) return onListCategories!(parentId);
+    throw UnimplementedError('MockApiClient.listCategories not configured');
   }
 }

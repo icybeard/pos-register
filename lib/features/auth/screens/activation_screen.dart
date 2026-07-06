@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:flutter_riverpod/flutter_riverpod.dart';
+import '../../../core/l10n/app_localizations.dart';
 import '../controllers/auth_controller.dart';
 
 /// First-boot device activation. Owner generates a one-time code on the
@@ -14,7 +15,12 @@ import '../controllers/auth_controller.dart';
 ///   - A "Вставить" shortcut pulls from the clipboard on tap
 ///   - Server errors are mapped to short, specific Russian strings
 class ActivationScreen extends ConsumerStatefulWidget {
-  const ActivationScreen({super.key});
+  /// First boot shows «Пропустить — работать автономно» (spec 03 R1). The
+  /// Settings link-sheet reuses this screen with [allowSkip] off — a device
+  /// already past first boot has nothing to skip to.
+  final bool allowSkip;
+
+  const ActivationScreen({super.key, this.allowSkip = true});
 
   @override
   ConsumerState<ActivationScreen> createState() => _ActivationScreenState();
@@ -35,9 +41,7 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
 
   String get _normalised {
     // Strip anything that isn't [A-Z0-9]. Dashes, spaces, case — all go.
-    return _ctrl.text
-        .toUpperCase()
-        .replaceAll(RegExp(r'[^A-Z0-9]'), '');
+    return _ctrl.text.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
   }
 
   bool get _canSubmit {
@@ -68,166 +72,226 @@ class _ActivationScreenState extends ConsumerState<ActivationScreen> {
     setState(() {
       // Normalise first, THEN cap — using raw.length here would RangeError
       // when stripping characters shrinks the string below raw.length.
-      final normalised =
-          raw.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
-      _ctrl.text =
-          normalised.substring(0, normalised.length.clamp(0, _maxLen));
+      final normalised = raw.toUpperCase().replaceAll(RegExp(r'[^A-Z0-9]'), '');
+      _ctrl.text = normalised.substring(0, normalised.length.clamp(0, _maxLen));
     });
   }
 
   @override
   Widget build(BuildContext context) {
+    // When this screen is PUSHED (Settings → «Подключить к платформе»),
+    // pop back on success — the boot Consumer handles the root case.
+    ref.listen<AuthState>(authControllerProvider, (prev, next) {
+      if (next is RegisterActivated && Navigator.of(context).canPop()) {
+        Navigator.of(context).pop();
+      }
+    });
+
+    final l = AppLocalizations.of(context)!;
     final cs = Theme.of(context).colorScheme;
     final state = ref.watch(authControllerProvider);
     final busy = state is RegisterNotActivated && state.busy;
     final errorMsg = state is RegisterNotActivated ? state.error : null;
     return Scaffold(
       body: Center(
-            child: ConstrainedBox(
-              constraints: const BoxConstraints(maxWidth: 460),
-              child: Card(
-                margin: const EdgeInsets.all(24),
-                elevation: 2,
-                child: Padding(
-                  padding: const EdgeInsets.all(28),
-                  child: Column(
-                    mainAxisSize: MainAxisSize.min,
-                    crossAxisAlignment: CrossAxisAlignment.stretch,
-                    children: [
-                      Icon(Icons.storefront_outlined,
-                          size: 48, color: cs.primary),
-                      const SizedBox(height: 12),
-                      Text(
-                        'Активация кассы',
-                        style: TextStyle(fontFamily: 'Inter', 
-                          fontSize: 22,
-                          fontWeight: FontWeight.w800,
-                          color: cs.onSurface,
-                        ),
-                        textAlign: TextAlign.center,
+        // Scrollable: the skip section (spec 03 R1) makes the card taller
+        // than short screens / test viewports.
+        child: SingleChildScrollView(
+          child: ConstrainedBox(
+            constraints: const BoxConstraints(maxWidth: 460),
+            child: Card(
+              margin: const EdgeInsets.all(24),
+              elevation: 2,
+              child: Padding(
+                padding: const EdgeInsets.all(28),
+                child: Column(
+                  mainAxisSize: MainAxisSize.min,
+                  crossAxisAlignment: CrossAxisAlignment.stretch,
+                  children: [
+                    Icon(
+                      Icons.storefront_outlined,
+                      size: 48,
+                      color: cs.primary,
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Подключение кассы к платформе',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 22,
+                        fontWeight: FontWeight.w800,
+                        color: cs.onSurface,
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Введите код из web-админки:\nМагазины → Активировать кассу.',
-                        style: TextStyle(fontFamily: 'Inter', 
-                          fontSize: 13,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Введите код из web-админки:\nМагазины → Подключить кассу.',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 13,
+                        color: cs.onSurfaceVariant,
                       ),
-                      const SizedBox(height: 28),
+                      textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 28),
 
-                      // Big monospace input. Hardware keyboard handles
-                      // most characters; we restrict to [A-Z0-9-\s] and
-                      // strip the noise on normalise.
-                      TextField(
-                        controller: _ctrl,
-                        enabled: !busy,
-                        autofocus: true,
-                        textInputAction: TextInputAction.done,
-                        onChanged: (_) => setState(() {}),
-                        onSubmitted: (_) => _submit(),
-                        inputFormatters: [
-                          FilteringTextInputFormatter.allow(
-                              RegExp(r'[A-Za-z0-9\-\s]')),
-                          // Let the user see the raw input (with dashes);
-                          // we strip at submit time. But cap total length
-                          // to max+padding so a malicious paste can't flood.
-                          LengthLimitingTextInputFormatter(_maxLen + 4),
-                        ],
-                        textAlign: TextAlign.center,
-                        textCapitalization: TextCapitalization.characters,
-                        style: const TextStyle(fontFamily: 'JetBrainsMono', 
-                          fontSize: 26,
-                          fontWeight: FontWeight.w700,
-                          letterSpacing: 4,
+                    // Big monospace input. Hardware keyboard handles
+                    // most characters; we restrict to [A-Z0-9-\s] and
+                    // strip the noise on normalise.
+                    TextField(
+                      controller: _ctrl,
+                      enabled: !busy,
+                      autofocus: true,
+                      textInputAction: TextInputAction.done,
+                      onChanged: (_) => setState(() {}),
+                      onSubmitted: (_) => _submit(),
+                      inputFormatters: [
+                        FilteringTextInputFormatter.allow(
+                          RegExp(r'[A-Za-z0-9\-\s]'),
                         ),
-                        decoration: InputDecoration(
-                          labelText: 'Код',
-                          hintText: 'ABCD-1234',
-                          border: const OutlineInputBorder(),
-                          // Large height for comfortable tap target.
-                          contentPadding: const EdgeInsets.symmetric(
-                              horizontal: 16, vertical: 18),
-                          suffixIcon: IconButton(
-                            icon: const Icon(Icons.content_paste_go),
-                            tooltip: 'Вставить из буфера',
-                            onPressed: busy ? null : _pasteFromClipboard,
-                          ),
+                        // Let the user see the raw input (with dashes);
+                        // we strip at submit time. But cap total length
+                        // to max+padding so a malicious paste can't flood.
+                        LengthLimitingTextInputFormatter(_maxLen + 4),
+                      ],
+                      textAlign: TextAlign.center,
+                      textCapitalization: TextCapitalization.characters,
+                      style: const TextStyle(
+                        fontFamily: 'JetBrainsMono',
+                        fontSize: 26,
+                        fontWeight: FontWeight.w700,
+                        letterSpacing: 4,
+                      ),
+                      decoration: InputDecoration(
+                        labelText: 'Код',
+                        hintText: 'ABCD-1234',
+                        border: const OutlineInputBorder(),
+                        // Large height for comfortable tap target.
+                        contentPadding: const EdgeInsets.symmetric(
+                          horizontal: 16,
+                          vertical: 18,
+                        ),
+                        suffixIcon: IconButton(
+                          icon: const Icon(Icons.content_paste_go),
+                          tooltip: 'Вставить из буфера',
+                          onPressed: busy ? null : _pasteFromClipboard,
                         ),
                       ),
-                      const SizedBox(height: 6),
-                      Text(
-                        'Регистр и дефисы не важны — мы очистим код.',
-                        style: TextStyle(fontFamily: 'Inter', 
-                          fontSize: 11,
-                          color: cs.onSurfaceVariant,
-                        ),
-                        textAlign: TextAlign.center,
+                    ),
+                    const SizedBox(height: 6),
+                    Text(
+                      'Регистр и дефисы не важны — мы очистим код.',
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: cs.onSurfaceVariant,
                       ),
+                      textAlign: TextAlign.center,
+                    ),
 
-                      if (errorMsg != null) ...[
-                        const SizedBox(height: 14),
-                        Container(
-                          padding: const EdgeInsets.symmetric(
-                              horizontal: 12, vertical: 8),
-                          decoration: BoxDecoration(
-                            color: cs.errorContainer,
-                            borderRadius: BorderRadius.circular(8),
-                          ),
-                          child: Row(
-                            children: [
-                              Icon(Icons.error_outline,
-                                  size: 18, color: cs.onErrorContainer),
-                              const SizedBox(width: 8),
-                              Expanded(
-                                child: Text(
-                                  errorMsg,
-                                  style: TextStyle(fontFamily: 'Inter', 
-                                    fontSize: 13,
-                                    color: cs.onErrorContainer,
-                                  ),
+                    if (errorMsg != null) ...[
+                      const SizedBox(height: 14),
+                      Container(
+                        padding: const EdgeInsets.symmetric(
+                          horizontal: 12,
+                          vertical: 8,
+                        ),
+                        decoration: BoxDecoration(
+                          color: cs.errorContainer,
+                          borderRadius: BorderRadius.circular(8),
+                        ),
+                        child: Row(
+                          children: [
+                            Icon(
+                              Icons.error_outline,
+                              size: 18,
+                              color: cs.onErrorContainer,
+                            ),
+                            const SizedBox(width: 8),
+                            Expanded(
+                              child: Text(
+                                errorMsg,
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 13,
+                                  color: cs.onErrorContainer,
                                 ),
                               ),
-                            ],
-                          ),
-                        ),
-                      ],
-
-                      const SizedBox(height: 22),
-                      SizedBox(
-                        height: 48,
-                        child: FilledButton(
-                          onPressed: (_canSubmit && !busy) ? _submit : null,
-                          child: busy
-                              ? const SizedBox(
-                                  width: 18,
-                                  height: 18,
-                                  child: CircularProgressIndicator(
-                                      strokeWidth: 2))
-                              : const Text(
-                                  'Активировать',
-                                  style: TextStyle(fontFamily: 'Inter', 
-                                    fontSize: 15,
-                                    fontWeight: FontWeight.w600,
-                                  ),
-                                ),
+                            ),
+                          ],
                         ),
                       ),
+                    ],
+
+                    const SizedBox(height: 22),
+                    SizedBox(
+                      height: 48,
+                      child: FilledButton(
+                        onPressed: (_canSubmit && !busy) ? _submit : null,
+                        child: busy
+                            ? const SizedBox(
+                                width: 18,
+                                height: 18,
+                                child: CircularProgressIndicator(
+                                  strokeWidth: 2,
+                                ),
+                              )
+                            : const Text(
+                                'Подключить',
+                                style: TextStyle(
+                                  fontFamily: 'Inter',
+                                  fontSize: 15,
+                                  fontWeight: FontWeight.w600,
+                                ),
+                              ),
+                      ),
+                    ),
+                    const SizedBox(height: 12),
+                    Text(
+                      'Код действует один раз и только в течение 24 часов.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(
+                        fontFamily: 'Inter',
+                        fontSize: 11,
+                        color: cs.onSurfaceVariant,
+                      ),
+                    ),
+                    if (widget.allowSkip) ...[
+                      const SizedBox(height: 20),
+                      const Divider(height: 1),
                       const SizedBox(height: 12),
+                      TextButton(
+                        onPressed: busy
+                            ? null
+                            : () => ref
+                                  .read(authControllerProvider.notifier)
+                                  .skipToStandalone(),
+                        child: Text(
+                          l.connectSkip,
+                          style: const TextStyle(
+                            fontFamily: 'Inter',
+                            fontSize: 14,
+                            fontWeight: FontWeight.w600,
+                          ),
+                        ),
+                      ),
                       Text(
-                        'Код действует один раз и только в течение 24 часов.',
+                        l.connectSkipHint,
                         textAlign: TextAlign.center,
-                        style: TextStyle(fontFamily: 'Inter', 
+                        style: TextStyle(
+                          fontFamily: 'Inter',
                           fontSize: 11,
                           color: cs.onSurfaceVariant,
                         ),
                       ),
                     ],
-                  ),
+                  ],
                 ),
               ),
             ),
+          ),
+        ),
       ),
     );
   }

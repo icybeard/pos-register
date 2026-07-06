@@ -132,9 +132,9 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
         child: Column(mainAxisAlignment: MainAxisAlignment.center, children: [
           const Icon(Icons.receipt_long_outlined, size: 64, color: Hifi.border),
           const SizedBox(height: 12),
-          Text('Найдите чек для возврата', style: Hifi.ui(size: 14, color: const Color(0xFF666666))),
+          Text('Найдите чек для возврата', style: Hifi.ui(size: 14, color: const Color(0xFF837B6D))),
           const SizedBox(height: 4),
-          Text('Введите № чека или отсканируйте QR', style: Hifi.ui(size: 12, color: const Color(0xFF888888))),
+          Text('Введите № чека или отсканируйте QR', style: Hifi.ui(size: 12, color: const Color(0xFFA59C8B))),
         ]),
       );
 
@@ -209,7 +209,7 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
       child: Container(
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 10),
         decoration: BoxDecoration(
-          color: on ? const Color(0xFFFFF4E5) : Colors.white,
+          color: on ? const Color(0xFFFEF6E0) : Colors.white,
           border: const Border(bottom: BorderSide(color: Hifi.divider)),
         ),
         child: Row(children: [
@@ -229,7 +229,7 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
           Expanded(
             child: Column(crossAxisAlignment: CrossAxisAlignment.start, mainAxisSize: MainAxisSize.min, children: [
               Text(name, style: Hifi.ui(size: 13)),
-              Text('куплено: $maxQty шт', style: Hifi.ui(size: 11, color: const Color(0xFF666666))),
+              Text('куплено: $maxQty шт', style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
             ]),
           ),
           SizedBox(
@@ -245,7 +245,7 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
           ),
           SizedBox(
             width: 100,
-            child: Text(Money.formatTenge(price), textAlign: TextAlign.right, style: Hifi.mono(size: 13, color: const Color(0xFF666666))),
+            child: Text(Money.formatTenge(price), textAlign: TextAlign.right, style: Hifi.mono(size: 13, color: const Color(0xFF837B6D))),
           ),
           SizedBox(
             width: 120,
@@ -262,8 +262,8 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
       padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10),
       child: Column(crossAxisAlignment: CrossAxisAlignment.end, children: [
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
-          Text('К возврату: ', style: Hifi.ui(size: 13, color: const Color(0xFF666666))),
-          Text('$count позиций', style: Hifi.mono(size: 13, color: const Color(0xFF666666))),
+          Text('К возврату: ', style: Hifi.ui(size: 13, color: const Color(0xFF837B6D))),
+          Text('$count позиций', style: Hifi.mono(size: 13, color: const Color(0xFF837B6D))),
         ]),
         const SizedBox(height: 4),
         Row(mainAxisAlignment: MainAxisAlignment.end, children: [
@@ -277,7 +277,7 @@ class _ReturnsScreenState extends State<ReturnsScreen> {
   Widget _th(String label, {TextAlign align = TextAlign.left}) => Text(
         label,
         textAlign: align,
-        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF555555)).copyWith(letterSpacing: 0.3),
+        style: Hifi.ui(size: 11, weight: FontWeight.w600, color: const Color(0xFF645E52)).copyWith(letterSpacing: 0.3),
       );
 
   Widget _rightPanel() {

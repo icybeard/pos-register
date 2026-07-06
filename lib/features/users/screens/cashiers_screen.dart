@@ -476,7 +476,7 @@ class _CashierRow extends StatelessWidget {
                           ScaffoldMessenger.of(context).showSnackBar(
                             SnackBar(
                               content: Text(l.cashiersResetPinSuccess),
-                              backgroundColor: const Color(0xFF059669),
+                              backgroundColor: const Color(0xFF226E47),
                             ),
                           );
                         }
@@ -586,7 +586,7 @@ class _CashierRow extends StatelessWidget {
                 if (context.mounted) {
                   ScaffoldMessenger.of(context).showSnackBar(SnackBar(
                     content: Text(l.cashiersDeactivated),
-                    backgroundColor: const Color(0xFF059669),
+                    backgroundColor: const Color(0xFF226E47),
                   ));
                 }
                 onRefresh();
@@ -624,7 +624,7 @@ class _RoleItem extends StatelessWidget {
       mainAxisSize: MainAxisSize.min,
       children: [
         Text(title, style: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600)),
-        Text(description, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF74777D))),
+        Text(description, style: const TextStyle(fontFamily: 'Inter', fontSize: 11, color: Color(0xFF837B6D))),
       ],
     );
   }

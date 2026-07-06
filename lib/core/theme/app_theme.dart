@@ -1,112 +1,133 @@
 import 'package:flutter/material.dart';
 
-/// POS System Kazakhstan — "Slate & Action" Design System
+/// KeregeSystem Design System v1.0 — Flutter theme.
 ///
-/// Based on ArchitectLedger V4 Stitch designs.
-/// Deep Navy primary, professional retail-grade UI with high contrast,
-/// large touch targets, and bold typography for prices.
+/// Canonical spec: `pos-docs/design-system/`.
+/// Terracotta primary, warm-neutral cream/ink surfaces, semantic scales locked at
+/// oklch(.60 .13 H). pos-register's identity accent is Blue `#3567ad` — used only
+/// for the app's own header tint and the active nav state.
+///
+/// Class name `AppTheme` is preserved for backwards compatibility with the
+/// existing 14 callers; only the colors change.
 class AppTheme {
   AppTheme._();
 
-  // === Brand Colors (Stitch V4 "Slate & Action") ===
-  static const Color primary = Color(0xFF002556);
-  static const Color primaryContainer = Color(0xFF003A80);
-  static const Color onPrimaryContainer = Color(0xFF78A6FF);
-  static const Color inversePrimary = Color(0xFFADC6FF);
+  // === Brand · Primary (Terracotta) === see pos-docs/design-system/palette.md
+  static const Color primary = Color(0xFFBF5F30);
+  static const Color primaryContainer = Color(0xFFFAE0C9);
+  static const Color onPrimaryContainer = Color(0xFF432011);
+  static const Color inversePrimary = Color(0xFFF3C197);
 
-  static const Color secondary = Color(0xFF006C49);
-  static const Color secondaryContainer = Color(0xFF6CF8BB);
+  // === Secondary · pos-register's identity accent (Blue) ===
+  static const Color secondary = Color(0xFF3567AD);
+  static const Color secondaryContainer = Color(0xFFD3E0F1);
 
-  static const Color tertiary = Color(0xFF56000B);
-  static const Color tertiaryContainer = Color(0xFF79121B);
+  // === Tertiary · Gold (carryover slot, currently unused but kept for API) ===
+  static const Color tertiary = Color(0xFFA98C2A);
+  static const Color tertiaryContainer = Color(0xFFF2E3A8);
 
-  static const Color error = Color(0xFFBA1A1A);
-  static const Color success = Color(0xFF006C49);
-  static const Color warning = Color(0xFFD97706);
+  // === Semantic ===
+  static const Color error = Color(0xFFB8332E);
+  static const Color success = Color(0xFF2C8A5A);
+  static const Color warning = Color(0xFFB6781A);
+  static const Color info = Color(0xFF1E7A93);
 
-  // Sidebar
-  static const Color sidebarBg = Color(0xFF0F172A);
-  static const Color sidebarActiveBg = Color(0xFF1D3A6E);
-  static const Color sidebarActiveText = Color(0xFF60A5FA);
-  static const Color sidebarText = Color(0xFF94A3B8);
+  // === Sidebar (warm-neutral / ink) ===
+  // Names preserved; recolored from the old slate-navy to KeregeSystem ink + cream.
+  static const Color sidebarBg = Color(0xFF1D1A16);          // neutral-900 (ink)
+  static const Color sidebarActiveBg = Color(0xFF322E28);    // neutral-800
+  static const Color sidebarActiveText = Color(0xFFE89D65);  // primary-300 (warm highlight)
+  static const Color sidebarText = Color(0xFFA59C8B);        // neutral-400
+
+  // === Surfaces (light) ===
+  static const Color bgLight = Color(0xFFFAF7F0);            // neutral-50 (cream)
+  static const Color surfaceLight = Color(0xFFFFFFFF);
+  static const Color surfaceHoverLight = Color(0xFFF3EDE0);  // neutral-100
+  static const Color borderLight = Color(0xFFE5DCCB);        // neutral-200
+
+  // === Surfaces (dark) ===
+  static const Color bgDark = Color(0xFF100E0C);             // neutral-950
+  static const Color surfaceDark = Color(0xFF1D1A16);        // neutral-900 (ink)
+  static const Color surfaceHoverDark = Color(0xFF322E28);   // neutral-800
+  static const Color borderDark = Color(0xFF4A453C);         // neutral-700
 
   // === Shared component styling ===
   static final _buttonShape = RoundedRectangleBorder(borderRadius: BorderRadius.circular(12));
   static const _buttonMinSize = Size(48, 52);
   static final _inputBorder = OutlineInputBorder(borderRadius: BorderRadius.circular(12));
 
-  /// Light theme
+  /// Light theme — cream surfaces, ink text, terracotta primary.
   static ThemeData get light {
     const cs = ColorScheme(
       brightness: Brightness.light,
       primary: primary,
-      onPrimary: Colors.white,
+      onPrimary: Color(0xFFFAF7F0),                          // cream
       primaryContainer: primaryContainer,
       onPrimaryContainer: onPrimaryContainer,
       secondary: secondary,
-      onSecondary: Colors.white,
+      onSecondary: Color(0xFFFAF7F0),
       secondaryContainer: secondaryContainer,
-      onSecondaryContainer: Color(0xFF00714D),
-      tertiary: Color(0xFF56000B),
-      onTertiary: Colors.white,
-      tertiaryContainer: Color(0xFF79121B),
-      onTertiaryContainer: Color(0xFFFF8180),
+      onSecondaryContainer: Color(0xFF14253D),               // secondary-900
+      tertiary: tertiary,
+      onTertiary: Color(0xFFFAF7F0),
+      tertiaryContainer: tertiaryContainer,
+      onTertiaryContainer: Color(0xFF34290D),                // accent-900
       error: error,
-      onError: Colors.white,
-      errorContainer: Color(0xFFFFDAD6),
-      onErrorContainer: Color(0xFF93000A),
-      surface: Color(0xFFF8F9FF),
-      onSurface: Color(0xFF0D1C2F),
-      onSurfaceVariant: Color(0xFF43474C),
-      outline: Color(0xFF74777D),
-      outlineVariant: Color(0xFFC4C6CD),
-      surfaceContainerLowest: Colors.white,
-      surfaceContainerLow: Color(0xFFEFF4FF),
-      surfaceContainer: Color(0xFFE6EEFF),
-      surfaceContainerHigh: Color(0xFFDDE9FF),
-      surfaceContainerHighest: Color(0xFFD5E3FD),
-      inverseSurface: Color(0xFF233144),
-      onInverseSurface: Color(0xFFEBF1FF),
+      onError: Color(0xFFFAF7F0),
+      errorContainer: Color(0xFFFBE9E7),                     // error-50
+      onErrorContainer: Color(0xFF531311),                   // error-800
+      surface: bgLight,                                       // cream page bg
+      onSurface: Color(0xFF1D1A16),                           // ink
+      onSurfaceVariant: Color(0xFF4A453C),                    // neutral-700
+      outline: Color(0xFF837B6D),                             // neutral-500
+      outlineVariant: Color(0xFFC8BFAC),                      // neutral-300
+      surfaceContainerLowest: surfaceLight,                   // pure white
+      surfaceContainerLow: Color(0xFFFAF7F0),                 // cream
+      surfaceContainer: Color(0xFFF3EDE0),                    // neutral-100
+      surfaceContainerHigh: Color(0xFFE5DCCB),                // neutral-200
+      surfaceContainerHighest: Color(0xFFC8BFAC),             // neutral-300
+      inverseSurface: Color(0xFF322E28),                      // neutral-800
+      onInverseSurface: Color(0xFFFAF7F0),
       inversePrimary: inversePrimary,
-      surfaceTint: Color(0xFF005BC1),
+      surfaceTint: primary,
     );
     return _buildTheme(cs);
   }
 
-  /// Dark theme
+  /// Dark theme — ink surfaces, cream text, warm terracotta primary.
   static ThemeData get dark {
     const cs = ColorScheme(
       brightness: Brightness.dark,
-      primary: Color(0xFFADC6FF),
-      onPrimary: Color(0xFF002556),
-      primaryContainer: Color(0xFF003A80),
-      onPrimaryContainer: Color(0xFFD8E2FF),
-      secondary: Color(0xFF4EDEA3),
-      onSecondary: Color(0xFF002113),
-      secondaryContainer: Color(0xFF005236),
-      onSecondaryContainer: Color(0xFF6FFBBE),
-      tertiary: Color(0xFFFFB3B0),
-      onTertiary: Color(0xFF410006),
-      tertiaryContainer: Color(0xFF79121B),
-      onTertiaryContainer: Color(0xFFFFDAD8),
-      error: Color(0xFFF87171),
-      onError: Color(0xFF0F172A),
-      errorContainer: Color(0xFF7F1D1D),
-      onErrorContainer: Color(0xFFFEE2E2),
-      surface: Color(0xFF0D1C2F),
-      onSurface: Color(0xFFD5E3FD),
-      onSurfaceVariant: Color(0xFFC4C6CD),
-      outline: Color(0xFF74777D),
-      outlineVariant: Color(0xFF43474C),
-      surfaceContainerLowest: Color(0xFF030712),
-      surfaceContainerLow: Color(0xFF0D1C2F),
-      surfaceContainer: Color(0xFF1E293B),
-      surfaceContainerHigh: Color(0xFF233144),
-      surfaceContainerHighest: Color(0xFF334155),
-      inverseSurface: Color(0xFFD5E3FD),
-      onInverseSurface: Color(0xFF0D1C2F),
-      inversePrimary: Color(0xFF002556),
-      surfaceTint: Color(0xFFADC6FF),
+      primary: Color(0xFFE89D65),                             // primary-300 (warm on dark)
+      onPrimary: Color(0xFF432011),                           // primary-900
+      primaryContainer: Color(0xFF843D1D),                    // primary-700
+      onPrimaryContainer: Color(0xFFFAE0C9),                  // primary-100
+      secondary: Color(0xFF739DD0),                           // secondary-300
+      onSecondary: Color(0xFF14253D),                         // secondary-900
+      secondaryContainer: Color(0xFF234670),                  // secondary-700
+      onSecondaryContainer: Color(0xFFD3E0F1),                // secondary-100
+      tertiary: Color(0xFFD0AD44),                            // accent-300
+      onTertiary: Color(0xFF34290D),                          // accent-900
+      tertiaryContainer: Color(0xFF715B1C),                   // accent-700
+      onTertiaryContainer: Color(0xFFF2E3A8),                 // accent-100
+      error: Color(0xFFDC6A64),                               // error-300
+      onError: Color(0xFF340B0A),                             // error-900
+      errorContainer: Color(0xFF721B18),                      // error-700
+      onErrorContainer: Color(0xFFF5C4BF),                    // error-100
+      surface: surfaceDark,                                    // ink
+      onSurface: Color(0xFFFAF7F0),                            // cream
+      onSurfaceVariant: Color(0xFFC8BFAC),                     // neutral-300
+      outline: Color(0xFF837B6D),                              // neutral-500
+      outlineVariant: Color(0xFF4A453C),                       // neutral-700
+      surfaceContainerLowest: Color(0xFF100E0C),               // neutral-950
+      surfaceContainerLow: Color(0xFF1D1A16),                  // neutral-900
+      surfaceContainer: Color(0xFF322E28),                     // neutral-800
+      surfaceContainerHigh: Color(0xFF4A453C),                 // neutral-700
+      surfaceContainerHighest: Color(0xFF645E52),              // neutral-600
+      inverseSurface: Color(0xFFFAF7F0),
+      onInverseSurface: Color(0xFF1D1A16),
+      inversePrimary: primary,
+      surfaceTint: Color(0xFFE89D65),
     );
     return _buildTheme(cs);
   }
@@ -159,7 +180,7 @@ class AppTheme {
       ),
     );
 
-    const buttonTextStyle = TextStyle(fontFamily: 'Inter', 
+    const buttonTextStyle = TextStyle(fontFamily: 'Inter',
       fontSize: 15, fontWeight: FontWeight.w600, letterSpacing: -0.2,
     );
 
@@ -168,15 +189,15 @@ class AppTheme {
       brightness: cs.brightness,
       colorScheme: cs,
       textTheme: textTheme,
-      scaffoldBackgroundColor: isDark ? const Color(0xFF0B1120) : const Color(0xFFF8F9FF),
+      scaffoldBackgroundColor: isDark ? bgDark : bgLight,
 
       appBarTheme: AppBarTheme(
-        backgroundColor: isDark ? cs.surface : const Color(0xFFF8F9FF),
+        backgroundColor: isDark ? cs.surface : bgLight,
         foregroundColor: cs.onSurface,
         elevation: 0,
         scrolledUnderElevation: 0.5,
         centerTitle: false,
-        titleTextStyle: TextStyle(fontFamily: 'Inter', 
+        titleTextStyle: TextStyle(fontFamily: 'Inter',
           fontSize: 20, fontWeight: FontWeight.w700, color: cs.onSurface, letterSpacing: -0.4,
         ),
       ),
@@ -186,7 +207,7 @@ class AppTheme {
         elevation: 0,
         shape: RoundedRectangleBorder(
           borderRadius: BorderRadius.circular(16),
-          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.3)),
+          side: BorderSide(color: cs.outlineVariant.withValues(alpha: 0.5)),
         ),
         margin: const EdgeInsets.symmetric(vertical: 4),
       ),
@@ -241,7 +262,7 @@ class AppTheme {
         padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
       ),
 
-      dividerTheme: DividerThemeData(color: cs.outlineVariant.withValues(alpha: 0.3), thickness: 1, space: 1),
+      dividerTheme: DividerThemeData(color: cs.outlineVariant.withValues(alpha: 0.4), thickness: 1, space: 1),
 
       navigationBarTheme: NavigationBarThemeData(
         backgroundColor: cs.surface,
@@ -281,7 +302,7 @@ class AppTheme {
         indicatorColor: cs.primary,
         labelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w600),
         unselectedLabelStyle: const TextStyle(fontFamily: 'Inter', fontSize: 14, fontWeight: FontWeight.w500),
-        dividerColor: cs.outlineVariant.withValues(alpha: 0.3),
+        dividerColor: cs.outlineVariant.withValues(alpha: 0.4),
       ),
 
       bottomSheetTheme: BottomSheetThemeData(
@@ -305,15 +326,15 @@ class PosColors {
 
   bool get _isDark => _cs.brightness == Brightness.dark;
 
-  // Tinted backgrounds
-  Color get successBg => _isDark ? AppTheme.success.withValues(alpha: 0.12) : const Color(0xFFD1FAE5);
-  Color get errorBg   => _isDark ? AppTheme.error.withValues(alpha: 0.12)   : const Color(0xFFFFDAD6);
-  Color get warningBg => _isDark ? AppTheme.warning.withValues(alpha: 0.12) : const Color(0xFFFEF3C7);
-  Color get accentBg  => _isDark ? const Color(0xFF002556).withValues(alpha: 0.2) : const Color(0xFFD8E2FF);
+  // Tinted backgrounds — success/warning/error pills + brand accent surface.
+  Color get successBg => _isDark ? AppTheme.success.withValues(alpha: 0.18) : const Color(0xFFE7F6ED); // success-50
+  Color get errorBg   => _isDark ? AppTheme.error.withValues(alpha: 0.18)   : const Color(0xFFFBE9E7); // error-50
+  Color get warningBg => _isDark ? AppTheme.warning.withValues(alpha: 0.18) : const Color(0xFFFEF6E0); // warning-50
+  Color get accentBg  => _isDark ? AppTheme.primary.withValues(alpha: 0.22) : const Color(0xFFFDF3EC); // primary-50
 
-  // Foreground colors
-  Color get successFg => _isDark ? const Color(0xFF4EDEA3) : AppTheme.success;
-  Color get errorFg   => _isDark ? const Color(0xFFF87171) : AppTheme.error;
-  Color get warningFg => _isDark ? const Color(0xFFFBBF24) : AppTheme.warning;
-  Color get accentFg  => _isDark ? const Color(0xFFADC6FF) : AppTheme.primary;
+  // Foreground colors — tuned darker on light, lighter on dark for contrast.
+  Color get successFg => _isDark ? const Color(0xFF8FD2A8) : const Color(0xFF226E47); // success-700
+  Color get errorFg   => _isDark ? const Color(0xFFEA9690) : const Color(0xFF952520); // error-700
+  Color get warningFg => _isDark ? const Color(0xFFFBCF69) : const Color(0xFF905C13); // warning-700
+  Color get accentFg  => _isDark ? const Color(0xFFE89D65) : const Color(0xFFA44D24); // primary-300 / primary-700
 }

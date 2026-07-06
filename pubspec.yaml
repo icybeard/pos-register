@@ -107,9 +107,18 @@ dev_dependencies:
   mocktail: ^1.0.4
   sqflite_common_ffi: ^2.3.3  # test-only: sqflite backed by native sqlite3 (no platform channel)
 
+  # Launcher-icon generator. Run `dart run flutter_launcher_icons` to regenerate
+  # the platform-specific icons under android/, ios/, windows/, linux/, macos/
+  # from assets/brand/app_icon.png. Config block lives at the bottom of this file.
+  flutter_launcher_icons: ^0.14.1
+
 flutter:
   generate: true
   uses-material-design: true
+
+  # Bundled brand assets (KeregeSystem). Sourced from pos-docs/icons/.
+  assets:
+    - assets/brand/app_icon.png
 
   # Bundled fonts. Variable TTFs (single file, all weights via the wght axis)
   # downloaded from github.com/google/fonts. Bundling avoids the runtime
@@ -197,3 +206,24 @@ dependency_overrides:
   sqlite3_flutter_libs: 0.6.0+eol
   # Same as sqlite3_flutter_libs above — +eol shell, no runtime symbols (sqlite3mc provides them).
   sqlcipher_flutter_libs: 0.7.0+eol
+
+# KeregeSystem brand launcher icons — pos-register (blue · tenge).
+# Source: pos-docs/icons/png/pos-register-1024.png (mirrored to assets/brand/app_icon.png).
+# Regenerate: `dart run flutter_launcher_icons`.
+flutter_launcher_icons:
+  image_path: "assets/brand/app_icon.png"
+  android: true
+  ios: true
+  remove_alpha_ios: true
+  # Adaptive icon — Android 8+ requires a foreground+background pair.
+  # Background = KeregeSystem cream `#f4ecdd` (the lattice halo).
+  adaptive_icon_background: "#f4ecdd"
+  adaptive_icon_foreground: "assets/brand/app_icon.png"
+  # web is not a shipping target — see CLAUDE.md (Windows, Linux, macOS, Android, iOS only).
+  windows:
+    generate: true
+    image_path: "assets/brand/app_icon.png"
+    icon_size: 256
+  macos:
+    generate: true
+    image_path: "assets/brand/app_icon.png"
