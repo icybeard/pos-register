@@ -2906,6 +2906,36 @@ abstract class AppLocalizations {
   /// **'Магазин'**
   String get platformStorePrefix;
 
+  /// No description provided for @platformUnlinkAction.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить'**
+  String get platformUnlinkAction;
+
+  /// No description provided for @platformUnlinkSubtitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить кассу от платформы — данные останутся здесь'**
+  String get platformUnlinkSubtitle;
+
+  /// No description provided for @platformUnlinkConfirmTitle.
+  ///
+  /// In ru, this message translates to:
+  /// **'Отключить кассу от платформы?'**
+  String get platformUnlinkConfirmTitle;
+
+  /// No description provided for @platformUnlinkConfirmBody.
+  ///
+  /// In ru, this message translates to:
+  /// **'Все данные останутся на кассе, синхронизация остановится. Слот тарифа освободится — подключить кассу обратно можно в любой момент.'**
+  String get platformUnlinkConfirmBody;
+
+  /// No description provided for @platformUnlinkedByAdmin.
+  ///
+  /// In ru, this message translates to:
+  /// **'Касса отключена от платформы администратором. Данные сохранены — касса работает автономно.'**
+  String get platformUnlinkedByAdmin;
+
   /// No description provided for @connectSkip.
   ///
   /// In ru, this message translates to:

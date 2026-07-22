@@ -103,4 +103,12 @@ class LocalAuthService {
       await _db.customStatement('DELETE FROM sync_outbox');
     });
   }
+
+  /// Drops queued deltas that can never be delivered — used when the register
+  /// is unlinked from the platform (spec 03 R5). Business data is untouched:
+  /// receipts, stock and settings all stay on the device. Re-linking later
+  /// syncs from that point forward, exactly like a first link.
+  Future<void> clearOutbox() async {
+    await _db.customStatement('DELETE FROM sync_outbox');
+  }
 }

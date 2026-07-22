@@ -6,6 +6,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import 'package:intl/intl.dart';
 import 'package:uuid/uuid.dart';
 import '../../../services/api_client.dart';
+import '../../../services/auth/auth_session.dart' show AuthFlavor, SessionExpiredException;
 import '../../../services/auth/auth_token_store.dart';
 import '../../../services/auth/biometric_auth_service.dart';
 import '../../../services/auth/device_id_store.dart';
@@ -292,7 +293,36 @@ class AuthController extends Notifier<AuthState> {
     return null;
   }
 
-  String _mapActivationError(int status, String? serverMsg) {
+  /// Reads the extra fields the server attaches to a 409 device-limit refusal
+  /// ({error_code, linked_count, limit, blocks}). Returns null for any other
+  /// error shape.
+  Map<String, dynamic>? _extractDeviceLimit(String body) {
+    if (body.isEmpty) return null;
+    try {
+      final decoded = jsonDecode(body);
+      if (decoded is Map<String, dynamic> &&
+          decoded['error_code'] == 'device_limit_reached') {
+        return decoded;
+      }
+    } on Object {
+      // Not JSON or malformed — treat as a generic error.
+    }
+    return null;
+  }
+
+  String _mapActivationError(int status, String? serverMsg, [String body = '']) {
+    // The tariff ceiling is a specific, actionable refusal — say what to do,
+    // not just what failed (spec 03 Phase C).
+    final limit = _extractDeviceLimit(body);
+    if (limit != null) {
+      final linked = limit['linked_count'];
+      final max = limit['limit'];
+      final counts = (linked is int && max is int) ? ' ($linked из $max)' : '';
+      return 'Достигнут лимит подключённых касс по тарифу$counts. '
+          'Отключите неиспользуемую кассу в веб-админке или напишите нам, '
+          'чтобы расширить тариф.';
+    }
+
     final lc = (serverMsg ?? '').toLowerCase();
     if (lc.contains('already used')) {
       return 'Код уже использован — возможно, на другой кассе. Получите новый в веб-админке.';
@@ -432,7 +462,7 @@ class AuthController extends Notifier<AuthState> {
       );
     } on ApiException catch (e) {
       final serverMsg = _extractServerError(e.body);
-      final msg = _mapActivationError(e.statusCode, serverMsg);
+      final msg = _mapActivationError(e.statusCode, serverMsg, e.body);
       state = RegisterNotActivated(error: msg);
       return;
     } on Exception catch (_) {
@@ -559,12 +589,65 @@ class AuthController extends Notifier<AuthState> {
     }
   }
 
-  Future<void> deactivateRegister() async {
+  /// «Отключить» in Settings → Платформа (spec 03 R5).
+  ///
+  /// Tells the server first so the tariff slot is actually freed, then drops
+  /// the binding locally and keeps running standalone. ALL local data stays —
+  /// the standalone marker carries the REAL tenant/store ids, so re-linking
+  /// later re-stamps nothing and the register's history remains one continuous
+  /// dataset. The undrained outbox is cleared: those deltas can never reach the
+  /// server now, and re-linking is sync-from-that-point-forward anyway.
+  ///
+  /// Fails loudly when the server is unreachable — a register that thinks it is
+  /// standalone while the server still counts it would quietly eat a paid slot.
+  /// (Unreachable/lost devices are the admin's `POST /api/workstations/{id}/unlink`.)
+  Future<void> unlinkFromPlatform() async {
+    final ws = _activeWorkstation;
+    if (ws == null) return;
+    state = RegisterActivated(ws, busy: true);
+
+    try {
+      await _api.unlinkRegister();
+    } on ApiException catch (e) {
+      // 401/404/410 all mean the server no longer considers us linked — the
+      // local cleanup below is exactly the right response.
+      if (e.statusCode != 401 && e.statusCode != 404 && e.statusCode != 410) {
+        state = RegisterActivated(ws,
+            error: 'Не удалось отключить кассу ($e). Попробуйте позже.');
+        return;
+      }
+    } on Exception catch (_) {
+      state = RegisterActivated(ws,
+          error: 'Нет связи с сервером — отключение возможно только онлайн');
+      return;
+    }
+
+    await _applyLocalUnlink(ws);
+  }
+
+  /// Local half of unlinking: drop the binding, keep the data, land standalone.
+  /// Shared by the explicit action and the "an admin unlinked us" discovery.
+  Future<void> _applyLocalUnlink(WorkstationInfo ws, {String? notice}) async {
+    final info = StandaloneInfo(
+      tenantId: ws.tenantId,
+      storeId: ws.storeId,
+      storeName: ws.storeName,
+      createdAt: DateTime.now().toUtc(),
+    );
+    await _standalone?.save(info);
+    _standaloneInfo = info;
+
     await _api.session?.clearAll();
+    await _workstation?.clear();
+    await _localAuth?.clearOutbox();
     _ownerTenantId = null;
     _activeWorkstation = null;
-    await _workstation?.clear();
-    state = const RegisterNotActivated();
+
+    await checkFirstRun();
+    if (notice != null && state is RegisterActivated) {
+      state = RegisterActivated((state as RegisterActivated).workstation,
+          error: notice);
+    }
   }
 
   // --- Cashier login (after activation) -----------------------------------
@@ -617,10 +700,31 @@ class AuthController extends Notifier<AuthState> {
         _persistFailureCount();
       }
       state = RegisterActivated(ws, error: msg);
+    } on SessionExpiredException catch (e) {
+      await handleDeviceSessionExpired(e);
     } on Exception catch (_) {
       state = RegisterActivated(ws, error: 'Нет связи с сервером');
     }
   }
+
+  /// The device refresh token stopped working while a binding still exists —
+  /// which is exactly what an owner unlinking this register from the web admin
+  /// looks like from here (the server revokes the refresh row and the
+  /// workstation goes inactive). Land standalone with all data intact and say
+  /// so, rather than dropping the cashier on a dead activation screen.
+  ///
+  /// Returns true when it handled the case.
+  Future<bool> handleDeviceSessionExpired(SessionExpiredException e) async {
+    if (e.flavor != AuthFlavor.device) return false;
+    final ws = _activeWorkstation;
+    if (ws == null) return false;
+    await _applyLocalUnlink(ws, notice: _unlinkedByAdminNotice);
+    return true;
+  }
+
+  static const _unlinkedByAdminNotice =
+      'Касса отключена от платформы администратором. '
+      'Данные сохранены — касса работает автономно.';
 
   // --- Hydrate / owner login --------------------------------------------
 

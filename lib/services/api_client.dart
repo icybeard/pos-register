@@ -147,6 +147,13 @@ class ApiClient {
     }, AuthFlavor.none);
   }
 
+  /// Disconnect THIS register from the platform (spec 03 R5). The device token
+  /// is the credential; the server marks the workstation inactive, revokes the
+  /// refresh token and frees a tariff slot. 204 No Content on success.
+  Future<void> unlinkRegister() async {
+    await _post('/api/register/unlink', const {}, AuthFlavor.device);
+  }
+
   Future<Map<String, dynamic>> listCashiers() async {
     return _get('/api/cashiers', null, AuthFlavor.device);
   }

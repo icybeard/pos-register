@@ -1506,6 +1506,25 @@ class AppLocalizationsKk extends AppLocalizations {
   String get platformStorePrefix => 'Дүкен';
 
   @override
+  String get platformUnlinkAction => 'Ажырату';
+
+  @override
+  String get platformUnlinkSubtitle =>
+      'Кассаны платформадан ажырату — деректер осында қалады';
+
+  @override
+  String get platformUnlinkConfirmTitle =>
+      'Кассаны платформадан ажыратасыз ба?';
+
+  @override
+  String get platformUnlinkConfirmBody =>
+      'Барлық деректер кассада қалады, синхрондау тоқтайды. Тариф слоты босайды — кассаны кез келген уақытта қайта қосуға болады.';
+
+  @override
+  String get platformUnlinkedByAdmin =>
+      'Кассаны әкімші платформадан ажыратты. Деректер сақталды — касса дербес жұмыс істейді.';
+
+  @override
   String get connectSkip => 'Өткізіп жіберу — дербес жұмыс істеу';
 
   @override

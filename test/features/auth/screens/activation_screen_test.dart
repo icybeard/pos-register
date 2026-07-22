@@ -5,6 +5,7 @@ import 'package:flutter_test/flutter_test.dart';
 import 'package:pos_system/core/l10n/app_localizations.dart';
 import 'package:pos_system/features/auth/controllers/auth_controller.dart';
 import 'package:pos_system/features/auth/screens/activation_screen.dart';
+import 'package:pos_system/services/api_client.dart' show ApiException;
 import 'package:pos_system/services/auth/device_id_store.dart';
 
 import '../../../mocks/mock_api_client.dart';
@@ -80,5 +81,38 @@ void main() {
     });
 
     expect(receivedCode, 'ABCD1234');
+  });
+
+  testWidgets('device-limit refusal explains the tariff, not just the failure',
+      (tester) async {
+    // Server response for the eleventh register on a single block
+    // (specs/platform/03 Phase C).
+    mockApi.onActivateRegister =
+        ({required code, required deviceId, required deviceName}) async {
+      throw ApiException(
+        409,
+        '{"error":"device limit reached: 10 of 10 registers linked (1 block(s))",'
+        '"error_code":"device_limit_reached",'
+        '"linked_count":10,"limit":10,"blocks":1}',
+      );
+    };
+
+    await tester.pumpWidget(wrap(const ActivationScreen()));
+    await tester.enterText(find.byType(TextField), 'ABCD1234');
+    await tester.pump();
+    await tester.tap(find.text('Подключить'));
+
+    await tester.runAsync(() async {
+      for (var i = 0; i < 30; i++) {
+        await Future<void>.delayed(const Duration(milliseconds: 10));
+      }
+    });
+    await tester.pump();
+
+    expect(
+      find.textContaining('Достигнут лимит подключённых касс'),
+      findsOneWidget,
+    );
+    expect(find.textContaining('10 из 10'), findsOneWidget);
   });
 }

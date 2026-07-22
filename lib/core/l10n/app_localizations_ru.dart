@@ -1518,6 +1518,24 @@ class AppLocalizationsRu extends AppLocalizations {
   String get platformStorePrefix => 'Магазин';
 
   @override
+  String get platformUnlinkAction => 'Отключить';
+
+  @override
+  String get platformUnlinkSubtitle =>
+      'Отключить кассу от платформы — данные останутся здесь';
+
+  @override
+  String get platformUnlinkConfirmTitle => 'Отключить кассу от платформы?';
+
+  @override
+  String get platformUnlinkConfirmBody =>
+      'Все данные останутся на кассе, синхронизация остановится. Слот тарифа освободится — подключить кассу обратно можно в любой момент.';
+
+  @override
+  String get platformUnlinkedByAdmin =>
+      'Касса отключена от платформы администратором. Данные сохранены — касса работает автономно.';
+
+  @override
   String get connectSkip => 'Пропустить — работать автономно';
 
   @override

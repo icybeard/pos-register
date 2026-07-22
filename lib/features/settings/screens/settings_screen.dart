@@ -149,6 +149,39 @@ class _SettingsScreenState extends State<SettingsScreen> {
                             }
                           : null,
                     ),
+                    // Unlink (spec 03 R5): frees the tariff slot, keeps every
+                    // byte of local data. Only offered while linked.
+                    if (!standalone)
+                      _SettingsTile(
+                        icon: Icons.link_off_rounded,
+                        iconColor: pos.warningFg,
+                        iconBg: pos.warningBg,
+                        title: l.platformUnlinkAction,
+                        subtitle: l.platformUnlinkSubtitle,
+                        onTap: () async {
+                          final confirmed = await showDialog<bool>(
+                            context: context,
+                            builder: (dialogCtx) => AlertDialog(
+                              title: Text(l.platformUnlinkConfirmTitle),
+                              content: Text(l.platformUnlinkConfirmBody),
+                              actions: [
+                                TextButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogCtx).pop(false),
+                                  child: Text(l.cancel),
+                                ),
+                                FilledButton(
+                                  onPressed: () =>
+                                      Navigator.of(dialogCtx).pop(true),
+                                  child: Text(l.platformUnlinkAction),
+                                ),
+                              ],
+                            ),
+                          );
+                          if (confirmed != true) return;
+                          await notifier.unlinkFromPlatform();
+                        },
+                      ),
                   ]);
                 }),
 
