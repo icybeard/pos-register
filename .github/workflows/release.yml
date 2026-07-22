@@ -120,12 +120,27 @@ jobs:
           $v = "${{ steps.version.outputs.value }}"
           if ($v -notmatch '^\d+\.\d+\.\d+$') { $v = "0.0.0" }
           $name = "KeregeSystem-Kassa-${{ steps.version.outputs.value }}-windows-x64.msi"
+          # ABSOLUTE path: WiX resolves a relative Files/@Include against the
+          # .wxs file's own folder (windows/installer/), not the working
+          # directory — a relative path silently harvests nothing and yields a
+          # valid but empty installer.
+          $buildDir = (Resolve-Path "build/windows/x64/runner/Release").Path
           wix build windows/installer/Package.wxs `
             -arch x64 `
             -ext WixToolset.UI.wixext `
+            -pdbtype none `
             -d AppVersion="$v" `
-            -d BuildDir="build/windows/x64/runner/Release" `
+            -d BuildDir="$buildDir" `
             -o $name
+
+          # Guard against exactly the failure above: an MSI that builds
+          # "successfully" while containing no application files. The payload is
+          # ~18 MB, so anything under 5 MB means the harvest broke.
+          $sizeMb = (Get-Item $name).Length / 1MB
+          Write-Host ("MSI size: {0:N1} MB" -f $sizeMb)
+          if ($sizeMb -lt 5) {
+            throw "MSI is only $([math]::Round($sizeMb,1)) MB — the application files were not harvested."
+          }
 
       # --- Linux ---------------------------------------------------------
       - name: Build Linux
