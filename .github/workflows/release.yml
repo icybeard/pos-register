@@ -109,8 +109,11 @@ jobs:
         if: matrix.artifact == 'windows-x64'
         shell: pwsh
         run: |
-          dotnet tool install --global wix --version 5.*
-          wix extension add -g WixToolset.UI.wixext/5.*
+          # Pinned, and pinned to the SAME version: `wix extension add` rejects
+          # a version wildcard outright, and an extension built against another
+          # WiX release fails to load.
+          dotnet tool install --global wix --version 5.0.2
+          wix extension add -g WixToolset.UI.wixext/5.0.2
           # MSI ProductVersion only accepts x.y.z numerics, so a manual run
           # ("dev-1a2b3c4") gets a placeholder — the installer is a throwaway
           # there anyway; tagged builds carry the real version.
