@@ -2,11 +2,11 @@
 <!--
   MSI installer for the Windows register (docs/RELEASING.md).
 
-  Built by .github/workflows/release.yml against the output of
-  `flutter build windows --release`. The Files element harvests that whole
-  folder — the Flutter runner drags a long, version-dependent list of DLLs and
-  a data/ tree behind it, and enumerating them by hand would rot on the first
-  Flutter upgrade.
+  Built by .github/workflows/release.yml against the release output of
+  `flutter build windows`. The Files element harvests that whole folder: the
+  Flutter runner drags a long, version-dependent list of DLLs and a data/ tree
+  behind it, and enumerating them by hand would rot on the first Flutter
+  upgrade.
 
   UpgradeCode must NEVER change: it is what tells Windows that v0.2.0 is an
   upgrade of v0.1.0 rather than a second, parallel installation.
