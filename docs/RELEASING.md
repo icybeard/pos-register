@@ -5,10 +5,25 @@ which is what the download page on jurek.kz links to.
 
 | Platform | Artifact | Status |
 | --- | --- | --- |
-| Windows x64 | `KeregeSystem-Kassa-<version>-windows-x64.zip` (portable) | published |
+| Windows x64 | `…-windows-x64.msi` (installer) **and** `…-windows-x64.zip` (portable) | published |
 | Linux x64 | `KeregeSystem-Kassa-<version>-linux-x64.tar.gz` | published |
-| Android | `KeregeSystem-Kassa-<version>-android.apk` (sideload) | published |
+| Android | `KeregeSystem-Kassa-<version>-android.apk` (sideload) | built, **not published** — needs the release keystore first (below) |
 | macOS, iOS | — | not published: both need a paid Apple Developer identity, and an unsigned build is worse than none (Gatekeeper blocks it, iOS refuses outright). Build from source meanwhile. |
+
+Windows ships in two shapes on purpose. The MSI is what a shop owner wants —
+Start-menu and desktop shortcuts, an entry in Add/Remove Programs, and the next
+version upgrades in place. The zip stays for tills where an installer can't run:
+no admin rights, locked-down machines, or copying the register onto a USB stick.
+
+The MSI is defined by [`windows/installer/Package.wxs`](../windows/installer/Package.wxs)
+and built with WiX 5. Its `UpgradeCode` must never change — that GUID is what
+tells Windows a new MSI is an upgrade rather than a second, parallel install.
+
+**Neither artifact is code-signed.** Windows SmartScreen will warn on first run
+(«Windows защитила ваш компьютер» → «Подробнее» → «Выполнить в любом случае»)
+until we buy a code-signing certificate and build up reputation. That applies to
+the zip's .exe exactly as much as to the MSI — signing is a separate purchase,
+not something the installer format fixes.
 
 ## Cutting a release
 

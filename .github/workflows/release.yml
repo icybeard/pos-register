@@ -94,13 +94,35 @@ jobs:
           CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
         run: flutter build windows --release
 
-      - name: Package Windows
+      # Two Windows artifacts on purpose: the MSI is what a shop owner wants
+      # (Start-menu + desktop shortcuts, Add/Remove Programs, upgrades in
+      # place), the zip is the fallback for machines where the user can't run
+      # an installer — locked-down tills, no admin rights, or a USB stick.
+      - name: Package Windows (zip)
         if: matrix.artifact == 'windows-x64'
         shell: pwsh
         run: |
           $name = "KeregeSystem-Kassa-${{ steps.version.outputs.value }}-windows-x64.zip"
           Compress-Archive -Path build/windows/x64/runner/Release/* -DestinationPath $name
-          "ASSET=$name" | Out-File -FilePath $env:GITHUB_ENV -Append
+
+      - name: Package Windows (msi)
+        if: matrix.artifact == 'windows-x64'
+        shell: pwsh
+        run: |
+          dotnet tool install --global wix --version 5.*
+          wix extension add -g WixToolset.UI.wixext/5.*
+          # MSI ProductVersion only accepts x.y.z numerics, so a manual run
+          # ("dev-1a2b3c4") gets a placeholder — the installer is a throwaway
+          # there anyway; tagged builds carry the real version.
+          $v = "${{ steps.version.outputs.value }}"
+          if ($v -notmatch '^\d+\.\d+\.\d+$') { $v = "0.0.0" }
+          $name = "KeregeSystem-Kassa-${{ steps.version.outputs.value }}-windows-x64.msi"
+          wix build windows/installer/Package.wxs `
+            -arch x64 `
+            -ext WixToolset.UI.wixext `
+            -d AppVersion="$v" `
+            -d BuildDir="build/windows/x64/runner/Release" `
+            -o $name
 
       # --- Linux ---------------------------------------------------------
       - name: Build Linux
@@ -112,7 +134,6 @@ jobs:
         run: |
           NAME="KeregeSystem-Kassa-${{ steps.version.outputs.value }}-linux-x64.tar.gz"
           tar -czf "$NAME" -C build/linux/x64/release/bundle .
-          echo "ASSET=$NAME" >> "$GITHUB_ENV"
 
       # --- Android -------------------------------------------------------
       # Unsigned APKs can be installed but not updated in place, so the release
@@ -140,16 +161,17 @@ jobs:
         run: |
           NAME="KeregeSystem-Kassa-${{ steps.version.outputs.value }}-android.apk"
           mv build/app/outputs/flutter-apk/app-release.apk "$NAME"
-          echo "ASSET=$NAME" >> "$GITHUB_ENV"
 
       - name: Remove signing material
         if: always() && matrix.artifact == 'android'
         run: rm -f android/key.properties android/upload-keystore.jks
 
+      # Glob rather than a named variable: Windows produces two files (msi+zip)
+      # and every packaging step drops its output in the workspace root.
       - uses: actions/upload-artifact@v4
         with:
           name: ${{ matrix.artifact }}
-          path: ${{ env.ASSET }}
+          path: KeregeSystem-Kassa-*
           if-no-files-found: error
 
   publish:

@@ -1,0 +1,75 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+  MSI installer for the Windows register (docs/RELEASING.md).
+
+  Built by .github/workflows/release.yml against the output of
+  `flutter build windows --release`. The Files element harvests that whole
+  folder — the Flutter runner drags a long, version-dependent list of DLLs and
+  a data/ tree behind it, and enumerating them by hand would rot on the first
+  Flutter upgrade.
+
+  UpgradeCode must NEVER change: it is what tells Windows that v0.2.0 is an
+  upgrade of v0.1.0 rather than a second, parallel installation.
+-->
+<Wix xmlns="http://wixtoolset.org/schemas/v4/wxs"
+     xmlns:ui="http://wixtoolset.org/schemas/v4/wxs/ui">
+  <Package
+      Name="KeregeSystem Касса"
+      Manufacturer="KeregeSystem"
+      Version="$(var.AppVersion)"
+      UpgradeCode="DE50CB36-6DA8-4B5E-9D70-6391340580C1"
+      Scope="perMachine"
+      Language="1049"
+      Codepage="65001">
+
+    <SummaryInformation Description="Касса KeregeSystem — офлайн-касса для розницы" />
+
+    <!-- Replace an older build in place; refuse to install over a newer one
+         rather than silently downgrading someone's register. -->
+    <MajorUpgrade DowngradeErrorMessage="На этом компьютере уже установлена более новая версия кассы KeregeSystem." />
+
+    <MediaTemplate EmbedCab="yes" />
+
+    <StandardDirectory Id="ProgramFiles6432Folder">
+      <Directory Id="INSTALLFOLDER" Name="KeregeSystem Kassa" />
+    </StandardDirectory>
+    <StandardDirectory Id="ProgramMenuFolder">
+      <Directory Id="AppMenuFolder" Name="KeregeSystem" />
+    </StandardDirectory>
+
+    <ComponentGroup Id="AppFiles" Directory="INSTALLFOLDER">
+      <Files Include="$(var.BuildDir)\**" />
+    </ComponentGroup>
+
+    <!-- Start-menu + desktop shortcuts. The registry value is the KeyPath:
+         shortcuts alone can't anchor a component, and a per-user HKCU value is
+         the conventional stand-in. -->
+    <Component Id="Shortcuts" Directory="AppMenuFolder" Guid="366402A7-1412-4693-AD1C-8133C326BD71">
+      <Shortcut Id="StartMenuShortcut"
+                Name="KeregeSystem Касса"
+                Description="Касса для розничной торговли"
+                Target="[INSTALLFOLDER]pos_system.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <Shortcut Id="DesktopShortcut"
+                Directory="DesktopFolder"
+                Name="KeregeSystem Касса"
+                Target="[INSTALLFOLDER]pos_system.exe"
+                WorkingDirectory="INSTALLFOLDER" />
+      <RemoveFolder Id="RemoveAppMenuFolder" Directory="AppMenuFolder" On="uninstall" />
+      <RegistryValue Root="HKCU"
+                     Key="Software\KeregeSystem\Kassa"
+                     Name="installed"
+                     Type="integer"
+                     Value="1"
+                     KeyPath="yes" />
+    </Component>
+
+    <Feature Id="Main" Title="Касса KeregeSystem" Level="1">
+      <ComponentGroupRef Id="AppFiles" />
+      <ComponentRef Id="Shortcuts" />
+    </Feature>
+
+    <!-- Minimal built-in UI: install-directory picker + progress, no licence page. -->
+    <ui:WixUI Id="WixUI_InstallDir" InstallDirectory="INSTALLFOLDER" />
+  </Package>
+</Wix>
