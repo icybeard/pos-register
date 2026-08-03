@@ -34,8 +34,10 @@ android {
     }
 
     defaultConfig {
-        // TODO: Specify your own unique Application ID (https://developer.android.com/studio/build/application-id.html).
-        applicationId = "kz.pos.pos_system"
+        // Store identity for Google Play. `namespace` above stays kz.pos.pos_system
+        // (compile-time Kotlin package only, never user-visible); applicationId is
+        // the published id and does not have to match it.
+        applicationId = "kz.keregesystem.pos"
         // You can update the following values to match your application needs.
         // For more information, see: https://flutter.dev/to/review-gradle-config.
         minSdk = flutter.minSdkVersion
