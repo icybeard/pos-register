@@ -224,10 +224,31 @@ jobs:
           echo "$P8" | base64 -d > ~/private_keys/AuthKey_${KEY_ID}.p8
           cp ~/private_keys/AuthKey_${KEY_ID}.p8 ~/.appstoreconnect/private_keys/
 
+      # `flutter build ipa` cannot thread the API key into the archive step, so
+      # xcodebuild does the signing itself: -allowProvisioningUpdates plus the
+      # authentication key lets it create the distribution cert + profile for
+      # kz.keregesystem.pos on the fly. `--config-only` just generates the Xcode
+      # project + pods; the Flutter/Dart compile runs inside xcodebuild's build
+      # phase during archive.
       - name: Build signed IPA
         env:
           TEAM_ID: ${{ secrets.APPLE_TEAM_ID }}
+          KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
+          ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
+          flutter build ipa --release --config-only
+
+          KEY="$HOME/private_keys/AuthKey_${KEY_ID}.p8"
+          AUTH=(-allowProvisioningUpdates
+                -authenticationKeyPath "$KEY"
+                -authenticationKeyID "$KEY_ID"
+                -authenticationKeyIssuerID "$ISSUER_ID")
+
+          xcodebuild -workspace ios/Runner.xcworkspace -scheme Runner \
+            -configuration Release -sdk iphoneos \
+            -archivePath "$PWD/build/ios/Runner.xcarchive" \
+            DEVELOPMENT_TEAM="$TEAM_ID" "${AUTH[@]}" archive
+
           cat > ios/ExportOptions.plist <<PLIST
           <?xml version="1.0" encoding="UTF-8"?>
           <!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
@@ -235,11 +256,14 @@ jobs:
             <key>method</key><string>app-store-connect</string>
             <key>signingStyle</key><string>automatic</string>
             <key>teamID</key><string>${TEAM_ID}</string>
-            <key>destination</key><string>export</string>
           </dict></plist>
           PLIST
-          flutter build ipa --release \
-            --export-options-plist=ios/ExportOptions.plist
+
+          xcodebuild -exportArchive \
+            -archivePath "$PWD/build/ios/Runner.xcarchive" \
+            -exportOptionsPlist ios/ExportOptions.plist \
+            -exportPath "$PWD/build/ios/ipa" \
+            "${AUTH[@]}"
 
       - name: Upload to TestFlight
         run: |
