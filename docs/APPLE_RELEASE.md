@@ -42,7 +42,10 @@ appstoreconnect.apple.com → Apps → + → New App.
 ### 0.4 Create an App Store Connect API key (this is what CI uses)
 appstoreconnect.apple.com → Users and Access → **Integrations** → App Store
 Connect API → + (Team Keys).
-- Name: `github-ci`  ·  Access: **App Manager**.
+- Name: `github-ci`  ·  Access: **Admin**.
+  (App Manager can create provisioning profiles but **not** the iOS
+  Distribution certificate via cloud signing — `xcodebuild` then fails export
+  with "Cloud signing permission error". Admin can. Verified 2026-08-04.)
 - Download the **`.p8` file — you can only download it once.** Note the
   **Key ID** and the **Issuer ID** shown on that page.
 
