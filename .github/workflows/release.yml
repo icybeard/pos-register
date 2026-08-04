@@ -236,7 +236,7 @@ jobs:
           KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
-          flutter build ipa --release --config-only
+          flutter build ios --release --config-only --no-codesign
 
           KEY="$HOME/private_keys/AuthKey_${KEY_ID}.p8"
           AUTH=(-allowProvisioningUpdates
