@@ -117,14 +117,14 @@ void main() {
       await windowManager.ensureInitialized();
       await windowManager.setFullScreen(true);
     }
-    // Riverpod ProviderObserver replaces the prior Bloc.observer hook —
-    // catches errors thrown inside any Notifier callback and forwards them
-    // to developer.log so they survive a release build (debugPrint is a
-    // no-op outside debug). Wire to Sentry / Crashlytics once enabled.
-    runApp(const ProviderScope(
-      observers: [_AppProviderObserver()],
-      child: PosApp(),
-    ));
+    // No ProviderScope here — the ONLY scope is the one PosApp builds with
+    // the construction-time overrides (api client, token stores, …). With a
+    // root scope above it, Riverpod mounts every provider that is NOT in the
+    // nested override list in the ROOT container, so AuthController resolved
+    // authApiClientProvider against the root's throwing default instead of
+    // the overridden value — boot crash on every platform (broke in the
+    // Phase 0b Riverpod migration, shipped broken in v0.1.2).
+    runApp(const PosApp());
   }, (Object error, StackTrace stack) {
     // BLOCKER FOR BETA: wire to Sentry / Crashlytics. Until then we route
     // through developer.log so the OS log stream retains a trace in
@@ -438,6 +438,11 @@ class _PosAppState extends State<PosApp> {
         Provider<FeatureFlags>.value(value: _flags),
       ],
       child: ProviderScope(
+        // Root (and only) Riverpod scope — see the runApp comment in main().
+        // The ProviderObserver replaces the prior Bloc.observer hook: catches
+        // errors thrown inside any Notifier callback and forwards them to
+        // developer.log so they survive a release build.
+        observers: const [_AppProviderObserver()],
         // Override Riverpod's construction-time seams so the AuthController /
         // SalesController build() picks up the boot-resolved storage + api
         // client. Drives the dependency graph from main.dart, mirroring the
@@ -458,7 +463,7 @@ class _PosAppState extends State<PosApp> {
         ],
         child: _PosBootHydrator(
           child: MaterialApp(
-          title: 'POS System',
+          title: 'KeregePOS',
           debugShowCheckedModeBanner: false,
           theme: AppTheme.light,
           darkTheme: AppTheme.dark,
@@ -864,7 +869,14 @@ class _MainShellState extends ConsumerState<_MainShell> {
                   ]),
                 )
               : Scaffold(
-                  body: _buildPage(_currentPage),
+                  // Mobile has no shell chrome bar, so the page body starts
+                  // at y=0 — SafeArea keeps it clear of the status bar /
+                  // Dynamic Island. Bottom inset is left off: NavigationBar
+                  // already absorbs the home-indicator area.
+                  body: SafeArea(
+                    bottom: false,
+                    child: _buildPage(_currentPage),
+                  ),
                   bottomNavigationBar: _buildBottomNav(context),
                 ),
         ),
@@ -969,7 +981,9 @@ class _MainShellState extends ConsumerState<_MainShell> {
     showModalBottomSheet<void>(
       context: context,
       builder: (ctx) => SafeArea(
-        child: Padding(
+        // Scrollable: the owner variant has 9 rows, which overflows the
+        // sheet's default max height on phone screens.
+        child: SingleChildScrollView(
           padding: const EdgeInsets.symmetric(vertical: 8),
           child: Column(mainAxisSize: MainAxisSize.min, children: [
             Container(
@@ -1088,7 +1102,7 @@ class _MainShellSidebar extends StatelessWidget {
               const KeregeIcon(size: 40),
               const SizedBox(width: 12),
               Expanded(child: Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                Text('POS System',
+                Text('KeregePOS',
                     style: Hifi.ui(size: 16, weight: FontWeight.w700, color: Colors.white)
                         .copyWith(letterSpacing: -0.3)),
                 Text('KAZAKHSTAN',

@@ -80,7 +80,7 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
 
   const HifiChrome({
     super.key,
-    this.appName = 'pos-register',
+    this.appName = 'KeregePOS',
     this.title,
     this.shiftNumber,
     this.cashierName,
@@ -127,22 +127,35 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
           style: Hifi.ui(size: 13, weight: FontWeight.w700, color: Colors.white)
               .copyWith(letterSpacing: 0.3),
         ),
-        if (title != null) ...[
-          const SizedBox(width: 12),
-          Text(
-            '· $title',
-            style: Hifi.ui(
-              size: 13,
-              weight: FontWeight.w500,
-              color: Colors.white.withValues(alpha: 0.85),
-            ).copyWith(letterSpacing: 0.2),
-          ),
-        ],
-        const SizedBox(width: 12),
-        if (shiftNumber != null) ...[_chip(shiftNumber!), const SizedBox(width: 8)],
-        if (cashierName != null) _chip('Кассир: $cashierName'),
-        for (final w in extras) ...[const SizedBox(width: 8), w],
-        const Spacer(),
+        // Everything between the app name and the right-side cluster shares
+        // the leftover width and ellipsizes — on phone widths the chips
+        // otherwise overflow the bar (RenderFlex 96px on the debts screen).
+        Expanded(
+          child: Row(children: [
+            if (title != null) ...[
+              const SizedBox(width: 12),
+              Flexible(
+                child: Text(
+                  '· $title',
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
+                  style: Hifi.ui(
+                    size: 13,
+                    weight: FontWeight.w500,
+                    color: Colors.white.withValues(alpha: 0.85),
+                  ).copyWith(letterSpacing: 0.2),
+                ),
+              ),
+            ],
+            const SizedBox(width: 12),
+            if (shiftNumber != null) ...[
+              Flexible(child: _chip(shiftNumber!)),
+              const SizedBox(width: 8),
+            ],
+            if (cashierName != null) Flexible(child: _chip('Кассир: $cashierName')),
+            for (final w in extras) ...[const SizedBox(width: 8), w],
+          ]),
+        ),
         if (online != null) ...[
           _OnlineChip(online: online!, onTap: onToggleOnline),
           const SizedBox(width: 10),
@@ -176,6 +189,8 @@ class HifiChrome extends StatelessWidget implements PreferredSizeWidget {
         ),
         child: Text(
           label,
+          maxLines: 1,
+          overflow: TextOverflow.ellipsis,
           style: Hifi.ui(size: 11, weight: FontWeight.w500, color: Colors.white),
         ),
       );

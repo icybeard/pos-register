@@ -5,6 +5,7 @@ import 'package:flutter_riverpod/flutter_riverpod.dart';
 import '../../../core/l10n/app_localizations.dart';
 import '../../../core/theme/app_theme.dart';
 import '../../../core/theme/hifi.dart';
+import '../../../core/widgets/kerege_icon.dart';
 import '../controllers/auth_controller.dart';
 import 'owner_login_screen.dart';
 
@@ -267,18 +268,11 @@ class _WidePinLayout extends ConsumerWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   // Branding
-                  Row(children: [
-                    Container(
-                      width: 40, height: 40,
-                      decoration: BoxDecoration(
-                        color: AppTheme.primary,
-                        borderRadius: BorderRadius.circular(10),
-                      ),
-                      child: const Icon(Icons.point_of_sale_rounded, size: 20, color: Colors.white),
-                    ),
-                    const SizedBox(width: 12),
-                    const Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
-                      Text('POS SYSTEM',
+                  const Row(children: [
+                    KeregeIcon(size: 40),
+                    SizedBox(width: 12),
+                    Column(crossAxisAlignment: CrossAxisAlignment.start, children: [
+                      Text('KeregePOS',
                         style: TextStyle(fontFamily: 'Inter', fontSize: 16, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.3)),
                       Text('KAZAKHSTAN',
                         style: TextStyle(fontFamily: 'Inter', fontSize: 9, fontWeight: FontWeight.w600, color: Color(0xFF837B6D), letterSpacing: 2)),
@@ -389,23 +383,21 @@ class _NarrowPinLayout extends StatelessWidget {
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // Logo
-            Container(
-              width: 72, height: 72,
+            // Logo — brand mark, not the old generic cash-register glyph
+            DecoratedBox(
               decoration: BoxDecoration(
-                color: AppTheme.primary,
                 borderRadius: BorderRadius.circular(18),
                 boxShadow: [
                   BoxShadow(color: AppTheme.primary.withValues(alpha: 0.25), blurRadius: 24, offset: const Offset(0, 8)),
                 ],
               ),
-              child: const Icon(Icons.point_of_sale_rounded, size: 34, color: Colors.white),
+              child: const KeregeIcon(size: 72, borderRadius: 18),
             ),
             const SizedBox(height: 16),
             // Clock on mobile
             const _LiveClock(),
             const SizedBox(height: 16),
-            const Text('POS System',
+            const Text('KeregePOS',
               style: TextStyle(fontFamily: 'Inter', fontSize: 26, fontWeight: FontWeight.w800, color: AppTheme.primary, letterSpacing: -0.5)),
             const SizedBox(height: 4),
             const Text('KAZAKHSTAN',
@@ -758,11 +750,21 @@ class _GridFlavor extends ConsumerWidget {
                 ),
                 padding: const EdgeInsets.all(12),
                 child: GridView.builder(
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
-                    crossAxisCount: 3,
+                  // Width-adaptive: phones get 1 column, tablets 2-3, desktop
+                  // 4-5. A fixed crossAxisCount:3 with a flat aspect ratio
+                  // sized tiles at ~100×45pt on a phone — smaller than the
+                  // 44pt avatar alone, so every tile overflowed.
+                  // mainAxisExtent pins the row height to the tile's real
+                  // content (14pt padding ×2 + 44pt avatar + border) instead
+                  // of deriving it from the column width.
+                  gridDelegate: const SliverGridDelegateWithMaxCrossAxisExtent(
+                    // 400 keeps phones (grid ≈322pt wide) at ONE full-width
+                    // column — at two columns "Администратор" wraps and
+                    // overflows the fixed-height row.
+                    maxCrossAxisExtent: 400,
+                    mainAxisExtent: 76,
                     mainAxisSpacing: 12,
                     crossAxisSpacing: 12,
-                    childAspectRatio: 2.2,
                   ),
                   // +2: cashier tiles, then admin tile, then "+ Новый кассир".
                   // Admin tile is part of the grid (per the "everyone in
@@ -890,9 +892,11 @@ class _CashierGridTile extends StatelessWidget {
                 crossAxisAlignment: CrossAxisAlignment.start,
                 mainAxisSize: MainAxisSize.min,
                 children: [
-                  Text(name, style: Hifi.ui(size: 14, weight: FontWeight.w700)),
+                  Text(name, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: Hifi.ui(size: 14, weight: FontWeight.w700)),
                   const SizedBox(height: 2),
-                  Text(role, style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
+                  Text(role, maxLines: 1, overflow: TextOverflow.ellipsis,
+                      style: Hifi.ui(size: 11, color: const Color(0xFF837B6D))),
                 ],
               )),
             ]),
@@ -983,11 +987,15 @@ class _AdminLoginTile extends StatelessWidget {
               children: [
                 Text(
                   AppLocalizations.of(context)!.pinAdminTile,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Hifi.ui(size: 14, weight: FontWeight.w700, color: Colors.white),
                 ),
                 const SizedBox(height: 2),
                 Text(
                   AppLocalizations.of(context)!.pinAdminTileSubtitle,
+                  maxLines: 1,
+                  overflow: TextOverflow.ellipsis,
                   style: Hifi.ui(size: 11, color: Colors.white.withValues(alpha: 0.7)),
                 ),
               ],

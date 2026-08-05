@@ -101,7 +101,7 @@ abstract class AppLocalizations {
   /// No description provided for @appTitle.
   ///
   /// In ru, this message translates to:
-  /// **'POS System'**
+  /// **'KeregePOS'**
   String get appTitle;
 
   /// No description provided for @appRegion.
@@ -1601,7 +1601,7 @@ abstract class AppLocalizations {
   /// No description provided for @settingsAboutSub.
   ///
   /// In ru, this message translates to:
-  /// **'POS System Kazakhstan v0.1.0'**
+  /// **'KeregePOS v0.2.0'**
   String get settingsAboutSub;
 
   /// No description provided for @settingsServer.

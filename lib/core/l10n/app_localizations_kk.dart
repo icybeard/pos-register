@@ -9,7 +9,7 @@ class AppLocalizationsKk extends AppLocalizations {
   AppLocalizationsKk([String locale = 'kk']) : super(locale);
 
   @override
-  String get appTitle => 'POS System';
+  String get appTitle => 'KeregePOS';
 
   @override
   String get appRegion => 'QAZAQSTAN';
@@ -810,7 +810,7 @@ class AppLocalizationsKk extends AppLocalizations {
   String get settingsAbout => 'Жүйе туралы';
 
   @override
-  String get settingsAboutSub => 'POS System Kazakhstan v0.1.0';
+  String get settingsAboutSub => 'KeregePOS v0.2.0';
 
   @override
   String get settingsServer => 'Сервер';

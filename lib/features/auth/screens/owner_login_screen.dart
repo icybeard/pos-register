@@ -68,6 +68,14 @@ class _OwnerLoginScreenState extends ConsumerState<OwnerLoginScreen> {
     };
 
     return Scaffold(
+      // Auto-leading back button: shown when this screen was pushed (the
+      // admin tile on the cashier grid) so a cashier who tapped it by
+      // mistake can leave. Renders nothing when the screen is `home:`.
+      appBar: AppBar(
+        backgroundColor: Colors.transparent,
+        elevation: 0,
+        scrolledUnderElevation: 0,
+      ),
       body: Center(
             child: ConstrainedBox(
               constraints: const BoxConstraints(maxWidth: 400),
@@ -83,7 +91,7 @@ class _OwnerLoginScreenState extends ConsumerState<OwnerLoginScreen> {
                       crossAxisAlignment: CrossAxisAlignment.stretch,
                       children: [
                         Text(
-                          'POS System',
+                          'KeregePOS',
                           style: TextStyle(fontFamily: 'Inter', 
                             fontSize: 24,
                             fontWeight: FontWeight.w800,

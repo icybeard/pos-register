@@ -111,18 +111,106 @@ class _DebtsScreenState extends State<DebtsScreen> {
         // is rendered locally with a back button.
         HifiChrome(
           leading: BackButton(color: Colors.white, onPressed: () => Navigator.of(context).maybePop()),
+          // No cashier chip: this screen only knows the raw cashier UUID,
+          // which is noise, not information, in the chrome bar.
           shiftNumber: 'Долги',
-          cashierName: widget.cashierId,
         ),
         Expanded(
           child: _loading
               ? const Center(child: CircularProgressIndicator())
-              : Row(children: [
-                  Expanded(child: _leftPane()),
-                  _rightPanel(),
-                ]),
+              : LayoutBuilder(builder: (context, c) {
+                  // Desktop keeps the list+detail+action-grid split; phones
+                  // get a stacked layout — the 320pt list alone doesn't fit
+                  // beside the action panel on a 396pt screen.
+                  if (c.maxWidth < 700) return _narrowBody();
+                  return Row(children: [
+                    Expanded(child: _leftPane()),
+                    _rightPanel(),
+                  ]);
+                }),
         ),
       ]),
+    );
+  }
+
+  /// Phone layout: search+list on top, the selected debtor's summary strip
+  /// below, then a primary-action bar. Secondary actions (mostly still
+  /// «в разработке» stubs) live behind the «⋯» sheet instead of the
+  /// desktop action grid, which doesn't fit next to a 320pt list.
+  Widget _narrowBody() {
+    final d = _selected;
+    return Container(
+      color: Hifi.paneBg,
+      padding: const EdgeInsets.all(10),
+      child: Column(children: [
+        Expanded(child: _list()),
+        if (d != null) ...[
+          const SizedBox(height: 8),
+          SizedBox(height: 220, child: _detail()),
+        ],
+        const SizedBox(height: 8),
+        Row(children: [
+          Expanded(
+            child: FilledButton.icon(
+              style: FilledButton.styleFrom(
+                backgroundColor: Hifi.chrome,
+                padding: const EdgeInsets.symmetric(vertical: 14),
+              ),
+              onPressed: d == null ? null : () => _payDown(d),
+              icon: const Text('💰'),
+              label: Text(
+                d == null ? 'Погасить долг' : 'Погасить · ${Money.formatTenge(d.amount)}',
+                maxLines: 1,
+                overflow: TextOverflow.ellipsis,
+                style: Hifi.ui(size: 14, weight: FontWeight.w700, color: Colors.white),
+              ),
+            ),
+          ),
+          const SizedBox(width: 8),
+          OutlinedButton(
+            style: OutlinedButton.styleFrom(
+              padding: const EdgeInsets.symmetric(horizontal: 14, vertical: 14),
+            ),
+            onPressed: _showNarrowActions,
+            child: const Icon(Icons.more_horiz, color: Hifi.chrome),
+          ),
+        ]),
+      ]),
+    );
+  }
+
+  void _showNarrowActions() {
+    final d = _selected;
+    showModalBottomSheet<void>(
+      context: context,
+      builder: (ctx) => SafeArea(
+        child: SingleChildScrollView(
+          padding: const EdgeInsets.symmetric(vertical: 8),
+          child: Column(mainAxisSize: MainAxisSize.min, children: [
+            for (final (label, action) in <(String, VoidCallback?)>[
+              ('Новый долг', () => _todo('Новый долг')),
+              ('Погашение', d == null ? null : () => _payDown(d)),
+              ('SMS напоминание', () => _todo('SMS напоминание')),
+              ('Карточка клиента', () => _todo('Карточка клиента')),
+              ('Полная история', () => _todo('Полная история')),
+              ('Экспорт .csv', () => _todo('Экспорт .csv')),
+              ('Печать выписки', () => _todo('Печать выписки')),
+              ('Фильтр > 14 дней', () => _todo('Фильтр > 14 дней')),
+              ('Фильтр > 30 дней', () => _todo('Фильтр > 30 дней')),
+            ])
+              ListTile(
+                enabled: action != null,
+                title: Text(label, style: Hifi.ui(size: 14)),
+                onTap: action == null
+                    ? null
+                    : () {
+                        Navigator.pop(ctx);
+                        action();
+                      },
+              ),
+          ]),
+        ),
+      ),
     );
   }
 

@@ -1,6 +1,6 @@
 {
   "@@locale": "kk",
-  "appTitle": "POS System",
+  "appTitle": "KeregePOS",
   "appRegion": "QAZAQSTAN",
   "navPos": "КАССА",
   "navShift": "ТАРИХ",
@@ -250,7 +250,7 @@
   "settingsCheckNktSub": "Штрих-код немесе атау бойынша тауар іздеу",
   "settingsSystem": "Жүйе",
   "settingsAbout": "Жүйе туралы",
-  "settingsAboutSub": "POS System Kazakhstan v0.1.0",
+  "settingsAboutSub": "KeregePOS v0.2.0",
   "settingsServer": "Сервер",
   "settingsServerStatus": "Сервер күйі",
   "settingsServerConnected": "Қосылған",

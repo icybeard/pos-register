@@ -1,6 +1,6 @@
 {
   "@@locale": "ru",
-  "appTitle": "POS System",
+  "appTitle": "KeregePOS",
   "appRegion": "KAZAKHSTAN",
   "navPos": "КАССА",
   "navShift": "ИСТОРИЯ",
@@ -414,7 +414,7 @@
   "settingsCheckNktSub": "Поиск товара по штрих-коду или названию",
   "settingsSystem": "Система",
   "settingsAbout": "О системе",
-  "settingsAboutSub": "POS System Kazakhstan v0.1.0",
+  "settingsAboutSub": "KeregePOS v0.2.0",
   "settingsServer": "Сервер",
   "settingsServerStatus": "Статус сервера",
   "settingsServerConnected": "Подключен",
