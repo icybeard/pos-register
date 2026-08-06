@@ -95,7 +95,7 @@ jobs:
         # once local_auth is upgraded to a build that uses C++20 <coroutine>.
         env:
           CL: /D_SILENCE_EXPERIMENTAL_COROUTINE_DEPRECATION_WARNINGS
-        run: flutter build windows --release
+        run: flutter build windows --release --dart-define-from-file=env/prod.json
 
       # Two Windows artifacts on purpose: the MSI is what a shop owner wants
       # (Start-menu + desktop shortcuts, Add/Remove Programs, upgrades in
@@ -148,7 +148,7 @@ jobs:
       # --- Linux ---------------------------------------------------------
       - name: Build Linux
         if: matrix.artifact == 'linux-x64'
-        run: flutter build linux --release
+        run: flutter build linux --release --dart-define-from-file=env/prod.json
 
       - name: Package Linux
         if: matrix.artifact == 'linux-x64'
@@ -175,7 +175,7 @@ jobs:
 
       - name: Build Android APK
         if: matrix.artifact == 'android'
-        run: flutter build apk --release
+        run: flutter build apk --release --dart-define-from-file=env/prod.json
 
       - name: Package Android
         if: matrix.artifact == 'android'
@@ -241,7 +241,7 @@ jobs:
           KEY_ID: ${{ secrets.APPLE_API_KEY_ID }}
           ISSUER_ID: ${{ secrets.APPLE_API_ISSUER_ID }}
         run: |
-          flutter build ios --release --config-only --no-codesign
+          flutter build ios --release --config-only --no-codesign --dart-define-from-file=env/prod.json
 
           KEY="$HOME/private_keys/AuthKey_${KEY_ID}.p8"
           AUTH=(-allowProvisioningUpdates

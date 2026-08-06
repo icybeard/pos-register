@@ -1,7 +1,7 @@
 # Required: package:objective_c (transitive via local_auth_darwin / FFIgen)
 # needs iOS 13+. Without this line pods build against Flutter's iOS 12
 # default and the simulator fails to load objective_c.framework.
-platform :ios, '13.0'
+platform :ios, '15.0'
 
 # CocoaPods analytics sends network stats synchronously affecting flutter build latency.
 ENV['COCOAPODS_DISABLE_STATS'] = 'true'
